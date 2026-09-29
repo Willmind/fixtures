@@ -1,0 +1,584 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Color, Vector3 } from "three";
+import { DxfViewer } from "dxf-viewer";
+import type { LayerInfo } from "dxf-viewer";
+import { Icon } from "../icons";
+import {
+  decodeDxf,
+  filterLayerNames,
+  prepareDxfLayers,
+  validateCadFile,
+} from "./document";
+import type { CadReport } from "./document";
+import "./cad.css";
+
+type Layer = LayerInfo & { visible: boolean; empty: boolean };
+type LocalResult = { dxf: string; report: CadReport };
+const local = import.meta.env.DEV;
+
+export default function CadWorkspace({
+  onBack,
+  onLock,
+}: {
+  onBack: () => void;
+  onLock: () => void;
+}) {
+  const host = useRef<HTMLDivElement>(null);
+  const engine = useRef<DxfViewer | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const generation = useRef(0);
+  const request = useRef<AbortController | null>(null);
+  const source = useRef<{ text: string; name: string } | null>(null);
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [name, setName] = useState("");
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState("");
+  const [error, setError] = useState("");
+  const [report, setReport] = useState<CadReport | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [dark, setDark] = useState(false);
+  const darkRef = useRef(dark);
+  const [panel, setPanel] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const load = useCallback(
+    async (
+      read: () => Promise<{
+        bytes: ArrayBuffer;
+        name: string;
+        report?: CadReport;
+      }>,
+    ) => {
+      const id = ++generation.current;
+      request.current?.abort();
+      request.current = new AbortController();
+      setBusy(true);
+      setError("");
+      setWarnings([]);
+      setPhase("正在读取图纸…");
+      try {
+        const file = await read();
+        const text = decodeDxf(file.bytes);
+        if (id !== generation.current || !host.current) return;
+        engine.current?.Destroy();
+        host.current.replaceChildren();
+        delete host.current.dataset.loaded;
+        source.current = null;
+        setLoaded(false);
+        setLayers([]);
+        setReport(file.report ?? null);
+        setName(file.name);
+        const viewer = new DxfViewer(host.current, {
+          autoResize: true,
+          antialias: true,
+          clearColor: new Color(darkRef.current ? "#172229" : "#fafbf9"),
+          retainParsedDxf: true,
+          colorCorrection: true,
+          fileEncoding: "utf-8",
+        });
+        engine.current = viewer;
+        viewer.Subscribe(
+          "message",
+          (event: CustomEvent<{ level: string; message: string }>) => {
+            const detail = event.detail;
+            if (id !== generation.current || detail.level === "info") return;
+            const message = detail.message.includes("missing fonts")
+              ? "部分字体字符无法显示，当前使用替代字体。"
+              : detail.message;
+            setWarnings((previous) =>
+              previous.includes(message) ? previous : [...previous, message],
+            );
+          },
+        );
+        const prepared = prepareDxfLayers(text);
+        const url = URL.createObjectURL(
+          new Blob([prepared.text], { type: "application/dxf" }),
+        );
+        try {
+          await viewer.Load({
+            url,
+            fonts: [
+              new URL("fonts/fixtures-cad-sans.ttf", document.baseURI).href,
+            ],
+            workerFactory: () =>
+              new Worker(new URL("./worker.ts", import.meta.url), {
+                type: "module",
+              }),
+            progressCbk: (phase) => {
+              if (id === generation.current)
+                setPhase(
+                  {
+                    fetch: "正在读取图形…",
+                    parse: "正在解析图层…",
+                    font: "正在准备中文标注…",
+                    prepare: "正在生成图纸…",
+                  }[phase],
+                );
+            },
+          });
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+        if (id !== generation.current) return;
+        const nonEmpty = new Set(
+          [...viewer.GetLayers(true)].map((item) => item.name),
+        );
+        const parsedLayers = viewer.GetDxf()?.tables?.layer?.layers ?? {};
+        const next = [...viewer.GetLayers()].map((item) => ({
+          ...item,
+          visible:
+            parsedLayers[item.name]?.visible !== false &&
+            !prepared.frozen.has(item.name),
+          empty: !nonEmpty.has(item.name),
+        }));
+        for (const layer of next)
+          if (!layer.visible) viewer.ShowLayer(layer.name, false);
+        setLayers(next);
+        setQuery("");
+        setLoaded(true);
+        source.current = {
+          text,
+          name: file.name.replace(/\.(dwg|dxf)$/i, "") + ".dxf",
+        };
+        host.current.dataset.loaded = "true";
+        host.current.dataset.layers = String(next.length);
+      } catch (cause) {
+        if (id !== generation.current) return;
+        setError(
+          cause instanceof Error ? cause.message : "图纸读取失败，请重试。",
+        );
+      } finally {
+        if (id === generation.current) {
+          setBusy(false);
+          setPhase("");
+        }
+      }
+    },
+    [],
+  );
+
+  const readLocalResult = useCallback(
+    async (response: Response, overrideName?: string) => {
+      if (!response.ok) throw new Error(await response.text());
+      const result = (await response.json()) as LocalResult;
+      const bytes = Uint8Array.from(atob(result.dxf), (char) =>
+        char.charCodeAt(0),
+      );
+      if (overrideName) result.report.name = overrideName;
+      return {
+        bytes: bytes.buffer,
+        name: result.report.name,
+        report: result.report,
+      };
+    },
+    [],
+  );
+
+  const openReference = useCallback(
+    () =>
+      load(async () =>
+        readLocalResult(
+          await fetch("/__cad/reference", { signal: request.current?.signal }),
+        ),
+      ),
+    [load, readLocalResult],
+  );
+
+  useEffect(() => {
+    if (local && new URLSearchParams(location.search).get("local") === "1")
+      void openReference();
+    return () => {
+      generation.current++;
+      request.current?.abort();
+      engine.current?.Destroy();
+      engine.current = null;
+    };
+  }, [openReference]);
+
+  function openFile(file?: File) {
+    if (!file || busy) return;
+    try {
+      validateCadFile(file.name, file.size);
+    } catch (cause) {
+      setError((cause as Error).message);
+      return;
+    }
+    if (/\.dwg$/i.test(file.name) && !local) {
+      setError(
+        "DWG 转换目前在本机开发版运行。请在本地选择 DWG，下载转换结果后，在这里导入 DXF。",
+      );
+      return;
+    }
+    void load(async () => {
+      if (/\.dwg$/i.test(file.name)) {
+        setPhase("正在本机转换 DWG，可能需要十几秒…");
+        return readLocalResult(
+          await fetch("/__cad/convert", {
+            method: "POST",
+            headers: { "Content-Type": "application/octet-stream" },
+            body: file,
+            signal: request.current?.signal,
+          }),
+          file.name,
+        );
+      }
+      return { bytes: await file.arrayBuffer(), name: file.name };
+    });
+  }
+
+  function setVisibility(predicate: (layer: Layer) => boolean) {
+    const next = layers.map((layer) => {
+      const visible = predicate(layer);
+      if (visible !== layer.visible)
+        engine.current?.ShowLayer(layer.name, visible);
+      return { ...layer, visible };
+    });
+    setLayers(next);
+  }
+
+  function fit() {
+    const viewer = engine.current,
+      bounds = viewer?.GetBounds();
+    if (!viewer || !bounds) return;
+    const origin = viewer.GetOrigin();
+    viewer.FitView(
+      bounds.minX - origin.x,
+      bounds.maxX - origin.x,
+      bounds.minY - origin.y,
+      bounds.maxY - origin.y,
+    );
+    viewer.Render();
+  }
+  function zoom(factor: number) {
+    const viewer = engine.current;
+    if (!viewer) return;
+    const camera = viewer.GetCamera();
+    viewer.SetView(
+      new Vector3(camera.position.x, camera.position.y, 0),
+      (camera.right - camera.left) / camera.zoom / factor,
+    );
+    viewer.Render();
+  }
+  function download() {
+    if (!source.current) return;
+    // ASCII Unicode escapes keep the original DXF codepage declaration valid.
+    const text = source.current.text.replace(
+      /[^\x00-\x7F]/g,
+      (char) =>
+        "\\U+" + char.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0"),
+    );
+    const url = URL.createObjectURL(
+      new Blob([text], { type: "application/dxf" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = source.current.name;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  const shownNames = new Set(
+    filterLayerNames(
+      layers.map((layer) => layer.name),
+      query,
+    ),
+  );
+  const visible = layers.filter((layer) => layer.visible).length;
+
+  return (
+    <div className="app-shell cad-app">
+      <header className="app-header">
+        <button className="brand cad-brand" onClick={onBack}>
+          <span className="brand-mark">
+            <Icon name="home" size={23} />
+          </span>
+          <span>
+            我的家<span className="brand-divider">/</span>
+            <span className="brand-secondary">CAD 图纸</span>
+          </span>
+        </button>
+        <div className="cad-header-actions">
+          <button
+            className="icon-button access-lock"
+            onClick={onLock}
+            aria-label="锁定访问"
+            title="锁定访问"
+          >
+            <Icon name="lock" size={17} />
+          </button>
+          <button className="text-button" onClick={onBack}>
+            <Icon name="cube" size={17} />
+            毛坯三维
+          </button>
+          <span className="shell-badge">原始图纸</span>
+          <button
+            className="primary-button cad-open"
+            disabled={busy}
+            onClick={() => input.current?.click()}
+          >
+            打开图纸
+          </button>
+        </div>
+        <input
+          ref={input}
+          className="cad-file-input"
+          aria-label="选择 CAD 文件"
+          type="file"
+          accept=".dwg,.dxf"
+          onChange={(event) => {
+            openFile(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
+      </header>
+      <main
+        className="cad-workspace"
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          openFile(event.dataTransfer.files[0]);
+        }}
+      >
+        {panel ? (
+          <button
+            className="cad-panel-scrim"
+            aria-label="关闭图层面板"
+            onClick={() => setPanel(false)}
+          />
+        ) : null}
+        <aside
+          className={`cad-sidebar ${panel ? "is-open" : ""}`}
+          aria-label="CAD 图层面板"
+        >
+          <div className="cad-file-heading">
+            <span className="eyebrow">DRAWING / CAD</span>
+            <h1>图纸工作台</h1>
+            <p title={name}>{name || "从真实图纸开始读懂你的家"}</p>
+            {loaded ? (
+              <div className="cad-stats">
+                <span>
+                  <b>{layers.length}</b> 图层
+                </span>
+                <span>
+                  <b>{visible}</b> 显示
+                </span>
+              </div>
+            ) : null}
+          </div>
+          <div className="cad-layer-heading">
+            <h2>图层</h2>
+            <button
+              className="cad-mobile-close icon-button"
+              aria-label="收起图层面板"
+              onClick={() => setPanel(false)}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          <label className="cad-search">
+            <span className="cad-sr-only">搜索图层</span>
+            <input
+              type="search"
+              placeholder="搜索墙、门窗、插座…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              disabled={!loaded}
+            />
+          </label>
+          <div className="cad-layer-actions">
+            <button
+              disabled={!loaded}
+              onClick={() => setVisibility(() => true)}
+            >
+              全部显示
+            </button>
+            <button
+              disabled={!loaded}
+              onClick={() => setVisibility(() => false)}
+            >
+              全部隐藏
+            </button>
+          </div>
+          <div className="cad-layer-list">
+            {layers
+              .filter((layer) => shownNames.has(layer.name))
+              .map((layer) => (
+                <div
+                  className={`cad-layer-row ${layer.visible ? "is-visible" : ""}`}
+                  key={layer.name}
+                >
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={layer.visible}
+                      onChange={() =>
+                        setVisibility((item) =>
+                          item.name === layer.name
+                            ? !item.visible
+                            : item.visible,
+                        )
+                      }
+                      aria-label={`显示图层 ${layer.displayName}`}
+                    />
+                    <span
+                      className="cad-layer-color"
+                      style={{
+                        background:
+                          "#" + layer.color.toString(16).padStart(6, "0"),
+                      }}
+                    />
+                    <span className="cad-layer-name" title={layer.displayName}>
+                      {layer.displayName}
+                    </span>
+                    {layer.empty ? <small>空</small> : null}
+                  </label>
+                  <button
+                    className="cad-isolate"
+                    aria-label={`仅显示 ${layer.displayName}`}
+                    title="仅显示此图层"
+                    onClick={() =>
+                      setVisibility((item) => item.name === layer.name)
+                    }
+                  >
+                    仅看
+                  </button>
+                </div>
+              ))}
+            {loaded && shownNames.size === 0 ? (
+              <p className="cad-muted">没有匹配的图层</p>
+            ) : null}
+            {!loaded ? (
+              <p className="cad-muted">
+                打开图纸后，可在这里独立控制每个图层。
+              </p>
+            ) : null}
+          </div>
+          <div className="cad-sidebar-footer">
+            <Icon name="layers" size={17} />
+            <span>
+              图层来自 CAD 文件
+              <br />
+              显示状态仅影响当前视图
+            </span>
+          </div>
+        </aside>
+        <section
+          className={`cad-viewport ${dark ? "is-dark" : ""}`}
+          aria-label="CAD 图纸查看器"
+        >
+          <div className="cad-canvas" ref={host} />
+          <div className="cad-toolbar">
+            <button
+              className="cad-mobile-layers"
+              onClick={() => setPanel(true)}
+            >
+              <Icon name="layers" size={16} />
+              图层
+            </button>
+            <span>二维原图</span>
+            <button disabled={!loaded} onClick={fit}>
+              <Icon name="reset" size={16} />
+              显示全图
+            </button>
+            <button
+              onClick={() => {
+                const next = !dark;
+                setDark(next);
+                darkRef.current = next;
+                engine.current?.SetClearColor(next ? "#172229" : "#fafbf9");
+              }}
+            >
+              {dark ? "浅色背景" : "深色背景"}
+            </button>
+            {loaded ? <button onClick={download}>下载 DXF</button> : null}
+          </div>
+          {!loaded && !busy ? (
+            <div className="cad-empty">
+              <span className="cad-empty-icon">
+                <Icon name="plan" size={38} />
+              </span>
+              <span className="eyebrow">YOUR ORIGINAL DRAWING</span>
+              <h2>把图纸摊开，慢慢看懂</h2>
+              <p>打开 CAD 图纸，放大细节，按图层查看墙线、设备和标注。</p>
+              <button
+                className="primary-button"
+                onClick={() => input.current?.click()}
+              >
+                选择 {local ? "DWG / DXF" : "DXF"} 文件
+              </button>
+              {local ? (
+                <button
+                  className="cad-reference"
+                  onClick={() => void openReference()}
+                >
+                  打开本机已解析的图纸
+                </button>
+              ) : null}
+              <small>
+                {local
+                  ? "DWG 在本机转换 · DXF 在浏览器读取"
+                  : "DXF 在当前浏览器读取，不上传文件"}
+                <br />
+                也可以将图纸拖到这里
+              </small>
+            </div>
+          ) : null}
+          {busy ? (
+            <div className="cad-loading-overlay" role="status">
+              <span className="cad-spinner" />
+              <strong>{phase}</strong>
+              <span>保留图层与原始绘图坐标</span>
+            </div>
+          ) : null}
+          {error ? (
+            <div className="cad-error" role="alert">
+              <Icon name="info" size={18} />
+              <span>{error}</span>
+              <button
+                className="icon-button"
+                aria-label="关闭错误提示"
+                onClick={() => setError("")}
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+          ) : null}
+          {loaded ? (
+            <>
+              <div className="camera-tools cad-camera-tools">
+                <button aria-label="放大图纸" onClick={() => zoom(1.5)}>
+                  <Icon name="plus" />
+                </button>
+                <button aria-label="缩小图纸" onClick={() => zoom(1 / 1.5)}>
+                  <Icon name="minus" />
+                </button>
+                <button aria-label="适合窗口" onClick={fit}>
+                  <Icon name="reset" />
+                </button>
+              </div>
+              <div className="cad-status">
+                <span>拖动平移 · 滚轮 / 双指缩放</span>
+                <span>模型空间 · 图纸单位需核对</span>
+              </div>
+            </>
+          ) : null}
+          {loaded ? (
+            <details className="cad-compatibility">
+              <summary>显示兼容性说明</summary>
+              <p>
+                {report?.unsupportedCount
+                  ? `转换器报告 ${report.unsupportedCount} 个未识别对象；部分内容可能缺失。`
+                  : "当前使用通用字体显示标注。"}{" "}
+                线型、字体与部分标注样式可能与 CAD 原软件不同，请结合原图核对。
+              </p>
+              {warnings.map((warning) => (
+                <p key={warning}>{warning}</p>
+              ))}
+            </details>
+          ) : null}
+        </section>
+      </main>
+    </div>
+  );
+}
