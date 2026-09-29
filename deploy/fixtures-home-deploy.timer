@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for a new fixtures home build every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+Unit=fixtures-home-deploy.service
+
+[Install]
+WantedBy=timers.target
