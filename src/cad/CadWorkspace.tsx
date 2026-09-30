@@ -15,6 +15,49 @@ import "./cad.css";
 type Layer = LayerInfo & { visible: boolean; empty: boolean };
 type LocalResult = { dxf: string; report: CadReport };
 const local = import.meta.env.DEV;
+const homeBounds = { minX: 113100, maxX: 172700, minY: -304250, maxY: -262100 };
+const homeViews = [
+  {
+    id: "lighting",
+    title: "灯与开关",
+    minX: 116000,
+    maxX: 136000,
+    minY: -280100,
+    maxY: -263000,
+    description:
+      "左上图：照明设备和线路。先找房间，再看灯、开关之间的联系；它是原设计，不是现场线路探测结果。",
+  },
+  {
+    id: "sockets",
+    title: "插座与用电",
+    minX: 136000,
+    maxX: 156500,
+    minY: -280100,
+    maxY: -263000,
+    description:
+      "右上图：普通插座、专用用电设备与回路。先列家电清单，再让设计人员逐项核对是否需要调整。",
+  },
+  {
+    id: "network",
+    title: "网络与电视",
+    minX: 116000,
+    maxX: 136000,
+    minY: -298200,
+    maxY: -281000,
+    description:
+      "左下图：通信、电视及相关弱电布置。你要做书房，可以重点讨论电脑有线网络、路由器和弱电箱的位置。",
+  },
+  {
+    id: "positions",
+    title: "综合点位",
+    minX: 136000,
+    maxX: 156500,
+    minY: -298200,
+    maxY: -281000,
+    description:
+      "右下图：设备点位集中在同一户型上，方便对照房间。位置和数量尚未逐个核实，不作为施工点位清单。",
+  },
+] as const;
 
 export default function CadWorkspace({
   onBack,
@@ -29,6 +72,7 @@ export default function CadWorkspace({
   const generation = useRef(0);
   const request = useRef<AbortController | null>(null);
   const source = useRef<{ text: string; name: string } | null>(null);
+  const preferredBounds = useRef<typeof homeBounds | null>(null);
   const [layers, setLayers] = useState<Layer[]>([]);
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
@@ -41,6 +85,8 @@ export default function CadWorkspace({
   const darkRef = useRef(dark);
   const [panel, setPanel] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [homeDrawing, setHomeDrawing] = useState(false);
+  const [homeView, setHomeView] = useState("all");
 
   const load = useCallback(
     async (
@@ -48,6 +94,7 @@ export default function CadWorkspace({
         bytes: ArrayBuffer;
         name: string;
         report?: CadReport;
+        bounds?: typeof homeBounds;
       }>,
     ) => {
       const id = ++generation.current;
@@ -61,6 +108,7 @@ export default function CadWorkspace({
         const file = await read();
         const text = decodeDxf(file.bytes);
         if (id !== generation.current || !host.current) return;
+        preferredBounds.current = file.bounds ?? null;
         engine.current?.Destroy();
         host.current.replaceChildren();
         delete host.current.dataset.loaded;
@@ -69,6 +117,8 @@ export default function CadWorkspace({
         setLayers([]);
         setReport(file.report ?? null);
         setName(file.name);
+        setHomeDrawing(Boolean(file.bounds));
+        setHomeView("all");
         const viewer = new DxfViewer(host.current, {
           autoResize: true,
           antialias: true,
@@ -143,6 +193,16 @@ export default function CadWorkspace({
         };
         host.current.dataset.loaded = "true";
         host.current.dataset.layers = String(next.length);
+        if (file.bounds) {
+          const origin = viewer.GetOrigin();
+          viewer.FitView(
+            file.bounds.minX - origin.x,
+            file.bounds.maxX - origin.x,
+            file.bounds.minY - origin.y,
+            file.bounds.maxY - origin.y,
+          );
+          viewer.Render();
+        }
       } catch (cause) {
         if (id !== generation.current) return;
         setError(
@@ -185,16 +245,34 @@ export default function CadWorkspace({
     [load, readLocalResult],
   );
 
+  const openHome = useCallback(
+    () =>
+      load(async () => {
+        const response = await fetch("/house/d-electrical.dxf", {
+          signal: request.current?.signal,
+        });
+        if (!response.ok)
+          throw new Error("家里的图纸暂时加载失败，请点击“重新加载我家图纸”。");
+        return {
+          bytes: await response.arrayBuffer(),
+          name: "D 户型电气平面图 · ZD11 · 2019.03",
+          bounds: homeBounds,
+        };
+      }),
+    [load],
+  );
+
   useEffect(() => {
     if (local && new URLSearchParams(location.search).get("local") === "1")
       void openReference();
+    else void openHome();
     return () => {
       generation.current++;
       request.current?.abort();
       engine.current?.Destroy();
       engine.current = null;
     };
-  }, [openReference]);
+  }, [openReference, openHome]);
 
   function openFile(file?: File) {
     if (!file || busy) return;
@@ -239,7 +317,7 @@ export default function CadWorkspace({
 
   function fit() {
     const viewer = engine.current,
-      bounds = viewer?.GetBounds();
+      bounds = preferredBounds.current ?? viewer?.GetBounds();
     if (!viewer || !bounds) return;
     const origin = viewer.GetOrigin();
     viewer.FitView(
@@ -249,6 +327,21 @@ export default function CadWorkspace({
       bounds.maxY - origin.y,
     );
     viewer.Render();
+    setHomeView("all");
+  }
+  function focusHome(view: (typeof homeViews)[number]) {
+    const viewer = engine.current;
+    if (!viewer) return;
+    const origin = viewer.GetOrigin();
+    viewer.FitView(
+      view.minX - origin.x,
+      view.maxX - origin.x,
+      view.minY - origin.y,
+      view.maxY - origin.y,
+    );
+    viewer.Render();
+    setHomeView(view.id);
+    setPanel(false);
   }
   function zoom(factor: number) {
     const viewer = engine.current;
@@ -284,7 +377,9 @@ export default function CadWorkspace({
       query,
     ),
   );
-  const visible = layers.filter((layer) => layer.visible).length;
+  const visible = layers.filter(
+    (layer) => !layer.empty && layer.visible,
+  ).length;
 
   return (
     <div className="app-shell cad-app">
@@ -311,9 +406,9 @@ export default function CadWorkspace({
           ) : null}
           <button className="text-button" onClick={onBack}>
             <Icon name="cube" size={17} />
-            毛坯三维
+            房屋说明书
           </button>
-          <span className="shell-badge">原始图纸</span>
+          <span className="shell-badge">设计图 · 待现场核对</span>
           <button
             className="primary-button cad-open"
             disabled={busy}
@@ -355,12 +450,20 @@ export default function CadWorkspace({
         >
           <div className="cad-file-heading">
             <span className="eyebrow">DRAWING / CAD</span>
-            <h1>图纸工作台</h1>
+            <h1>我家的电气图</h1>
             <p title={name}>{name || "从真实图纸开始读懂你的家"}</p>
+            <button
+              className="cad-reference"
+              disabled={busy}
+              onClick={() => void openHome()}
+            >
+              重新加载我家图纸
+            </button>
             {loaded ? (
               <div className="cad-stats">
                 <span>
-                  <b>{layers.length}</b> 图层
+                  <b>{layers.filter((layer) => !layer.empty).length}</b>{" "}
+                  有内容图层
                 </span>
                 <span>
                   <b>{visible}</b> 显示
@@ -368,6 +471,27 @@ export default function CadWorkspace({
               </div>
             ) : null}
           </div>
+          {homeDrawing ? (
+            <section className="cad-home-guide" aria-label="按生活问题看电气图">
+              <h2>你想了解什么？</h2>
+              <div>
+                {homeViews.map((view) => (
+                  <button
+                    key={view.id}
+                    disabled={!loaded || busy}
+                    aria-pressed={homeView === view.id}
+                    onClick={() => focusHome(view)}
+                  >
+                    {view.title}
+                  </button>
+                ))}
+              </div>
+              <p>
+                {homeViews.find((view) => view.id === homeView)?.description ??
+                  "这四幅小图是同一个 D 户型：分别表达照明、插座、弱电和综合点位。点上面的按钮可直接放大对应区域。"}
+              </p>
+            </section>
+          ) : null}
           <div className="cad-layer-heading">
             <h2>图层</h2>
             <button
@@ -404,7 +528,7 @@ export default function CadWorkspace({
           </div>
           <div className="cad-layer-list">
             {layers
-              .filter((layer) => shownNames.has(layer.name))
+              .filter((layer) => shownNames.has(layer.name) && !layer.empty)
               .map((layer) => (
                 <div
                   className={`cad-layer-row ${layer.visible ? "is-visible" : ""}`}
@@ -447,7 +571,10 @@ export default function CadWorkspace({
                   </button>
                 </div>
               ))}
-            {loaded && shownNames.size === 0 ? (
+            {loaded &&
+            !layers.some(
+              (layer) => !layer.empty && shownNames.has(layer.name),
+            ) ? (
               <p className="cad-muted">没有匹配的图层</p>
             ) : null}
             {!loaded ? (
@@ -501,8 +628,16 @@ export default function CadWorkspace({
                 <Icon name="plan" size={38} />
               </span>
               <span className="eyebrow">YOUR ORIGINAL DRAWING</span>
-              <h2>把图纸摊开，慢慢看懂</h2>
-              <p>打开 CAD 图纸，放大细节，按图层查看墙线、设备和标注。</p>
+              <h2>我家的 D 户型电气图</h2>
+              <p>
+                图纸已经随网站保存。加载失败时可以重试，也可以另行打开文件。
+              </p>
+              <button
+                className="primary-button"
+                onClick={() => void openHome()}
+              >
+                重新加载我家图纸
+              </button>
               <button
                 className="primary-button"
                 onClick={() => input.current?.click()}
@@ -571,7 +706,9 @@ export default function CadWorkspace({
               <p>
                 {report?.unsupportedCount
                   ? `转换器报告 ${report.unsupportedCount} 个未识别对象；部分内容可能缺失。`
-                  : "当前使用通用字体显示标注。"}{" "}
+                  : homeDrawing
+                    ? "本页默认显示从 DWG 提取的 ZD11 图纸，原文件转换有 711 个未识别对象，不能保证全部符号完整。"
+                    : "当前使用通用字体显示标注。"}{" "}
                 线型、字体与部分标注样式可能与 CAD 原软件不同，请结合原图核对。
               </p>
               {warnings.map((warning) => (

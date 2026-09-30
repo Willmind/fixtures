@@ -492,3 +492,36 @@
     min-height: 480px;
   }
 }
+.cad-home-guide {
+  padding: 16px 22px;
+  border-bottom: 1px solid #e1e6e0;
+  background: #f5f7f0;
+}
+.cad-home-guide h2 {
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+.cad-home-guide > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.cad-home-guide button {
+  padding: 8px 5px;
+  background: #e7eee0;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.cad-home-guide button[aria-pressed="true"] {
+  background: #365a48;
+  color: white;
+}
+.cad-home-guide p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #7c8874;
+  margin: 12px 0 0;
+}
+.cad-home-guide button:disabled {
+  opacity: 0.5;
+}

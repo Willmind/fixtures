@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import AccessGate from "./access/AccessGate";
 import {
   passwordGateEnabled,
@@ -8,6 +8,12 @@ import {
 
 const HomeViewer = lazy(() => import("./HomeViewer"));
 const CadWorkspace = lazy(() => import("./cad/CadWorkspace"));
+const HomeGuide = lazy(() => import("./guide/HomeGuide"));
+type View = "guide" | "model" | "cad";
+function currentView(): View {
+  const view = new URLSearchParams(location.search).get("view");
+  return view === "cad" || view === "model" ? view : "guide";
+}
 
 export default function App() {
   return passwordGateEnabled ? <ProtectedWorkspace /> : <Workspace />;
@@ -31,25 +37,32 @@ function ProtectedWorkspace() {
 }
 
 function Workspace({ onLock }: { onLock?: () => void }) {
-  const [cad, setCad] = useState(
-    () => new URLSearchParams(location.search).get("view") === "cad",
-  );
-  function changeView(value: boolean) {
+  const [view, setView] = useState<View>(currentView);
+  useEffect(() => {
+    const update = () => setView(currentView());
+    window.addEventListener("popstate", update);
+    return () => window.removeEventListener("popstate", update);
+  }, []);
+  function changeView(value: View) {
     const url = new URL(location.href);
-    if (value) url.searchParams.set("view", "cad");
-    else {
-      url.searchParams.delete("view");
-      url.searchParams.delete("local");
-    }
-    history.replaceState(null, "", url);
-    setCad(value);
+    if (value !== "guide") url.searchParams.set("view", value);
+    else url.searchParams.delete("view");
+    url.searchParams.delete("local");
+    history.pushState(null, "", url);
+    setView(value);
   }
   return (
     <Suspense fallback={<div className="app-loading">正在打开我的家…</div>}>
-      {cad ? (
-        <CadWorkspace onBack={() => changeView(false)} onLock={onLock} />
+      {view === "cad" ? (
+        <CadWorkspace onBack={() => changeView("guide")} onLock={onLock} />
+      ) : view === "model" ? (
+        <HomeViewer onOpenCad={() => changeView("cad")} onLock={onLock} />
       ) : (
-        <HomeViewer onOpenCad={() => changeView(true)} onLock={onLock} />
+        <HomeGuide
+          onModel={() => changeView("model")}
+          onCad={() => changeView("cad")}
+          onLock={onLock}
+        />
       )}
     </Suspense>
   );
