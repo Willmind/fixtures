@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import AccessGate from "./access/AccessGate";
+import { AppIcon } from "./AppIcon";
 import {
   passwordGateEnabled,
   readAccessSession,
@@ -52,7 +53,7 @@ function Workspace({ onLock }: { onLock?: () => void }) {
     setView(value);
   }
   return (
-    <Suspense fallback={<div className="app-loading">正在打开我的家…</div>}>
+    <Suspense fallback={<AppLoading />}>
       {view === "cad" ? (
         <CadWorkspace onBack={() => changeView("guide")} onLock={onLock} />
       ) : view === "model" ? (
@@ -65,5 +66,19 @@ function Workspace({ onLock }: { onLock?: () => void }) {
         />
       )}
     </Suspense>
+  );
+}
+
+function AppLoading() {
+  return (
+    <main className="app-loading">
+      <div className="app-loading-content">
+        <AppIcon className="app-loading-icon" />
+        <div className="app-loading-status" role="status" aria-atomic="true">
+          <span className="app-loading-spinner" aria-hidden="true" />
+          <span>正在打开我的家…</span>
+        </div>
+      </div>
+    </main>
   );
 }

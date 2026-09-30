@@ -59,6 +59,47 @@ svg {
 button:hover {
   filter: brightness(0.98);
 }
+.app-loading {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 24px;
+  color: var(--text-secondary);
+  background: var(--page-background);
+}
+.app-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.app-loading-icon {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+.app-loading-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.app-loading-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid #0071e31f;
+  border-top-color: var(--tint);
+  border-radius: 50%;
+  animation: app-loading-spin 800ms linear infinite;
+}
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .app-shell {
   height: 100dvh;
   min-height: 540px;
