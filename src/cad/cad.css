@@ -11,10 +11,25 @@
 .cad-header-actions {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 16px;
+}
+.cad-header-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  margin: 0;
+  line-height: 1;
+  font-size: 13px;
+}
+.cad-header-actions .access-lock {
+  width: 36px;
 }
 .cad-open {
-  padding: 10px 18px !important;
+  padding: 0 16px;
+  border-radius: 18px;
+  white-space: nowrap;
 }
 .cad-file-input {
   display: none;
@@ -410,12 +425,11 @@
   .cad-header-actions {
     gap: 13px;
   }
-  .cad-header-actions .text-button {
+  .cad-header-actions > button {
     font-size: 11px;
   }
   .cad-open {
-    font-size: 11px !important;
-    padding: 8px 12px !important;
+    padding: 0 12px;
   }
   .cad-sidebar {
     position: absolute;

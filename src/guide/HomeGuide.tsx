@@ -25,9 +25,7 @@ export default function HomeGuide({
       <header className="guide-header">
         <a className="guide-brand" href="./">
           <AppIcon />
-          <span>
-            我的家<small>一本慢慢读懂的房屋说明书</small>
-          </span>
+          <span>我的家</span>
         </a>
         <nav aria-label="查看方式">
           {onLock ? (
@@ -52,10 +50,8 @@ export default function HomeGuide({
         <section className="guide-intro">
           <div>
             <p className="guide-kicker">佛山 · 碧桂园世纪滨江 · D 户型</p>
-            <h1>先认识家，再开始装修。</h1>
-            <p className="guide-lead">
-              从一张图开始，弄清每个房间，再一起决定怎么住。
-            </p>
+            <h1>户型与装修资料</h1>
+            <p className="guide-lead">查看房间布局、原始图纸和装修准备事项。</p>
           </div>
           <div className="guide-house-facts" aria-label="原图空间组成">
             <span>
@@ -78,14 +74,14 @@ export default function HomeGuide({
             } as CSSProperties
           }
           role="tablist"
-          aria-label="房屋说明书章节"
+          aria-label="户型资料分类"
         >
           <span className="guide-tab-indicator" aria-hidden="true" />
           {(
             [
-              ["rooms", "01", "认识房间"],
-              ["reading", "02", "图纸怎么看"],
-              ["sources", "03", "查原图"],
+              ["rooms", "01", "房间布局"],
+              ["reading", "02", "图纸说明"],
+              ["sources", "03", "原始图纸"],
             ] as const
           ).map(([id, num, title]) => (
             <button
@@ -134,8 +130,8 @@ export default function HomeGuide({
                 <div className="guide-plan-card">
                   <div className="guide-card-heading">
                     <div>
-                      <h2>这是你家的户型原图</h2>
-                      <p>点图中的房间名称，查看对应的通俗解释。</p>
+                      <h2>户型平面图</h2>
+                      <p>选择房间，查看布局和使用建议。</p>
                     </div>
                     <button
                       className="guide-text-link"
@@ -199,7 +195,7 @@ export default function HomeGuide({
                 >
                   <div key={room.id} className="guide-detail-content">
                     <div className="guide-detail-top">
-                      <span className="guide-kicker">把图纸翻译成生活</span>
+                      <span className="guide-kicker">房间详情</span>
                       <span className="guide-room-number">
                         {String(roomGuides.indexOf(room) + 1).padStart(2, "0")}
                       </span>
@@ -209,7 +205,7 @@ export default function HomeGuide({
                       原图名称：{room.original}
                     </p>
                     <div className="guide-detail-section">
-                      <span className="guide-label">原图能确认的</span>
+                      <span className="guide-label">图纸信息</span>
                       <p>{room.fact}</p>
                       <button
                         className="guide-source-link"
@@ -219,13 +215,11 @@ export default function HomeGuide({
                       </button>
                     </div>
                     <div className="guide-detail-section guide-idea">
-                      <span className="guide-label">
-                        结合你家的想法 · 待商量
-                      </span>
+                      <span className="guide-label">使用建议 · 未确定</span>
                       <p>{room.idea}</p>
                     </div>
                     <div className="guide-detail-section">
-                      <h3>和家人一起想一想</h3>
+                      <h3>需要确认</h3>
                       <ul>
                         {room.questions.map((q) => (
                           <li key={q}>{q}</li>
@@ -244,9 +238,8 @@ export default function HomeGuide({
               </div>
               <section className="guide-next">
                 <div>
-                  <span className="guide-kicker">装修的第一步</span>
-                  <h2>现在不用急着选风格。</h2>
-                  <p>先把房子和一家人的需求弄清楚。</p>
+                  <h2>装修准备</h2>
+                  <p>开工前需要确认的 4 件事。</p>
                 </div>
                 <ol>
                   {firstSteps.map((s, i) => (
@@ -265,9 +258,9 @@ export default function HomeGuide({
           {tab === "reading" ? (
             <section className="guide-reading">
               <div className="guide-section-intro">
-                <span className="guide-kicker">不用先学会 CAD</span>
-                <h2>先读懂这几个标记</h2>
-                <p>每条解释都能回到你家的图纸上对照。</p>
+                <span className="guide-kicker">图纸基础</span>
+                <h2>常用图纸标记</h2>
+                <p>尺寸、轴线、标高和门窗代号的含义。</p>
               </div>
               <div className="guide-glossary">
                 {glossary.map((g) => (
@@ -286,8 +279,8 @@ export default function HomeGuide({
               </div>
               <div className="guide-lighting">
                 <div>
-                  <span className="guide-kicker">灯装在哪里？</span>
-                  <h2>先看灯位，再讨论怎么开关。</h2>
+                  <span className="guide-kicker">照明布局</span>
+                  <h2>灯位与开关</h2>
                   <p>
                     PDF 第 5 页画了灯的位置和定位尺寸。第 6
                     页给灯具标了编号。DWG 的 ZD11
@@ -328,9 +321,9 @@ export default function HomeGuide({
           {tab === "sources" ? (
             <section className="guide-sources">
               <div className="guide-section-intro">
-                <span className="guide-kicker">每个解释，都有来处</span>
-                <h2>你家的原图，已经放好了。</h2>
-                <p>无需再上传。点开一张，查看它回答的是哪个问题。</p>
+                <span className="guide-kicker">原始资料</span>
+                <h2>住宅 D 户型图纸</h2>
+                <p>共 7 张 PDF 图纸，可点击放大查看。</p>
               </div>
               <div className="guide-sheet-grid">
                 {sheets.map((s) => (
@@ -373,7 +366,7 @@ export default function HomeGuide({
                 <button onClick={onCad}>打开电气图 ↗</button>
               </article>
               <div className="guide-source-status">
-                <h3>目前读到了哪里</h3>
+                <h3>资料核对进度</h3>
                 <p>
                   <b>已核对：</b>PDF 的 7 张图名、房间关系与主要标记；DWG 中的 D
                   户型 ZD11 图签和图纸位置。
@@ -387,8 +380,8 @@ export default function HomeGuide({
           ) : null}
         </div>
         <footer className="guide-footer">
-          <span>我的家 · 从看懂，到住好</span>
-          <span>原图 → 通俗解释 → 家人的决定</span>
+          <span>碧桂园世纪滨江 · D 户型</span>
+          <span>图纸资料：2019 年设计版本</span>
         </footer>
       </main>
       {page !== null ? (

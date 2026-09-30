@@ -111,15 +111,24 @@ button:hover {
 }
 .header-right {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   align-items: center;
 }
+.header-right > button {
+  height: 36px;
+  line-height: 1;
+}
 .shell-badge {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
   letter-spacing: 0;
   color: var(--tint);
   background: var(--tint-soft);
-  padding: 7px 12px;
+  padding: 0 12px;
   border-radius: 20px;
 }
 .text-button {
@@ -722,6 +731,8 @@ button:hover {
   background: var(--tint);
   color: white;
   padding: 11px 20px;
+}
+.dialog-content .primary-button {
   float: right;
   margin-top: 6px;
 }

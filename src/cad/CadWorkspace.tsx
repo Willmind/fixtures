@@ -404,8 +404,8 @@ export default function CadWorkspace({
             </button>
           ) : null}
           <button className="text-button" onClick={onBack}>
-            <Icon name="cube" size={17} />
-            房屋说明书
+            <Icon name="home" size={17} />
+            返回首页
           </button>
           <span className="shell-badge">设计图 · 待现场核对</span>
           <button
@@ -450,7 +450,7 @@ export default function CadWorkspace({
           <div className="cad-file-heading">
             <span className="eyebrow">DRAWING / CAD</span>
             <h1>我家的电气图</h1>
-            <p title={name}>{name || "从真实图纸开始读懂你的家"}</p>
+            <p title={name}>{name || "正在加载图纸"}</p>
             <button
               className="cad-reference"
               disabled={busy}

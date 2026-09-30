@@ -36,9 +36,8 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
     <main className="access-page">
       <section className="access-card" aria-labelledby="access-title">
         <AppIcon className="access-emblem" />
-        <p className="access-eyebrow">A PLACE CALLED HOME</p>
         <h1 id="access-title">欢迎回家</h1>
-        <p className="access-description">输入访问密码，打开我们的家。</p>
+        <p className="access-description">输入密码以查看户型和图纸。</p>
         <form onSubmit={submit} className="access-form">
           <label htmlFor="access-password">访问密码</label>
           <div className={`access-input ${error ? "has-error" : ""}`}>
@@ -76,10 +75,9 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
           </button>
         </form>
         <p className="access-hint" id="access-hint">
-          我的家 · 房屋说明书
+          D 户型 · 装修资料
         </p>
       </section>
-      <span className="access-footer">我的家 / 空间与生活</span>
     </main>
   );
 }
