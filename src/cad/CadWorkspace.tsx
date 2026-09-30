@@ -11,6 +11,7 @@ import {
   validateCadFile,
 } from "./document";
 import type { CadReport } from "./document";
+import { fetchHomeDrawing } from "./homeDrawing";
 import "./cad.css";
 
 type Layer = LayerInfo & { visible: boolean; empty: boolean };
@@ -150,7 +151,12 @@ export default function CadWorkspace({
           await viewer.Load({
             url,
             fonts: [
-              new URL("fonts/fixtures-cad-sans.ttf", document.baseURI).href,
+              new URL(
+                file.bounds
+                  ? "fonts/fixtures-home-cad.ttf"
+                  : "fonts/fixtures-cad-sans.ttf",
+                document.baseURI,
+              ).href,
             ],
             workerFactory: () =>
               new Worker(new URL("./worker.ts", import.meta.url), {
@@ -249,13 +255,9 @@ export default function CadWorkspace({
   const openHome = useCallback(
     () =>
       load(async () => {
-        const response = await fetch("/house/d-electrical.dxf", {
-          signal: request.current?.signal,
-        });
-        if (!response.ok)
-          throw new Error("家里的图纸暂时加载失败，请点击“重新加载我家图纸”。");
+        setPhase("正在下载电气图…");
         return {
-          bytes: await response.arrayBuffer(),
+          bytes: await fetchHomeDrawing(request.current?.signal),
           name: "D 户型电气平面图 · ZD11 · 2019.03",
           bounds: homeBounds,
         };

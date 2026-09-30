@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { gunzipSync } from "node:zlib";
+import opentype from "opentype.js";
 import DxfParser from "dxf-viewer/src/parser/DxfParser.js";
+import { ParseSpecialChars } from "dxf-viewer/src/TextRenderer.js";
 import { roomGuides, sheets } from "../src/guide/content.ts";
 import { rooms } from "../src/model/plan.ts";
 
@@ -14,6 +17,51 @@ const unicode = (text) =>
   text.replace(/\\U\+([0-9A-F]{4})/gi, (_, code) =>
     String.fromCharCode(parseInt(code, 16)),
   );
+
+test("压缩图纸与源 DXF 逐字节一致", () => {
+  const compressed = fs.readFileSync(
+    new URL("../public/house/d-electrical.dxf.gz", import.meta.url),
+  );
+  assert.deepEqual(gunzipSync(compressed), Buffer.from(raw));
+  assert.ok(compressed.length < Buffer.byteLength(raw) / 3);
+});
+
+test("电气图专用字体保留原字体支持的全部图纸字符与字形", () => {
+  const readFont = (name) => {
+    const bytes = fs.readFileSync(
+      new URL(`../public/fonts/${name}.ttf`, import.meta.url),
+    );
+    return {
+      font: opentype.parse(
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength,
+        ),
+      ),
+      size: bytes.length,
+    };
+  };
+  const original = readFont("fixtures-cad-sans");
+  const subset = readFont("fixtures-home-cad");
+  assert.ok(subset.size < original.size / 10);
+  const characters = new Set([...ParseSpecialChars(raw), ..."°±∅Ø×⌀−"]);
+  for (const char of characters) {
+    if (char.codePointAt(0) < 32 || !original.font.hasChar(char)) continue;
+    assert.ok(subset.font.hasChar(char), `精简字体缺少字符：${char}`);
+    const expected = original.font.charToGlyph(char);
+    const actual = subset.font.charToGlyph(char);
+    assert.equal(
+      actual.advanceWidth,
+      expected.advanceWidth,
+      `字符宽度改变：${char}`,
+    );
+    assert.equal(
+      actual.path.toPathData(),
+      expected.path.toPathData(),
+      `字符形状改变：${char}`,
+    );
+  }
+});
 
 test("默认电气资产确为 D 户型 ZD11，不混入其他户型图签", () => {
   const titles = dxf.entities
