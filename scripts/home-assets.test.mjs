@@ -52,6 +52,17 @@ test("房间讲解与三维房间对应，全部来源图在发布目录中", ()
       new URL(`../public/house/d-sheet-${sheet.page}.webp`, import.meta.url),
     );
     assert.equal(bytes.subarray(8, 12).toString(), "WEBP");
+    const preview = fs.readFileSync(
+      new URL(
+        `../public/house/thumbnails/d-sheet-${sheet.page}.webp`,
+        import.meta.url,
+      ),
+    );
+    assert.equal(preview.subarray(8, 12).toString(), "WEBP");
+    assert.ok(
+      preview.length < bytes.length / 3,
+      "卡片缩略图应明显小于高清原图",
+    );
   }
   assert.ok(
     fs.statSync(new URL("../public/house/d-plan.webp", import.meta.url)).size >

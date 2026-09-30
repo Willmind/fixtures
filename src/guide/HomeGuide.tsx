@@ -376,8 +376,28 @@ export default function HomeGuide({
 
 function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const image = useRef<HTMLImageElement>(null);
   const [zoom, setZoom] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
+  const [attempt, setAttempt] = useState(0);
+  const source = `/house/d-sheet-${page}.webp`;
+  const imageSource = attempt ? `${source}?retry=${attempt}` : source;
+
+  useEffect(() => {
+    const element = image.current;
+    if (element?.complete) {
+      setStatus(element.naturalWidth > 0 ? "loaded" : "error");
+    }
+  }, [imageSource]);
+
+  function retry() {
+    setStatus("loading");
+    setAttempt((value) => value + 1);
+  }
+
   function requestClose() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
       onClose();
@@ -419,24 +439,47 @@ function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
       </header>
       <p className="guide-dialog-description">{sheet.detail}</p>
       <div className="guide-dialog-tools">
-        <button onClick={() => setZoom(!zoom)}>
+        <button onClick={() => setZoom(!zoom)} disabled={status !== "loaded"}>
           {zoom ? "适合窗口" : "放大细节"}
         </button>
-        <a
-          href={`/house/d-sheet-${page}.webp`}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a href={imageSource} target="_blank" rel="noreferrer">
           单独打开图片 ↗
         </a>
         <span>2019.03 · 原设计图</span>
       </div>
-      <div className="guide-dialog-image">
+      <div
+        className="guide-dialog-image"
+        data-state={status}
+        aria-busy={status === "loading"}
+      >
         <img
+          key={imageSource}
+          ref={image}
           className={zoom ? "is-zoomed" : ""}
-          src={`/house/d-sheet-${page}.webp`}
+          src={imageSource}
+          decoding="async"
           alt={`住宅 D 户型${sheet.title}原图，${sheet.code}`}
+          onLoad={() => setStatus("loaded")}
+          onError={() => setStatus("error")}
         />
+        {status !== "loaded" ? (
+          <div className="guide-dialog-image-feedback">
+            {status === "loading" ? (
+              <span className="guide-sheet-spinner" aria-hidden="true" />
+            ) : null}
+            <p role="status">
+              {status === "loading"
+                ? "正在加载高清原图…"
+                : "原图加载失败，请重试"}
+            </p>
+            {status === "error" ? (
+              <button onClick={retry}>
+                <Icon name="reset" size={16} />
+                重新加载原图
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </dialog>
   );

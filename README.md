@@ -45,6 +45,8 @@ npm test
 
 图片由 PDF 以 2600 像素长边渲染、旋转至正向并裁去扫描边缘，保留图签和说明。来源核对记录见 `docs/house-reading.md`。`src/guide/content.ts` 区分原图事实、用途建议及待核实项。
 
+原始图纸卡片使用 `public/house/thumbnails/` 中长边 720 像素的缩略图，打开弹窗后才请求对应高清原图。更换原图后，用安装了 Pillow 的 Python 运行 `python3 scripts/generate-sheet-thumbnails.py` 并提交生成的缩略图；正常构建不需要 Python 图片依赖。页面模块加载失败时可重新加载页面，图纸卡片与原图弹窗均支持加载提示和失败重试。
+
 ## CAD 图纸工作台
 
 点击页头「电气图」，或访问 `http://127.0.0.1:5173/?view=cad`。

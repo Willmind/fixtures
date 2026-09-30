@@ -14,7 +14,7 @@ export function SheetCard({
     "loading",
   );
   const [attempt, setAttempt] = useState(0);
-  const source = `/house/d-sheet-${sheet.page}.webp`;
+  const source = `/house/thumbnails/d-sheet-${sheet.page}.webp`;
 
   useEffect(() => {
     // Cached images may already be complete when the card mounts again.

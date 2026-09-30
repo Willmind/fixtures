@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import AccessGate from "./access/AccessGate";
 import { AppIcon } from "./AppIcon";
+import { PageErrorBoundary } from "./PageErrorBoundary";
 import {
   passwordGateEnabled,
   readAccessSession,
@@ -53,19 +54,21 @@ function Workspace({ onLock }: { onLock?: () => void }) {
     setView(value);
   }
   return (
-    <Suspense fallback={<AppLoading />}>
-      {view === "cad" ? (
-        <CadWorkspace onBack={() => changeView("guide")} onLock={onLock} />
-      ) : view === "model" ? (
-        <HomeViewer onOpenCad={() => changeView("cad")} onLock={onLock} />
-      ) : (
-        <HomeGuide
-          onModel={() => changeView("model")}
-          onCad={() => changeView("cad")}
-          onLock={onLock}
-        />
-      )}
-    </Suspense>
+    <PageErrorBoundary key={view}>
+      <Suspense fallback={<AppLoading />}>
+        {view === "cad" ? (
+          <CadWorkspace onBack={() => changeView("guide")} onLock={onLock} />
+        ) : view === "model" ? (
+          <HomeViewer onOpenCad={() => changeView("cad")} onLock={onLock} />
+        ) : (
+          <HomeGuide
+            onModel={() => changeView("model")}
+            onCad={() => changeView("cad")}
+            onLock={onLock}
+          />
+        )}
+      </Suspense>
+    </PageErrorBoundary>
   );
 }
 

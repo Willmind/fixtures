@@ -100,6 +100,44 @@ button:hover {
     transform: rotate(360deg);
   }
 }
+.app-error {
+  text-align: center;
+}
+.app-error h1 {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+}
+.app-error p {
+  margin: 0;
+  max-width: 320px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.app-error-actions {
+  display: flex;
+  gap: 12px;
+}
+.app-error-actions button,
+.app-error-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  text-decoration: none;
+}
+.app-error-actions button {
+  background: var(--tint);
+  color: #fff;
+}
+.app-error-actions a {
+  background: var(--tint-soft);
+  color: var(--tint);
+}
 .app-shell {
   height: 100dvh;
   min-height: 540px;
