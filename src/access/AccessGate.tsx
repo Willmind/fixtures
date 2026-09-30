@@ -77,7 +77,7 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
           </button>
         </form>
         <p className="access-hint" id="access-hint">
-          私人空间 · 仅供家人查看
+          我的家 · 房屋说明书
         </p>
       </section>
       <span className="access-footer">我的家 / 空间与生活</span>
