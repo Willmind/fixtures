@@ -32,7 +32,7 @@ export default function HomeViewer({
   onLock,
 }: {
   onOpenCad: () => void;
-  onLock: () => void;
+  onLock?: () => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<ViewOptions["view"]>("perspective");
@@ -67,14 +67,16 @@ export default function HomeViewer({
           </span>
         </a>
         <div className="header-right">
-          <button
-            className="icon-button access-lock"
-            onClick={onLock}
-            aria-label="锁定访问"
-            title="锁定访问"
-          >
-            <Icon name="lock" size={17} />
-          </button>
+          {onLock ? (
+            <button
+              className="icon-button access-lock"
+              onClick={onLock}
+              aria-label="锁定访问"
+              title="锁定访问"
+            >
+              <Icon name="lock" size={17} />
+            </button>
+          ) : null}
           <button className="text-button" onClick={onOpenCad}>
             <Icon name="layers" size={17} /> CAD 图纸
           </button>

@@ -1,4 +1,6 @@
 // This is a convenience gate for a personal static site, not server authentication.
+export const passwordGateEnabled = false;
+
 const passcodeDigest =
   "ee1d5acbd8e9a943c29367939413ee6d611f4bb58e394f1c39ae40a004c5ffc8";
 const sessionKey = "fixtures.access.v1";

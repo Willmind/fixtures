@@ -21,7 +21,7 @@ export default function CadWorkspace({
   onLock,
 }: {
   onBack: () => void;
-  onLock: () => void;
+  onLock?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const engine = useRef<DxfViewer | null>(null);
@@ -299,14 +299,16 @@ export default function CadWorkspace({
           </span>
         </button>
         <div className="cad-header-actions">
-          <button
-            className="icon-button access-lock"
-            onClick={onLock}
-            aria-label="锁定访问"
-            title="锁定访问"
-          >
-            <Icon name="lock" size={17} />
-          </button>
+          {onLock ? (
+            <button
+              className="icon-button access-lock"
+              onClick={onLock}
+              aria-label="锁定访问"
+              title="锁定访问"
+            >
+              <Icon name="lock" size={17} />
+            </button>
+          ) : null}
           <button className="text-button" onClick={onBack}>
             <Icon name="cube" size={17} />
             毛坯三维

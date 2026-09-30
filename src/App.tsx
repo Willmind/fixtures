@@ -1,11 +1,19 @@
 import { lazy, Suspense, useState } from "react";
 import AccessGate from "./access/AccessGate";
-import { readAccessSession, saveAccessSession } from "./access/passcode";
+import {
+  passwordGateEnabled,
+  readAccessSession,
+  saveAccessSession,
+} from "./access/passcode";
 
 const HomeViewer = lazy(() => import("./HomeViewer"));
 const CadWorkspace = lazy(() => import("./cad/CadWorkspace"));
 
 export default function App() {
+  return passwordGateEnabled ? <ProtectedWorkspace /> : <Workspace />;
+}
+
+function ProtectedWorkspace() {
   const [allowed, setAllowed] = useState(readAccessSession);
   function unlock() {
     saveAccessSession(true);
@@ -22,7 +30,7 @@ export default function App() {
   );
 }
 
-function Workspace({ onLock }: { onLock: () => void }) {
+function Workspace({ onLock }: { onLock?: () => void }) {
   const [cad, setCad] = useState(
     () => new URLSearchParams(location.search).get("view") === "cad",
   );
