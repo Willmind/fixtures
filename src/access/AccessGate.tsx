@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
 import { matchesPasscode } from "./passcode";
 import "./access.css";
@@ -34,9 +35,7 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
   return (
     <main className="access-page">
       <section className="access-card" aria-labelledby="access-title">
-        <div className="access-emblem">
-          <Icon name="home" size={28} />
-        </div>
+        <AppIcon className="access-emblem" />
         <p className="access-eyebrow">A PLACE CALLED HOME</p>
         <h1 id="access-title">欢迎回家</h1>
         <p className="access-description">输入访问密码，打开我们的家。</p>

@@ -1,0 +1,15 @@
+{
+  "tool": "Built-in image_gen.imagegen",
+  "prompt": "Create one original premium macOS/iOS-inspired app icon for a Chinese private home renovation and floor-plan website called '我的家'. Use case: stylized-concept app icon, production asset. Square 1024x1024 composition. A single friendly architectural house symbol crafted from warm translucent amber-orange glass, with a softly beveled pitched roof and one small inset arched doorway, centered on a luminous porcelain-white rounded-square tile. Subtle depth and overlapping glass layers, warm yellow highlights, delicate realistic ambient occlusion, soft studio light from upper left. Nearly frontal view, absolutely clean and balanced, legible when reduced to 32 pixels. Tile fills about 90% of the canvas, softly rounded continuous corners. Background outside the tile fully transparent with a very soft natural shadow. Elegant contemporary Apple-like material sensibility, but an original house silhouette rather than a copied product icon. No letters, numbers, logo text, Apple logo, watermark, furniture, leaves, chimney, additional objects, mockup device, or backdrop. The final output is the standalone icon only.",
+  "assets": {
+    "public/icons/home-app.png": "512 × 512, PNG, transparent",
+    "public/icons/apple-touch-icon.png": "180 × 180, PNG",
+    "public/icons/favicon.png": "64 × 64, PNG"
+  },
+  "processing": "Resized from the generated original with Lanczos; no external icon library or Apple artwork bundled.",
+  "designReferences": [
+    "https://www.apple.com/os/macos/",
+    "https://developer.apple.com/design/human-interface-guidelines/motion",
+    "https://developer.apple.com/design/human-interface-guidelines/app-icons"
+  ]
+}

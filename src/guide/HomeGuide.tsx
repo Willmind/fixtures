@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
 import { firstSteps, glossary, roomGuides, sheets } from "./content";
 import "./guide.css";
@@ -23,15 +24,22 @@ export default function HomeGuide({
     <div className="home-guide">
       <header className="guide-header">
         <a className="guide-brand" href="./">
-          <span className="brand-mark">
-            <Icon name="home" size={21} />
-          </span>
+          <AppIcon />
           <span>
             我的家<small>一本慢慢读懂的房屋说明书</small>
           </span>
         </a>
         <nav aria-label="查看方式">
-          {onLock ? <button onClick={onLock}>锁定访问</button> : null}
+          {onLock ? (
+            <button
+              className="guide-lock-button"
+              onClick={onLock}
+              aria-label="锁定访问"
+              title="锁定访问"
+            >
+              <Icon name="lock" size={17} />
+            </button>
+          ) : null}
           <button onClick={onCad}>
             <Icon name="layers" size={16} /> 电气图
           </button>
@@ -64,9 +72,15 @@ export default function HomeGuide({
         </section>
         <div
           className="guide-tabbar"
+          style={
+            {
+              "--tab-index": ["rooms", "reading", "sources"].indexOf(tab),
+            } as CSSProperties
+          }
           role="tablist"
           aria-label="房屋说明书章节"
         >
+          <span className="guide-tab-indicator" aria-hidden="true" />
           {(
             [
               ["rooms", "01", "认识房间"],
@@ -108,7 +122,12 @@ export default function HomeGuide({
             </button>
           ))}
         </div>
-        <div id="guide-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+        <div
+          key={tab}
+          id="guide-panel"
+          role="tabpanel"
+          aria-labelledby={`tab-${tab}`}
+        >
           {tab === "rooms" ? (
             <>
               <section className="guide-room-layout">
@@ -178,37 +197,41 @@ export default function HomeGuide({
                   aria-labelledby="selected-room-title"
                   aria-live="polite"
                 >
-                  <div className="guide-detail-top">
-                    <span className="guide-kicker">把图纸翻译成生活</span>
-                    <span className="guide-room-number">
-                      {String(roomGuides.indexOf(room) + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <h2 id="selected-room-title">{room.name}</h2>
-                  <p className="guide-original-name">
-                    原图名称：{room.original}
-                  </p>
-                  <div className="guide-detail-section">
-                    <span className="guide-label">原图能确认的</span>
-                    <p>{room.fact}</p>
-                    <button
-                      className="guide-source-link"
-                      onClick={() => setPage(room.page)}
-                    >
-                      查看依据 · PDF 第 {room.page} 页 ↗
-                    </button>
-                  </div>
-                  <div className="guide-detail-section guide-idea">
-                    <span className="guide-label">结合你家的想法 · 待商量</span>
-                    <p>{room.idea}</p>
-                  </div>
-                  <div className="guide-detail-section">
-                    <h3>和家人一起想一想</h3>
-                    <ul>
-                      {room.questions.map((q) => (
-                        <li key={q}>{q}</li>
-                      ))}
-                    </ul>
+                  <div key={room.id} className="guide-detail-content">
+                    <div className="guide-detail-top">
+                      <span className="guide-kicker">把图纸翻译成生活</span>
+                      <span className="guide-room-number">
+                        {String(roomGuides.indexOf(room) + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <h2 id="selected-room-title">{room.name}</h2>
+                    <p className="guide-original-name">
+                      原图名称：{room.original}
+                    </p>
+                    <div className="guide-detail-section">
+                      <span className="guide-label">原图能确认的</span>
+                      <p>{room.fact}</p>
+                      <button
+                        className="guide-source-link"
+                        onClick={() => setPage(room.page)}
+                      >
+                        查看依据 · PDF 第 {room.page} 页 ↗
+                      </button>
+                    </div>
+                    <div className="guide-detail-section guide-idea">
+                      <span className="guide-label">
+                        结合你家的想法 · 待商量
+                      </span>
+                      <p>{room.idea}</p>
+                    </div>
+                    <div className="guide-detail-section">
+                      <h3>和家人一起想一想</h3>
+                      <ul>
+                        {room.questions.map((q) => (
+                          <li key={q}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </aside>
               </section>
@@ -378,6 +401,12 @@ export default function HomeGuide({
 function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [zoom, setZoom] = useState(false);
+  const [closing, setClosing] = useState(false);
+  function requestClose() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      onClose();
+    else setClosing(true);
+  }
   const sheet = sheets.find((s) => s.page === page)!;
   useEffect(() => {
     const element = dialog.current!;
@@ -387,8 +416,18 @@ function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
   return (
     <dialog
       ref={dialog}
-      className="guide-dialog"
-      onCancel={onClose}
+      className={`guide-dialog ${closing ? "is-closing" : ""}`}
+      onCancel={(event) => {
+        event.preventDefault();
+        requestClose();
+      }}
+      onAnimationEnd={(event) => {
+        if (
+          event.target === event.currentTarget &&
+          event.animationName === "sheet-out"
+        )
+          onClose();
+      }}
       aria-labelledby="sheet-dialog-title"
     >
       <header>
@@ -398,7 +437,7 @@ function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
           </span>
           <h2 id="sheet-dialog-title">{sheet.simple}</h2>
         </div>
-        <button onClick={onClose} aria-label="关闭原图">
+        <button onClick={requestClose} aria-label="关闭原图">
           <Icon name="close" />
         </button>
       </header>

@@ -4,46 +4,52 @@
   display: grid;
   place-items: center;
   background:
-    radial-gradient(ellipse at 18% 12%, #e5eee7 0, transparent 48%),
-    radial-gradient(ellipse at 90% 90%, #e6eae6 0, transparent 50%), #f4f5ef;
+    radial-gradient(ellipse at 12% 18%, #e1eaff 0, transparent 52%),
+    radial-gradient(ellipse at 88% 85%, #ede5fa 0, transparent 48%), #f5f5f7;
   position: relative;
-  color: #2f493e;
+  color: var(--text-primary);
 }
 .access-card {
-  width: min(100%, 400px);
-  padding: 39px 38px 31px;
-  background: #fffffff2;
-  border: 1px solid #e3e9df;
-  border-radius: 18px;
-  box-shadow: 0 16px 65px #2e45300a;
+  width: min(100%, 420px);
+  padding: 38px 40px 32px;
+  background: #ffffffb8;
+  border: 1px solid #ffffffd9;
+  border-radius: 32px;
+  box-shadow:
+    0 20px 80px #34345c0b,
+    0 2px 8px #34345c04;
   text-align: center;
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  animation: sheet-in 600ms var(--ease-out) both;
 }
 .access-emblem {
-  width: 60px;
-  height: 60px;
-  display: grid;
+  width: 96px;
+  height: 96px;
+  display: block;
   place-items: center;
   margin: 0 auto 24px;
-  background: #35564a;
-  color: #f0f5ef;
-  border-radius: 16px;
-  box-shadow: 0 5px 15px #35564a15;
+  background: transparent;
+  color: #f5f5f7;
+  border-radius: 0;
+  box-shadow: none;
+  object-fit: contain;
 }
 .access-eyebrow {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.19em;
-  color: #8a9a8a;
+  color: var(--text-secondary);
   margin: 0 0 12px;
 }
 .access-card h1 {
-  font-size: 28px;
-  letter-spacing: 0.08em;
-  font-weight: 500;
-  margin: 0 0 13px;
+  font-size: 32px;
+  letter-spacing: -0.8px;
+  font-weight: 650;
+  margin: 0 0 12px;
 }
 .access-description {
-  font-size: 13px;
-  color: #8b998e;
+  font-size: 14px;
+  color: var(--text-secondary);
   line-height: 1.8;
   margin: 0 0 32px;
 }
@@ -53,25 +59,25 @@
 .access-form > label {
   display: block;
   font-size: 12px;
-  color: #687f6f;
+  color: #6e6e73;
   margin-bottom: 10px;
 }
 .access-input {
   display: flex;
   gap: 12px;
   align-items: center;
-  border: 1px solid #dde5dc;
-  border-radius: 7px;
-  background: #fafcf8;
+  border: 1px solid #d2d2d7;
+  border-radius: 14px;
+  background: #ffffffb3;
   padding: 0 14px;
-  color: #92a090;
+  color: #86868b;
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
 }
 .access-input:focus-within {
-  border-color: #6e9380;
-  box-shadow: 0 0 0 3px #6e938012;
+  border-color: #007aff;
+  box-shadow: 0 0 0 4px #007aff1a;
 }
 .access-input.has-error {
   border-color: #c77e60;
@@ -82,14 +88,14 @@
   background: transparent;
   border: none;
   outline: none;
-  padding: 15px 0;
+  padding: 16px 0;
   font-size: 16px;
-  color: #314c3e;
+  color: var(--text-primary);
   letter-spacing: 0.08em;
 }
 .access-input input::placeholder {
   font-size: 13px;
-  color: #adb7ac;
+  color: #86868b;
   letter-spacing: 0;
 }
 .access-input input:focus-visible {
@@ -111,33 +117,35 @@
   justify-content: center;
   align-items: center;
   gap: 10px;
-  background: #35564a;
+  background: var(--tint);
   color: #fff;
   width: 100%;
-  border-radius: 7px;
-  padding: 14px;
-  font-size: 13px;
-  letter-spacing: 0.05em;
+  border-radius: 14px;
+  padding: 15px;
+  font-size: 14px;
+  letter-spacing: 0;
+  font-weight: 500;
+  box-shadow: 0 4px 12px #0071e31a;
 }
 .access-submit:disabled {
   opacity: 0.65;
 }
 .access-hint {
   margin: 24px 0 0;
-  color: #a4aea3;
-  font-size: 10px;
+  color: #86868b;
+  font-size: 11px;
   letter-spacing: 0.08em;
 }
 .access-footer {
   position: absolute;
   bottom: 26px;
-  color: #9aa799;
-  font-size: 10px;
+  color: #6e6e73;
+  font-size: 11px;
   letter-spacing: 0.11em;
 }
 .access-lock {
   flex-shrink: 0;
-  color: #789080;
+  color: #6e6e73;
   background: transparent;
   min-width: 32px;
   min-height: 32px;
@@ -147,8 +155,8 @@
   place-items: center;
   min-height: 100dvh;
   font-size: 13px;
-  color: #617b75;
-  background: #f4f5ef;
+  color: var(--text-secondary);
+  background: var(--page-background);
 }
 @media (max-width: 480px) {
   .access-card {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Color, Vector3 } from "three";
 import { DxfViewer } from "dxf-viewer";
 import type { LayerInfo } from "dxf-viewer";
+import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
 import {
   decodeDxf,
@@ -385,9 +386,7 @@ export default function CadWorkspace({
     <div className="app-shell cad-app">
       <header className="app-header">
         <button className="brand cad-brand" onClick={onBack}>
-          <span className="brand-mark">
-            <Icon name="home" size={23} />
-          </span>
+          <AppIcon />
           <span>
             我的家<span className="brand-divider">/</span>
             <span className="brand-secondary">CAD 图纸</span>

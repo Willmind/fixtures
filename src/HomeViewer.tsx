@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ModelViewer } from "./ModelViewer";
+import { AppIcon } from "./AppIcon";
 import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
@@ -58,9 +59,7 @@ export default function HomeViewer({
     <div className="app-shell">
       <header className="app-header">
         <a className="brand" href="./" aria-label="我的家，首页">
-          <span className="brand-mark">
-            <Icon name="home" size={23} />
-          </span>
+          <AppIcon />
           <span>
             我的家<span className="brand-divider">/</span>
             <span className="brand-secondary">空间预览</span>

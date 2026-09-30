@@ -16,8 +16,8 @@ export type IconName =
 const paths: Record<IconName, React.ReactNode> = {
   home: (
     <>
-      <path d="m3 10 9-7 9 7v11H3Z" />
-      <path d="M10 21V11h11" />
+      <path d="m3 10 9-7 9 7M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />
+      <path d="M9 21v-7a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v7" />
     </>
   ),
   cube: (
@@ -50,7 +50,7 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M12 11v6M12 7v.1" />
     </>
   ),
-  chevron: <path d="m9 5 7 7-7 7" />,
+  chevron: <path d="m9 6 6 6-6 6" />,
   room: (
     <>
       <path d="M4 21V3h16v18M2 21h20M8 21V7h8v14" />
@@ -86,7 +86,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
