@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
 import { firstSteps, glossary, roomGuides, sheets } from "./content";
+import { SheetCard } from "./SheetCard";
 import "./guide.css";
 
 type Tab = "rooms" | "reading" | "sources";
@@ -327,25 +328,7 @@ export default function HomeGuide({
               </div>
               <div className="guide-sheet-grid">
                 {sheets.map((s) => (
-                  <button
-                    className="guide-sheet-card"
-                    key={s.page}
-                    onClick={() => setPage(s.page)}
-                  >
-                    <img
-                      src={`/house/d-sheet-${s.page}.webp`}
-                      loading="lazy"
-                      alt={`D 户型${s.title}缩略图`}
-                    />
-                    <div>
-                      <span>
-                        PDF · 第 {s.page} 页 · {s.code}
-                      </span>
-                      <h3>{s.simple}</h3>
-                      <p>{s.title}</p>
-                    </div>
-                    <Icon name="chevron" size={18} />
-                  </button>
+                  <SheetCard key={s.page} sheet={s} onOpen={setPage} />
                 ))}
               </div>
               <article className="guide-cad-source">
