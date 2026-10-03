@@ -121,11 +121,11 @@
   border-bottom: 0;
   margin-bottom: 26px;
   position: relative;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   background: #e5e5eac9;
   border-radius: 16px;
   padding: 4px;
-  width: min(100%, 460px);
+  width: min(100%, 600px);
 }
 .guide-tabbar button {
   background: transparent;
@@ -1051,7 +1051,7 @@
   top: 4px;
   bottom: 4px;
   left: 4px;
-  width: calc((100% - 8px) / 3);
+  width: calc((100% - 8px) / 4);
   border-radius: 12px;
   background: white;
   box-shadow:

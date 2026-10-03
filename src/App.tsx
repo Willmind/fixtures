@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import AccessGate from "./access/AccessGate";
 import { AppIcon } from "./AppIcon";
 import { PageErrorBoundary } from "./PageErrorBoundary";
+import { readRoute, routeUrl, type RouteState } from "./navigation";
 import {
   passwordGateEnabled,
   readAccessSession,
@@ -11,11 +12,6 @@ import {
 const HomeViewer = lazy(() => import("./HomeViewer"));
 const CadWorkspace = lazy(() => import("./cad/CadWorkspace"));
 const HomeGuide = lazy(() => import("./guide/HomeGuide"));
-type View = "guide" | "model" | "cad";
-function currentView(): View {
-  const view = new URLSearchParams(location.search).get("view");
-  return view === "cad" || view === "model" ? view : "guide";
-}
 
 export default function App() {
   return passwordGateEnabled ? <ProtectedWorkspace /> : <Workspace />;
@@ -39,31 +35,49 @@ function ProtectedWorkspace() {
 }
 
 function Workspace({ onLock }: { onLock?: () => void }) {
-  const [view, setView] = useState<View>(currentView);
+  const [route, setRoute] = useState(() => readRoute(location.search));
+  const { view } = route;
   useEffect(() => {
-    const update = () => setView(currentView());
+    const update = () => setRoute(readRoute(location.search));
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
   }, []);
-  function changeView(value: View) {
-    const url = new URL(location.href);
-    if (value !== "guide") url.searchParams.set("view", value);
-    else url.searchParams.delete("view");
-    url.searchParams.delete("local");
-    history.pushState(null, "", url);
-    setView(value);
+  function navigate(update: Partial<RouteState>, replace = false) {
+    const next = { ...route, ...update };
+    history[replace ? "replaceState" : "pushState"](
+      null,
+      "",
+      routeUrl(location.href, next),
+    );
+    setRoute(next);
   }
   return (
     <PageErrorBoundary key={view}>
       <Suspense fallback={<AppLoading />}>
         {view === "cad" ? (
-          <CadWorkspace onBack={() => changeView("guide")} onLock={onLock} />
+          <CadWorkspace
+            onBack={() => navigate({ view: "guide" })}
+            onLock={onLock}
+          />
         ) : view === "model" ? (
-          <HomeViewer onOpenCad={() => changeView("cad")} onLock={onLock} />
+          <HomeViewer
+            selected={route.room}
+            onOpenCad={() => navigate({ view: "cad" })}
+            onBack={() => navigate({ view: "guide" })}
+            onVisit={(room) => navigate({ view: "guide", tab: "visit", room })}
+            onRoomChange={(room) => navigate({ room }, true)}
+            onLock={onLock}
+          />
         ) : (
           <HomeGuide
-            onModel={() => changeView("model")}
-            onCad={() => changeView("cad")}
+            tab={route.tab}
+            selected={route.room ?? "living"}
+            onTabChange={(tab) => navigate({ tab })}
+            onRoomChange={(room) => navigate({ room }, true)}
+            onModel={() =>
+              navigate({ view: "model", room: route.room ?? "living" })
+            }
+            onCad={() => navigate({ view: "cad" })}
             onLock={onLock}
           />
         )}

@@ -50,6 +50,7 @@ export class HomeScene {
   private selectionGesture = new SelectionGesture();
   private labels: Map<string, HTMLElement> = new Map();
   private wallMaterial: THREE.MeshStandardMaterial;
+  private concreteWallMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial: THREE.LineBasicMaterial;
   private frameMaterial: THREE.MeshStandardMaterial;
   private glassMaterial: THREE.MeshStandardMaterial;
@@ -95,12 +96,16 @@ export class HomeScene {
 
     const concrete = this.makeConcreteTexture();
     this.wallMaterial = this.material({
-      color: "#cccac3",
+      color: "#efeee9",
+      roughness: 0.96,
+    });
+    this.concreteWallMaterial = this.material({
+      color: "#bbbcb9",
       roughness: 0.96,
       map: concrete,
     });
     this.frameMaterial = this.material({
-      color: "#596a70",
+      color: "#343b3d",
       roughness: 0.65,
       metalness: 0.25,
     });
@@ -248,7 +253,7 @@ export class HomeScene {
           ? "#b8c0c1"
           : room.kind === "balcony"
             ? "#c1c5c0"
-            : "#d3d1c9";
+            : "#c5c6c3";
       const material = this.material({ color, map: texture, roughness: 1 });
       const floor = new THREE.Mesh(geometry, material);
       floor.userData = { roomId: room.id, baseColor: color };
@@ -301,7 +306,9 @@ export class HomeScene {
           (piece.start + piece.end) / 2,
           (piece.top + piece.bottom) / 2,
           0,
-          this.wallMaterial,
+          /^(kitchen|bath|ensuite)-/.test(wall.id)
+            ? this.concreteWallMaterial
+            : this.wallMaterial,
           true,
         );
       }
@@ -377,19 +384,30 @@ export class HomeScene {
         length / 2,
         0.06,
         0,
-        this.wallMaterial,
+        this.concreteWallMaterial,
       );
       this.box(group, length, 0.04, 0.05, length / 2, h, 0, this.frameMaterial);
+      // Site photos show glass infill. Heights and post spacing remain schematic.
+      this.box(
+        group,
+        length - 0.04,
+        h - 0.2,
+        0.015,
+        length / 2,
+        (h + 0.12) / 2,
+        0,
+        this.glassMaterial,
+      );
       for (
         let x = 0;
         x <= length + 0.01;
-        x += length / Math.ceil(length / 0.18)
+        x += length / Math.ceil(length / 1.0)
       ) {
         this.box(
           group,
-          0.018,
+          0.035,
           h - 0.1,
-          0.018,
+          0.035,
           x,
           (h + 0.1) / 2,
           0,

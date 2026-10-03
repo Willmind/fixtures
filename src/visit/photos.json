@@ -1,0 +1,194 @@
+[
+  {
+    "id": "living-01",
+    "roomId": "living",
+    "source": "客餐厅/IMG_4639.HEIC",
+    "caption": "客餐厅连通关系与阳台门",
+    "width": 1800,
+    "height": 1012
+  },
+  {
+    "id": "living-02",
+    "roomId": "living",
+    "source": "客餐厅/IMG_4640.HEIC",
+    "caption": "客厅朝向主阳台",
+    "width": 1800,
+    "height": 1012
+  },
+  {
+    "id": "living-03",
+    "roomId": "living",
+    "source": "客餐厅/IMG_4643.heic",
+    "caption": "客餐厅与相邻门洞",
+    "width": 1800,
+    "height": 1012
+  },
+  {
+    "id": "dining-01",
+    "roomId": "living",
+    "source": "餐厅/IMG_4625.HEIC",
+    "caption": "餐厅一侧的阳台门与地面管线",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "entry-01",
+    "roomId": "living",
+    "source": "门口/IMG_4644.heic",
+    "caption": "从入户门看向室内",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "master-01",
+    "roomId": "master",
+    "source": "主卧/IMG_4634.HEIC",
+    "caption": "主卧窗台与窗边墙面",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "master-02",
+    "roomId": "master",
+    "source": "主卧/IMG_4635.HEIC",
+    "caption": "主卧从门口看向窗户",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "master-03",
+    "roomId": "master",
+    "source": "主卧/IMG_4636.HEIC",
+    "caption": "主卧内侧过道与主卫门口",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "bedroom-a-01",
+    "roomId": "parents",
+    "source": "次卧a/IMG_4630.HEIC",
+    "caption": "次卧 A 的窗台与地面",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "bedroom-a-02",
+    "roomId": "parents",
+    "source": "次卧a/IMG_4631.HEIC",
+    "caption": "次卧 A 从门口看向窗户",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "bedroom-b-01",
+    "roomId": "study",
+    "source": "次卧b/IMG_4632.HEIC",
+    "caption": "次卧 B 的窗洞与墙面",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "bedroom-b-02",
+    "roomId": "study",
+    "source": "次卧b/IMG_4633.HEIC",
+    "caption": "次卧 B 从门口看向窗户",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "guest-01",
+    "roomId": "guest",
+    "source": "客房/IMG_4620.HEIC",
+    "caption": "入户附近的客房门口",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "guest-02",
+    "roomId": "guest",
+    "source": "客房/IMG_4621.HEIC",
+    "caption": "客房内侧与窗户",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "kitchen-01",
+    "roomId": "kitchen",
+    "source": "厨房/IMG_4622.HEIC",
+    "caption": "厨房门洞与地面预留管线",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "kitchen-02",
+    "roomId": "kitchen",
+    "source": "厨房/IMG_4623.HEIC",
+    "caption": "厨房墙面、转角与竖向槽位",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "kitchen-03",
+    "roomId": "kitchen",
+    "source": "厨房/IMG_4624.HEIC",
+    "caption": "厨房窗户与窗下墙面",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "bath-01",
+    "roomId": "bath",
+    "source": "公卫/IMG_4628.HEIC",
+    "caption": "公卫墙面与预留点位",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "bath-02",
+    "roomId": "bath",
+    "source": "公卫/IMG_4629.HEIC",
+    "caption": "公卫从门口看向窗户",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "ensuite-01",
+    "roomId": "ensuite",
+    "source": "主卫/IMG_4637.HEIC",
+    "caption": "主卫窗台、墙面与地面管线",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "balcony-01",
+    "roomId": "balcony",
+    "source": "主阳台/IMG_4641.HEIC",
+    "caption": "主阳台转角与玻璃栏杆",
+    "width": 1800,
+    "height": 1012
+  },
+  {
+    "id": "balcony-02",
+    "roomId": "balcony",
+    "source": "主阳台/IMG_4642.heic",
+    "caption": "主阳台朝外的视野",
+    "width": 1800,
+    "height": 1012
+  },
+  {
+    "id": "utility-01",
+    "roomId": "utility",
+    "source": "生活阳台/IMG_4626.HEIC",
+    "caption": "生活阳台栏杆与墙面设备",
+    "width": 1012,
+    "height": 1800
+  },
+  {
+    "id": "utility-02",
+    "roomId": "utility",
+    "source": "生活阳台/IMG_4627.HEIC",
+    "caption": "生活阳台窗边与外露管道",
+    "width": 1012,
+    "height": 1800
+  }
+]

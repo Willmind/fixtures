@@ -9,7 +9,12 @@ export function ModelViewer({ options, onSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<HomeScene | null>(null);
   const initialOptions = useRef(options);
+  const selectionCallback = useRef(onSelect);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    selectionCallback.current = onSelect;
+  }, [onSelect]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -17,7 +22,7 @@ export function ModelViewer({ options, onSelect }: Props) {
       scene.current = new HomeScene(
         host.current,
         initialOptions.current,
-        onSelect,
+        (id) => selectionCallback.current(id),
         setError,
       );
     } catch (cause) {
@@ -30,7 +35,7 @@ export function ModelViewer({ options, onSelect }: Props) {
       scene.current?.dispose();
       scene.current = null;
     };
-  }, [onSelect]);
+  }, []);
 
   useEffect(() => {
     scene.current?.update(options);

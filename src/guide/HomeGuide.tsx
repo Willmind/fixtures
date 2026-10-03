@@ -3,21 +3,28 @@ import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
 import { firstSteps, glossary, roomGuides, sheets } from "./content";
 import { SheetCard } from "./SheetCard";
+import { guideTabs, type GuideTab } from "../navigation";
+import { SiteVisit } from "../visit/SiteVisit";
+import { photosForRoom, photoUrl } from "../visit/content";
 import "./guide.css";
 
-type Tab = "rooms" | "reading" | "sources";
-
 export default function HomeGuide({
+  tab,
+  selected,
+  onTabChange: setTab,
+  onRoomChange: setSelected,
   onModel,
   onCad,
   onLock,
 }: {
+  tab: GuideTab;
+  selected: string;
+  onTabChange: (tab: GuideTab) => void;
+  onRoomChange: (room: string) => void;
   onModel: () => void;
   onCad: () => void;
   onLock?: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>("rooms");
-  const [selected, setSelected] = useState("living");
   const [page, setPage] = useState<number | null>(null);
   const room = roomGuides.find((r) => r.id === selected)!;
   const [imageFailed, setImageFailed] = useState(false);
@@ -52,7 +59,9 @@ export default function HomeGuide({
           <div>
             <p className="guide-kicker">佛山 · 碧桂园世纪滨江 · D 户型</p>
             <h1>户型与装修资料</h1>
-            <p className="guide-lead">查看房间布局、原始图纸和装修准备事项。</p>
+            <p className="guide-lead">
+              对照现场照片、房间布局和原始图纸，逐步确认装修需求。
+            </p>
           </div>
           <div className="guide-house-facts" aria-label="原图空间组成">
             <span>
@@ -71,7 +80,7 @@ export default function HomeGuide({
           className="guide-tabbar"
           style={
             {
-              "--tab-index": ["rooms", "reading", "sources"].indexOf(tab),
+              "--tab-index": guideTabs.indexOf(tab),
             } as CSSProperties
           }
           role="tablist"
@@ -81,8 +90,9 @@ export default function HomeGuide({
           {(
             [
               ["rooms", "01", "房间布局"],
-              ["reading", "02", "图纸说明"],
-              ["sources", "03", "原始图纸"],
+              ["visit", "02", "现场实拍"],
+              ["reading", "03", "图纸说明"],
+              ["sources", "04", "原始图纸"],
             ] as const
           ).map(([id, num, title]) => (
             <button
@@ -93,7 +103,7 @@ export default function HomeGuide({
               aria-controls="guide-panel"
               tabIndex={tab === id ? 0 : -1}
               onKeyDown={(event) => {
-                const ids: Tab[] = ["rooms", "reading", "sources"];
+                const ids = guideTabs;
                 const offset =
                   event.key === "ArrowRight"
                     ? 1
@@ -107,8 +117,8 @@ export default function HomeGuide({
                   event.key === "Home"
                     ? 0
                     : event.key === "End"
-                      ? 2
-                      : (ids.indexOf(tab) + offset + 3) % 3;
+                      ? ids.length - 1
+                      : (ids.indexOf(tab) + offset + ids.length) % ids.length;
                 setTab(ids[index]);
                 document.getElementById(`tab-${ids[index]}`)?.focus();
               }}
@@ -125,6 +135,15 @@ export default function HomeGuide({
           role="tabpanel"
           aria-labelledby={`tab-${tab}`}
         >
+          {tab === "visit" ? (
+            <SiteVisit
+              roomId={selected}
+              onRoomChange={setSelected}
+              onPlan={() => setTab("rooms")}
+              onModel={onModel}
+              onSource={() => setPage(room.page)}
+            />
+          ) : null}
           {tab === "rooms" ? (
             <>
               <section className="guide-room-layout">
@@ -205,6 +224,25 @@ export default function HomeGuide({
                     <p className="guide-original-name">
                       原图名称：{room.original}
                     </p>
+                    <button
+                      className="guide-visit-link"
+                      onClick={() => setTab("visit")}
+                    >
+                      <img
+                        src={photoUrl(photosForRoom(room.id)[0], true)}
+                        alt=""
+                        width="64"
+                        height="64"
+                        loading="lazy"
+                      />
+                      <span>
+                        <b>查看现场照片</b>
+                        <small>
+                          {photosForRoom(room.id).length} 张实拍 · {room.name}
+                        </small>
+                      </span>
+                      <Icon name="chevron" size={16} />
+                    </button>
                     <div className="guide-detail-section">
                       <span className="guide-label">图纸信息</span>
                       <p>{room.fact}</p>

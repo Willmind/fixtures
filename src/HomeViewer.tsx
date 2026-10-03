@@ -4,6 +4,7 @@ import { AppIcon } from "./AppIcon";
 import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
+import { photosForRoom } from "./visit/content";
 
 function Toggle({
   label,
@@ -29,13 +30,20 @@ function Toggle({
 }
 
 export default function HomeViewer({
+  selected,
+  onRoomChange: setSelected,
+  onBack,
+  onVisit,
   onOpenCad,
   onLock,
 }: {
+  selected: string | null;
+  onRoomChange: (room: string | null) => void;
+  onBack: () => void;
+  onVisit: (room: string) => void;
   onOpenCad: () => void;
   onLock?: () => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<ViewOptions["view"]>("perspective");
   const [cutaway, setCutaway] = useState(true);
   const [wallHeight, setWallHeight] = useState<number>(defaults.wallHeight);
@@ -58,13 +66,13 @@ export default function HomeViewer({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="./" aria-label="我的家，首页">
+        <button className="brand" onClick={onBack} aria-label="返回户型资料">
           <AppIcon />
           <span>
             我的家<span className="brand-divider">/</span>
             <span className="brand-secondary">空间预览</span>
           </span>
-        </a>
+        </button>
         <div className="header-right">
           {onLock ? (
             <button
@@ -200,7 +208,7 @@ export default function HomeViewer({
           <div className="sidebar-footer">
             <Icon name="layers" size={17} />
             <span>
-              基于住宅 D 户型图重建<span>无家具 · 无装饰面层</span>
+              图纸空间 + 现场外观参考<span>无家具 · 尺寸待现场复测</span>
             </span>
           </div>
         </aside>
@@ -245,6 +253,13 @@ export default function HomeViewer({
                 <span className="detail-eyebrow">已选择空间</span>
                 <h2>{room.name}</h2>
                 <p>{room.description}</p>
+                <button
+                  className="model-visit-link"
+                  onClick={() => onVisit(room.id)}
+                >
+                  查看现场 · {photosForRoom(room.id).length} 张照片{" "}
+                  <Icon name="chevron" size={14} />
+                </button>
               </div>
               <button
                 className="icon-button"
@@ -339,7 +354,9 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
         <dl>
           <div>
             <dt>已参考</dt>
-            <dd>房间相邻关系、主要墙体、门窗位置，以及可辨认的轴线尺寸。</dd>
+            <dd>
+              图纸中的房间关系、主要墙体、门窗位置与轴线尺寸；实拍中的白色墙面、深色窗框和阳台玻璃栏板。
+            </dd>
           </div>
           <div>
             <dt>仍是估值</dt>
@@ -351,7 +368,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内及两个阳台，不含家具、装修面层、电梯及公共管井。房间命名不代表最终用途。
+              毛坯室内及两个阳台，不含家具、电梯及公共管井。墙面颜色与栏杆形式参考实拍，材质分界和构件尺寸仍为示意。房间命名不代表最终用途。
             </dd>
           </div>
         </dl>
