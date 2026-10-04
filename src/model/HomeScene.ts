@@ -319,7 +319,7 @@ export class HomeScene {
         );
       }
       for (const opening of wall.openings ?? []) {
-        if (opening.kind !== "window" || opening.sill >= height) continue;
+        if ((opening.kind !== "window" && !opening.glazed) || opening.sill >= height) continue;
         const bottom = opening.sill;
         const top = Math.min(opening.top, height);
         const width = opening.end - opening.start;
