@@ -9,7 +9,7 @@ User=fixtures-deploy
 Group=fixtures-deploy
 Environment=HOME=/var/lib/fixtures-home-deploy
 ExecStart=/usr/local/libexec/fixtures-home-deploy
-TimeoutStartSec=240
+TimeoutStartSec=720
 UMask=0022
 NoNewPrivileges=true
 PrivateTmp=true

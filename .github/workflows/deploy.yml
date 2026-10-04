@@ -38,7 +38,7 @@ jobs:
     needs: check
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -59,7 +59,8 @@ jobs:
       - name: 等待服务器更新并验证线上版本
         if: vars.DEPLOY_ENABLED == 'true' && steps.publish.outputs.published == 'true'
         run: |
-          for _attempt in $(seq 1 36); do
+          deadline=$((SECONDS + 780))
+          while (( SECONDS < deadline )); do
             if curl --fail --silent --show-error --max-time 10 \
               "https://home.willmindgg.cn/deployment.json?run=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
               -o "$RUNNER_TEMP/live-deployment.json" && \

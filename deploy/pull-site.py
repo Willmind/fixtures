@@ -173,10 +173,10 @@ def pull_latest(root, check=healthy):
     with tempfile.TemporaryDirectory(prefix='fixtures-download-') as directory:
         archive = Path(directory) / 'site.tar.gz'
         run('curl', '--fail', '--silent', '--show-error', '--proto', '=https',
-            '--connect-timeout', '10', '--max-time', '120',
+            '--connect-timeout', '10', '--max-time', '600',
             '--speed-limit', '100', '--speed-time', '30',
             '--max-filesize', str(MAX_SIZE), '--output', str(archive),
-            ARCHIVE_URL + revision, timeout=130)
+            ARCHIVE_URL + revision, timeout=610)
         if archive.stat().st_size > MAX_SIZE:
             raise ValueError('归档超过大小限制')
         with archive.open('rb') as stream:
