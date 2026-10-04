@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
+import { warmImage } from "../guide/imageWarmup";
 import { photoUrl, type SitePhoto } from "./content";
 
 function PhotoImage({
@@ -21,6 +22,9 @@ function PhotoImage({
   }, [src]);
   return (
     <div className={`visit-image ${status === "ready" ? "is-ready" : ""}`}>
+      {!thumbnail && status !== "ready" ? (
+        <img className="visit-image-preview" src={photoUrl(photo, true)} alt="" aria-hidden="true" />
+      ) : null}
       <img
         ref={image}
         src={src}
@@ -38,7 +42,7 @@ function PhotoImage({
           role={thumbnail ? undefined : "status"}
         >
           <span className="visit-spinner" aria-hidden="true" />
-          {thumbnail ? "" : "正在加载照片…"}
+          {thumbnail ? "" : "正在加载清晰照片…"}
         </span>
       ) : null}
       {status === "error" ? (
@@ -70,15 +74,23 @@ function PhotoImage({
 export function PhotoGallery({
   photos,
   roomName,
+  index,
+  onIndexChange: setIndex,
 }: {
+  index: number;
+  onIndexChange: (index: number) => void;
   photos: SitePhoto[];
   roomName: string;
 }) {
-  const [index, setIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const photo = photos[index];
+  useEffect(() => {
+    if (photos.length < 2) return;
+    const timer = window.setTimeout(() => warmImage(photoUrl(photos[(index + 1) % photos.length])), 500);
+    return () => window.clearTimeout(timer);
+  }, [index, photos]);
   function move(offset: number) {
-    setIndex((value) => (value + offset + photos.length) % photos.length);
+    setIndex((index + offset + photos.length) % photos.length);
   }
   return (
     <div className="visit-gallery">
@@ -86,6 +98,8 @@ export function PhotoGallery({
         <PhotoImage key={photo.id} photo={photo} />
         <button
           className="visit-expand"
+          onPointerEnter={() => warmImage(photoUrl(photo))}
+          onFocus={() => warmImage(photoUrl(photo))}
           onClick={() => setExpanded(true)}
           aria-label={`放大${roomName}照片`}
         >
@@ -108,6 +122,8 @@ export function PhotoGallery({
             key={item.id}
             aria-pressed={i === index}
             aria-label={`照片 ${i + 1}：${item.caption}`}
+            onPointerEnter={() => warmImage(photoUrl(item))}
+            onFocus={() => warmImage(photoUrl(item))}
             onClick={() => setIndex(i)}
           >
             <PhotoImage photo={item} thumbnail />

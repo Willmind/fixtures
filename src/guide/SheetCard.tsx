@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
 import type { sheets } from "./content";
+import { warmImage } from "./imageWarmup";
 
 export function SheetCard({
   sheet,
@@ -37,6 +38,8 @@ export function SheetCard({
     <button
       className="guide-sheet-card"
       onClick={activate}
+      onPointerEnter={() => warmImage(`/house/d-sheet-${sheet.page}.webp`)}
+      onFocus={() => warmImage(`/house/d-sheet-${sheet.page}.webp`)}
       aria-busy={status === "loading"}
       aria-label={
         status === "error"

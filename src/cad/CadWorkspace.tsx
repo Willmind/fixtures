@@ -407,15 +407,15 @@ export default function CadWorkspace({
           ) : null}
           <button className="text-button" onClick={onBack}>
             <Icon name="home" size={17} />
-            返回首页
+            返回资料
           </button>
           <span className="shell-badge">设计图 · 待现场核对</span>
           <button
-            className="primary-button cad-open"
+            className="text-button cad-open"
             disabled={busy}
             onClick={() => input.current?.click()}
           >
-            打开图纸
+            导入其他图纸
           </button>
         </div>
         <input

@@ -8,12 +8,16 @@ import "./visit.css";
 export function SiteVisit({
   roomId,
   onRoomChange,
+  photoIndex,
+  onPhotoChange,
   onPlan,
   onModel,
   onSource,
 }: {
   roomId: string;
   onRoomChange: (room: string) => void;
+  photoIndex: number;
+  onPhotoChange: (index: number) => void;
   onPlan: () => void;
   onModel: () => void;
   onSource: () => void;
@@ -21,7 +25,7 @@ export function SiteVisit({
   const room = roomGuides.find((item) => item.id === roomId)!;
   const visit = roomVisits.find((item) => item.roomId === roomId)!;
   return (
-    <div className="site-visit">
+    <div id="visit-room" className="site-visit" tabIndex={-1}>
       <div className="visit-heading">
         <div>
           <h2>毛坯现场</h2>
@@ -48,6 +52,8 @@ export function SiteVisit({
         <PhotoGallery
           key={roomId}
           photos={photosForRoom(roomId)}
+          index={photoIndex}
+          onIndexChange={onPhotoChange}
           roomName={room.name}
         />
         <aside className="visit-room-notes" aria-labelledby="visit-room-title">

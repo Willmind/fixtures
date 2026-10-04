@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import AccessGate from "./access/AccessGate";
 import { AppIcon } from "./AppIcon";
 import { PageErrorBoundary } from "./PageErrorBoundary";
-import { readRoute, routeUrl, type RouteState } from "./navigation";
+import { PagePosition, useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import {
   passwordGateEnabled,
   readAccessSession,
@@ -35,52 +35,44 @@ function ProtectedWorkspace() {
 }
 
 function Workspace({ onLock }: { onLock?: () => void }) {
-  const [route, setRoute] = useState(() => readRoute(location.search));
+  const { route, position, revision, navigate, returnToGuide } = useWorkspaceNavigation();
+  const [photoIndices, setPhotoIndices] = useState<Record<string, number>>({});
   const { view } = route;
-  useEffect(() => {
-    const update = () => setRoute(readRoute(location.search));
-    window.addEventListener("popstate", update);
-    return () => window.removeEventListener("popstate", update);
-  }, []);
-  function navigate(update: Partial<RouteState>, replace = false) {
-    const next = { ...route, ...update };
-    history[replace ? "replaceState" : "pushState"](
-      null,
-      "",
-      routeUrl(location.href, next),
-    );
-    setRoute(next);
-  }
   return (
     <PageErrorBoundary key={view}>
       <Suspense fallback={<AppLoading />}>
         {view === "cad" ? (
           <CadWorkspace
-            onBack={() => navigate({ view: "guide" })}
+            onBack={returnToGuide}
             onLock={onLock}
           />
         ) : view === "model" ? (
           <HomeViewer
             selected={route.room}
-            onOpenCad={() => navigate({ view: "cad" })}
-            onBack={() => navigate({ view: "guide" })}
-            onVisit={(room) => navigate({ view: "guide", tab: "visit", room })}
-            onRoomChange={(room) => navigate({ room }, true)}
+            onOpenCad={() => navigate({ view: "cad" }, { anchor: "top" })}
+            onBack={returnToGuide}
+            onVisit={(room) => navigate({ view: "guide", tab: "visit", room }, { anchor: "visit" })}
+            onRoomChange={(room) => navigate({ room }, { replace: true })}
             onLock={onLock}
           />
         ) : (
           <HomeGuide
             tab={route.tab}
             selected={route.room ?? "living"}
-            onTabChange={(tab) => navigate({ tab })}
-            onRoomChange={(room) => navigate({ room }, true)}
+            onTabChange={(tab) => navigate({ tab }, { anchor: "content" })}
+            onPlan={() => navigate({ tab: "rooms" }, { anchor: "plan" })}
+            onVisit={() => navigate({ tab: "visit" }, { anchor: "visit" })}
+            onRoomChange={(room) => navigate({ room }, { replace: true, anchor: route.tab === "visit" ? "visit" : "room", mobileOnly: true })}
+            photoIndices={photoIndices}
+            onPhotoChange={(room, index) => setPhotoIndices((previous) => ({ ...previous, [room]: index }))}
             onModel={() =>
-              navigate({ view: "model", room: route.room ?? "living" })
+              navigate({ view: "model", room: route.room ?? "living" }, { anchor: "top" })
             }
-            onCad={() => navigate({ view: "cad" })}
+            onCad={() => navigate({ view: "cad" }, { anchor: "top" })}
             onLock={onLock}
           />
         )}
+        <PagePosition position={position} revision={revision} />
       </Suspense>
     </PageErrorBoundary>
   );

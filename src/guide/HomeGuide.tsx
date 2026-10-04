@@ -13,6 +13,10 @@ export default function HomeGuide({
   selected,
   onTabChange: setTab,
   onRoomChange: setSelected,
+  onPlan,
+  onVisit,
+  photoIndices,
+  onPhotoChange,
   onModel,
   onCad,
   onLock,
@@ -21,6 +25,10 @@ export default function HomeGuide({
   selected: string;
   onTabChange: (tab: GuideTab) => void;
   onRoomChange: (room: string) => void;
+  onPlan: () => void;
+  onVisit: () => void;
+  photoIndices: Record<string, number>;
+  onPhotoChange: (room: string, index: number) => void;
   onModel: () => void;
   onCad: () => void;
   onLock?: () => void;
@@ -77,6 +85,7 @@ export default function HomeGuide({
           </div>
         </section>
         <div
+          id="guide-browse"
           className="guide-tabbar"
           style={
             {
@@ -139,7 +148,9 @@ export default function HomeGuide({
             <SiteVisit
               roomId={selected}
               onRoomChange={setSelected}
-              onPlan={() => setTab("rooms")}
+              onPlan={onPlan}
+              photoIndex={photoIndices[selected] ?? 0}
+              onPhotoChange={(index) => onPhotoChange(selected, index)}
               onModel={onModel}
               onSource={() => setPage(room.page)}
             />
@@ -147,11 +158,11 @@ export default function HomeGuide({
           {tab === "rooms" ? (
             <>
               <section className="guide-room-layout">
-                <div className="guide-plan-card">
+                <div id="room-plan" className="guide-plan-card" tabIndex={-1}>
                   <div className="guide-card-heading">
                     <div>
                       <h2>户型平面图</h2>
-                      <p>选择房间，查看布局和使用建议。</p>
+                      <p>选择下方房间，查看现场、布局和准备事项。</p>
                     </div>
                     <button
                       className="guide-text-link"
@@ -173,6 +184,12 @@ export default function HomeGuide({
                         户型图加载失败，请刷新页面；仍可用下方房间列表阅读。
                       </p>
                     ) : null}
+                    {roomGuides.map((r, i) => (
+                      <span key={`marker-${r.id}`} className={`guide-map-number ${selected === r.id ? "is-selected" : ""}`}
+                        style={{ left: `${(r.point[0] / 750) * 100}%`, top: `${(r.point[1] / 500) * 100}%` }} aria-hidden="true">
+                        {i + 1}
+                      </span>
+                    ))}
                     {roomGuides.map((r, i) => (
                       <button
                         key={r.id}
@@ -197,18 +214,20 @@ export default function HomeGuide({
                     <span>电梯、公共管井不属于户内</span>
                   </div>
                   <div className="guide-room-chips" aria-label="选择房间">
-                    {roomGuides.map((r) => (
+                    {roomGuides.map((r, i) => (
                       <button
                         key={r.id}
                         aria-pressed={selected === r.id}
                         onClick={() => setSelected(r.id)}
                       >
-                        {r.name}
+                        <span className="guide-chip-number" aria-hidden="true">{i + 1}</span>{r.name}
                       </button>
                     ))}
                   </div>
                 </div>
                 <aside
+                  id="room-detail"
+                  tabIndex={-1}
                   className="guide-room-detail"
                   aria-labelledby="selected-room-title"
                   aria-live="polite"
@@ -221,12 +240,13 @@ export default function HomeGuide({
                       </span>
                     </div>
                     <h2 id="selected-room-title">{room.name}</h2>
+                    <button className="guide-back-plan guide-source-link" onClick={onPlan}>返回平面图 ↑</button>
                     <p className="guide-original-name">
                       原图名称：{room.original}
                     </p>
                     <button
                       className="guide-visit-link"
-                      onClick={() => setTab("visit")}
+                      onClick={onVisit}
                     >
                       <img
                         src={photoUrl(photosForRoom(room.id)[0], true)}
@@ -490,6 +510,9 @@ function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
         data-state={status}
         aria-busy={status === "loading"}
       >
+        {status !== "loaded" ? (
+          <img className="guide-dialog-preview" src={`/house/thumbnails/d-sheet-${page}.webp`} alt="" aria-hidden="true" />
+        ) : null}
         <img
           key={imageSource}
           ref={image}
