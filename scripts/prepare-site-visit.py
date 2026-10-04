@@ -41,7 +41,9 @@ with tempfile.TemporaryDirectory(prefix='fixtures-visit-') as temp:
             full.save(destination / 'thumbs' / f"{photo['id']}.webp", quality=74, method=6)
 manifest.write_text(json.dumps(photos, ensure_ascii=False, indent=2) + '\n')
 # HDR HLG capture -> SDR H.264, silent, with metadata removed and fast-start playback.
+# Use zscale's 203-nit nominal peak instead of 100 to avoid lifting interior midtones.
+# Keep this a display-format conversion; do not add exposure/brightness enhancements.
 video = destination / 'walkthrough.mp4'
-subprocess.run([args.ffmpeg, '-v', 'error', '-y', '-i', str(args.source / '实拍视频.MOV'), '-map', '0:v:0', '-an', '-map_metadata', '-1', '-vf', 'zscale=t=linear:npl=100,format=gbrpf32le,tonemap=tonemap=mobius:desat=0,zscale=p=bt709:t=bt709:m=bt709:r=limited,scale=720:-2,fps=24,format=yuv420p', '-c:v', 'libx264', '-preset', 'medium', '-crf', '27', '-movflags', '+faststart', str(video)], check=True)
+subprocess.run([args.ffmpeg, '-v', 'error', '-y', '-i', str(args.source / '实拍视频.MOV'), '-map', '0:v:0', '-an', '-map_metadata', '-1', '-vf', 'zscale=t=linear:npl=203,format=gbrpf32le,tonemap=tonemap=mobius:desat=0,zscale=p=bt709:t=bt709:m=bt709:r=limited,scale=720:-2,fps=24,format=yuv420p', '-c:v', 'libx264', '-preset', 'medium', '-crf', '27', '-movflags', '+faststart', str(video)], check=True)
 subprocess.run([args.ffmpeg, '-v', 'error', '-y', '-ss', '8', '-i', str(video), '-frames:v', '1', '-vf', 'scale=520:-2', str(destination / 'video-poster.webp')], check=True)
 print(f"{len(photos)} photos, video {video.stat().st_size / 1e6:.1f} MB, total {sum(p.stat().st_size for p in destination.rglob('*') if p.is_file()) / 1e6:.1f} MB")
