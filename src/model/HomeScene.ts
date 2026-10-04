@@ -17,6 +17,7 @@ import { splitWall } from "./geometry";
 import { SelectionGesture } from "./SelectionGesture";
 import { HomeFixtures } from "./HomeFixtures";
 import type { FixtureOptions } from "./HomeFixtures";
+import type { BalconyId } from "./arrangements";
 
 export type ViewOptions = FixtureOptions & {
   view: "perspective" | "plan";
@@ -35,6 +36,7 @@ export class HomeScene {
   private labelRenderer = new CSS2DRenderer();
   private controls: OrbitControls;
   private architecture = new THREE.Group();
+  private balconyRailings: { roomId: BalconyId; group: THREE.Group }[] = [];
   private labelGroup = new THREE.Group();
   private dimensions = new THREE.Group();
   private fixtures = new HomeFixtures();
@@ -283,6 +285,7 @@ export class HomeScene {
 
   private buildWalls() {
     this.clearGeometry(this.architecture);
+    this.balconyRailings = [];
     const height = this.options.cutaway
       ? defaults.cutHeight
       : this.options.wallHeight;
@@ -373,6 +376,7 @@ export class HomeScene {
     }
     for (const railing of railings) {
       const group = new THREE.Group();
+      this.balconyRailings.push({ roomId: railing.roomId, group });
       group.position.copy(this.position(railing.from));
       const dx = railing.to[0] - railing.from[0];
       const dz = railing.to[1] - railing.from[1];
@@ -458,6 +462,9 @@ export class HomeScene {
 
   private applyVisibility() {
     this.fixtures.update(this.options);
+    for (const { roomId, group } of this.balconyRailings) {
+      group.visible = this.options.balconyModes[roomId] === "original";
+    }
     this.labelGroup.visible = this.options.labels;
     this.dimensions.visible = this.options.dimensions;
     this.grid.visible = this.options.grid;
@@ -577,9 +584,14 @@ export class HomeScene {
     );
     this.raycaster.setFromCamera(mouse, this.camera);
     // Include walls so a click on a wall cannot select an invisible floor behind it.
+    // Hidden original railings must not intercept clicks through the new glazing.
+    const architecture: THREE.Mesh[] = [];
+    this.architecture.traverseVisible((object) => {
+      if (object instanceof THREE.Mesh) architecture.push(object);
+    });
     const hits = this.raycaster.intersectObjects(
-      [...this.floors, this.architecture, ...this.fixtures.selectable],
-      true,
+      [...this.floors, ...architecture, ...this.fixtures.selectable],
+      false,
     );
     const first = hits.find((hit) => hit.object instanceof THREE.Mesh);
     this.onSelect(first?.object.userData.roomId ?? null);

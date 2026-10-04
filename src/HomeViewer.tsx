@@ -364,7 +364,7 @@ export default function HomeViewer({
               <p className="balcony-preview-summary" aria-live="polite">
                 主阳台：{balconyModeLabels[balconyModes.balcony]} · 生活阳台：{balconyModeLabels[balconyModes.utility]}
               </p>
-              <p className="balcony-preview-note">封窗保留现有栏杆，窗型与开启方式待定。</p>
+              <p className="balcony-preview-note">整面通高玻璃，预览中不显示原栏杆；窗框与开启方式待定。</p>
             </>}
           </section>
           <ModelViewer options={options} onSelect={setSelected} />
@@ -502,7 +502,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。两个阳台各自对比保持原样和封窗，默认原样；封窗预览保留栏杆，窗型、分格与开启方式均待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
+              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。两个阳台各自对比保持原样和落地玻璃，默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
             </dd>
           </div>
         </dl>

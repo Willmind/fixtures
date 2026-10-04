@@ -44,12 +44,11 @@ export type BalconyMode = "original" | "enclosed";
 export type BalconyModes = Record<BalconyId, BalconyMode>;
 export const balconyModeLabels: Record<BalconyMode, string> = {
   original: "保持原样",
-  enclosed: "封窗",
+  enclosed: "落地玻璃",
 };
 
-// Add glazing only along the existing exterior railings, never across doors or
-// the shared kitchen wall. Keep the original rails in either preview mode.
-export const balconyWindowSill = 1.1;
+// Floor-to-ceiling glazing follows only the exterior edges, never the doors or
+// shared kitchen wall. The original rails are hidden in this design preview.
 export const balconyWindowRuns = railings.map(({ roomId, from, to }) => ({
   roomId,
   from,

@@ -7,7 +7,6 @@ import {
   balconyRoofs,
   balconyChoices,
   balconyWindowRuns,
-  balconyWindowSill,
   cabinetColors,
   furnitureSize,
   livingLayouts,
@@ -171,28 +170,26 @@ export class HomeFixtures {
     for (const balcony of balconyChoices) {
       const group = new THREE.Group();
       group.name = `${balcony.id}-enclosure-preview`;
-      group.position.y = balconyWindowSill;
       this.group.add(group);
       this.enclosures.set(balcony.id, group);
       for (const run of balconyWindowRuns.filter((item) => item.roomId === balcony.id)) {
         const frame = this.at(group, run.from, run.rotation);
         // Unit-height frames scale up to the roof without rebuilding geometry.
-        for (const y of [0.015, 0.985]) {
-          this.box(frame, [run.length, 0.03, 0.065],
+        for (const y of [0.006, 0.994]) {
+          this.box(frame, [run.length, 0.012, 0.065],
             [run.length / 2, y, 0], this.windowFrameMaterial);
         }
-        const panels = Math.ceil(run.length / 1.05);
-        const panelWidth = run.length / panels;
-        for (let index = 0; index <= panels; index++) {
+        // One uninterrupted pane per exterior face, with no middle mullions
+        // or railing across the view. Frame and glazing meet the floor/roof.
+        for (const x of [0, run.length]) {
           this.box(frame, [0.045, 1, 0.065],
-            [index * panelWidth, 0.5, 0], this.windowFrameMaterial);
-          if (index === panels) continue;
-          const pane = new THREE.Mesh(
-            new THREE.PlaneGeometry(panelWidth - 0.045, 0.94), this.windowGlassMaterial,
-          );
-          pane.position.set((index + 0.5) * panelWidth, 0.5, 0);
-          frame.add(pane);
+            [x, 0.5, 0], this.windowFrameMaterial);
         }
+        const pane = new THREE.Mesh(
+          new THREE.PlaneGeometry(run.length - 0.045, 0.976), this.windowGlassMaterial,
+        );
+        pane.position.set(run.length / 2, 0.5, 0);
+        frame.add(pane);
       }
       this.tagRoom(group, balcony.id);
     }
@@ -258,7 +255,7 @@ export class HomeFixtures {
     this.roofs.position.y = options.wallHeight;
     for (const [id, group] of this.enclosures) {
       group.visible = options.balconyModes[id] === "enclosed";
-      group.scale.y = options.wallHeight - balconyWindowSill;
+      group.scale.y = options.wallHeight;
     }
     const transparent = options.cutaway || options.view === "plan";
     const materialChanged = this.roofMaterial.transparent !== transparent;
