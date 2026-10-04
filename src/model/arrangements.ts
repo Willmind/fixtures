@@ -20,6 +20,21 @@ export const livingLayouts = [
 export type LivingLayout = (typeof livingLayouts)[number]["id"];
 export type LayoutPreview = LivingLayout | "empty";
 
+// Shared by the UI swatches and both layouts. These are color previews, not
+// product swatches or material/wood species specifications.
+export const sofaColors = [
+  { id: "sage", label: "灰绿色", color: "#879b91", cushion: "#a5b4aa" },
+  { id: "brown", label: "棕色", color: "#985e3d", cushion: "#ac7653" },
+  { id: "walnut", label: "胡桃色", color: "#523a2c", cushion: "#72513b" },
+  { id: "black", label: "黑色", color: "#242528", cushion: "#35363a" },
+] as const;
+export type SofaColor = (typeof sofaColors)[number]["id"];
+export const cabinetColors = [
+  { id: "light-wood", label: "浅木色", color: "#c3ae91" },
+  { id: "walnut", label: "胡桃色", color: "#674631" },
+] as const;
+export type CabinetColor = (typeof cabinetColors)[number]["id"];
+
 export const balconyChoices = [
   { id: "balcony", name: "主阳台" },
   { id: "utility", name: "生活阳台" },

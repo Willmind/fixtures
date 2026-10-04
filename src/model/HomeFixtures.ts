@@ -8,15 +8,19 @@ import {
   balconyChoices,
   balconyWindowRuns,
   balconyWindowSill,
+  cabinetColors,
   furnitureSize,
   livingLayouts,
   livingPlacement,
+  sofaColors,
   utilityEquipment,
 } from "./arrangements";
-import type { BalconyId, BalconyModes, LayoutPreview } from "./arrangements";
+import type { BalconyId, BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./arrangements";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
+  sofaColor: SofaColor;
+  cabinetColor: CabinetColor;
   balconyRoofs: boolean;
   balconyModes: BalconyModes;
   equipment: boolean;
@@ -38,9 +42,9 @@ export class HomeFixtures {
   private equipmentPlanLabel?: CSS2DObject;
   private materials = new Set<THREE.Material>();
   private roofMaterial = this.material({ color: "#d1d0ca", roughness: 0.95 });
-  private cabinetMaterial = this.material({ color: "#c3ae91", roughness: 0.9 });
-  private sofaMaterial = this.material({ color: "#879b91", roughness: 1 });
-  private cushionMaterial = this.material({ color: "#a5b4aa", roughness: 1 });
+  private cabinetMaterial = this.material({ color: cabinetColors[0].color, roughness: 0.9 });
+  private sofaMaterial = this.material({ color: sofaColors[0].color, roughness: 1 });
+  private cushionMaterial = this.material({ color: sofaColors[0].cushion, roughness: 1 });
   private whiteMaterial = this.material({ color: "#eeeae2", roughness: 0.7 });
   private darkMaterial = this.material({ color: "#38434a", roughness: 0.45 });
   private windowFrameMaterial = this.material({ color: "#46565b", roughness: 0.6, metalness: 0.25 });
@@ -210,6 +214,11 @@ export class HomeFixtures {
   }
 
   update(options: FixtureOptions) {
+    const sofa = sofaColors.find((item) => item.id === options.sofaColor) ?? sofaColors[0];
+    const cabinet = cabinetColors.find((item) => item.id === options.cabinetColor) ?? cabinetColors[0];
+    this.sofaMaterial.color.set(sofa.color);
+    this.cushionMaterial.color.set(sofa.cushion);
+    this.cabinetMaterial.color.set(cabinet.color);
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.equipment.visible = options.equipment;
     this.roofs.visible = options.balconyRoofs;

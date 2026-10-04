@@ -5,8 +5,34 @@ import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
-import { balconyChoices, balconyModeLabels, livingLayouts } from "./model/arrangements";
-import type { BalconyModes, LayoutPreview } from "./model/arrangements";
+import { balconyChoices, balconyModeLabels, cabinetColors, livingLayouts, sofaColors } from "./model/arrangements";
+import type { BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./model/arrangements";
+
+function ColorChoices<T extends string>({ label, choices, value, onChange }: {
+  label: string;
+  choices: readonly { id: T; label: string; color: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="color-choice-row">
+      <span>{label}</span>
+      <div className="color-swatches" role="group" aria-label={`${label}颜色`}>
+        {choices.map((item) => (
+          <button
+            key={item.id}
+            aria-label={`${label}：${item.label}`}
+            aria-pressed={value === item.id}
+            onClick={() => onChange(item.id)}
+          >
+            <span className="color-swatch-dot" style={{ backgroundColor: item.color }} aria-hidden="true" />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Toggle({
   label,
@@ -53,9 +79,11 @@ export default function HomeViewer({
   const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
   const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
+  const [sofaColor, setSofaColor] = useState<SofaColor>(sofaColors[0].id);
+  const [cabinetColor, setCabinetColor] = useState<CabinetColor>(cabinetColors[0].id);
   const [balconyRoofs, setBalconyRoofs] = useState(true);
   const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "original" });
-  const [previewTab, setPreviewTab] = useState<"living" | "balconies">("balconies");
+  const [previewTab, setPreviewTab] = useState<"living" | "colors" | "balconies">("colors");
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
@@ -71,6 +99,8 @@ export default function HomeViewer({
     dimensions,
     grid,
     layout,
+    sofaColor,
+    cabinetColor,
     balconyRoofs,
     balconyModes,
     equipment,
@@ -256,11 +286,14 @@ export default function HomeViewer({
                 <button aria-pressed={previewTab === "living"} onClick={() => setPreviewTab("living")}>
                   客厅摆放
                 </button>
+                <button aria-pressed={previewTab === "colors"} onClick={() => setPreviewTab("colors")}>
+                  家具配色
+                </button>
                 <button aria-pressed={previewTab === "balconies"} onClick={() => setPreviewTab("balconies")}>
                   阳台封窗
                 </button>
               </div>
-              <small>仅预览 · 尚未定案</small>
+              <small>效果预览</small>
             </div>
             {previewTab === "living" ? <>
               <div className="layout-switch" role="group" aria-label="切换客厅摆放">
@@ -281,6 +314,15 @@ export default function HomeViewer({
               <p aria-live="polite">
                 {currentLayout?.description ?? "选择一个方案，对比电视和沙发的朝向"}
               </p>
+            </> : previewTab === "colors" ? <>
+              <ColorChoices label="沙发" choices={sofaColors} value={sofaColor} onChange={setSofaColor} />
+              <ColorChoices label="电视柜" choices={cabinetColors} value={cabinetColor} onChange={setCabinetColor} />
+              {layout === "empty" ? (
+                <button className="show-furniture-button" onClick={() => setLayout("tv-guest")}>
+                  显示家具，查看配色
+                </button>
+              ) : null}
+              <p className="color-preview-note">颜色用于搭配比较，实物颜色与质感以样品为准。</p>
             </> : <>
               {balconyChoices.map((item) => (
                 <div className="balcony-option-row" key={item.id}>
