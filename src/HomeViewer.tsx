@@ -7,6 +7,8 @@ import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
 import { balconyChoices, balconyModeLabels, cabinetColors, livingLayouts, sofaColors } from "./model/arrangements";
 import type { BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./model/arrangements";
+import { televisionMounts } from "./model/furniture";
+import type { TelevisionMount } from "./model/furniture";
 
 function ColorChoices<T extends string>({ label, choices, value, onChange }: {
   label: string;
@@ -81,9 +83,10 @@ export default function HomeViewer({
   const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
   const [sofaColor, setSofaColor] = useState<SofaColor>(sofaColors[0].id);
   const [cabinetColor, setCabinetColor] = useState<CabinetColor>(cabinetColors[0].id);
+  const [televisionMount, setTelevisionMount] = useState<TelevisionMount>("cabinet");
   const [balconyRoofs, setBalconyRoofs] = useState(true);
   const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "original" });
-  const [previewTab, setPreviewTab] = useState<"living" | "colors" | "balconies">("colors");
+  const [previewTab, setPreviewTab] = useState<"living" | "colors" | "balconies">("living");
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
@@ -101,6 +104,7 @@ export default function HomeViewer({
     layout,
     sofaColor,
     cabinetColor,
+    televisionMount,
     balconyRoofs,
     balconyModes,
     equipment,
@@ -311,6 +315,22 @@ export default function HomeViewer({
                   </button>
                 ))}
               </div>
+              <div className="television-mount-row">
+                <span>电视</span>
+                <div className="layout-switch television-mount-switch" role="group" aria-label="电视安装方式">
+                  {televisionMounts.map((item) => (
+                    <button
+                      key={item.id}
+                      aria-pressed={televisionMount === item.id}
+                      aria-label={`电视：${item.label}`}
+                      disabled={layout === "empty"}
+                      onClick={() => setTelevisionMount(item.id)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p aria-live="polite">
                 {currentLayout?.description ?? "选择一个方案，对比电视和沙发的朝向"}
               </p>
@@ -482,7 +502,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局。两个阳台各自对比保持原样和封窗，默认原样；封窗预览保留栏杆，窗型、分格与开启方式均待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
+              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。两个阳台各自对比保持原样和封窗，默认原样；封窗预览保留栏杆，窗型、分格与开启方式均待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
             </dd>
           </div>
         </dl>

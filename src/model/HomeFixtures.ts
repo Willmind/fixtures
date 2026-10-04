@@ -16,11 +16,14 @@ import {
   utilityEquipment,
 } from "./arrangements";
 import type { BalconyId, BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./arrangements";
+import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
+import type { BoxPart, TelevisionMount } from "./furniture";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
   sofaColor: SofaColor;
   cabinetColor: CabinetColor;
+  televisionMount: TelevisionMount;
   balconyRoofs: boolean;
   balconyModes: BalconyModes;
   equipment: boolean;
@@ -37,6 +40,9 @@ export class HomeFixtures {
   private equipment = new THREE.Group();
   private layouts = new Map<LayoutPreview, THREE.Group>();
   private enclosures = new Map<BalconyId, THREE.Group>();
+  private televisions: { mount: TelevisionMount; group: THREE.Group }[] = [];
+  private televisionBackdrops: THREE.Mesh[] = [];
+  private televisionLabels: CSS2DObject[] = [];
   private labels: CSS2DObject[] = [];
   private equipmentLabels: CSS2DObject[] = [];
   private equipmentPlanLabel?: CSS2DObject;
@@ -47,6 +53,8 @@ export class HomeFixtures {
   private cushionMaterial = this.material({ color: sofaColors[0].cushion, roughness: 1 });
   private whiteMaterial = this.material({ color: "#eeeae2", roughness: 0.7 });
   private darkMaterial = this.material({ color: "#38434a", roughness: 0.45 });
+  private supportMaterial = this.material({ color: "#343331", roughness: 0.85 });
+  private backdropMaterial = this.material({ color: "#efeee9", roughness: 0.96 });
   private windowFrameMaterial = this.material({ color: "#46565b", roughness: 0.6, metalness: 0.25 });
   private windowGlassMaterial = this.material({
     color: "#a8c5cf", roughness: 0.2, transparent: true, opacity: 0.24,
@@ -68,7 +76,7 @@ export class HomeFixtures {
       const sofa = this.at(group, placement.sofa.center, placement.sofa.rotation);
       this.buildTelevision(tv);
       this.buildSofa(sofa);
-      this.label(tv, "电视 / 电视柜", 1.55, "tv");
+      this.televisionLabels.push(this.label(tv, "电视 / 电视柜", 1.55, "tv"));
       this.label(sofa, "沙发", 1.0, "sofa");
       this.tagRoom(group, "living");
     }
@@ -141,9 +149,22 @@ export class HomeFixtures {
     const size = furnitureSize.tvCabinet;
     this.box(group, [size.width, size.height, size.depth],
       [0, size.height / 2, 0], this.cabinetMaterial, 0.025);
-    this.box(group, [1.45, 0.84, 0.06], [0, 1.06, -0.04], this.darkMaterial, 0.02);
-    this.box(group, [0.06, 0.2, 0.06], [0, 0.52, -0.04], this.darkMaterial);
-    this.box(group, [0.5, 0.025, 0.18], [0, 0.44, -0.02], this.darkMaterial);
+    for (const { id: mount } of televisionMounts) {
+      const television = new THREE.Group();
+      television.name = `television-${mount}`;
+      group.add(television);
+      this.televisions.push({ mount, group: television });
+      const parts = televisionParts[mount];
+      this.part(television, parts.screen, this.darkMaterial);
+      for (const part of parts.supports) this.part(television, part, this.darkMaterial);
+      if (mount === "wall") {
+        this.televisionBackdrops.push(this.part(television, televisionWallBackdrop, this.backdropMaterial));
+      }
+    }
+  }
+
+  private part(parent: THREE.Group, part: BoxPart, material: THREE.Material) {
+    return this.box(parent, part.size, part.position, material, part.radius);
   }
 
   private buildEnclosures() {
@@ -179,7 +200,8 @@ export class HomeFixtures {
 
   private buildSofa(group: THREE.Group) {
     const { width, depth, height } = furnitureSize.sofa;
-    this.box(group, [width, 0.25, depth], [0, 0.23, 0], this.sofaMaterial, 0.07);
+    this.part(group, sofaSupport, this.supportMaterial);
+    this.part(group, sofaBody, this.sofaMaterial);
     this.box(group, [width, height - 0.2, 0.2],
       [0, (height + 0.2) / 2, -depth / 2 + 0.1], this.sofaMaterial, 0.06);
     for (const x of [-width / 2 + 0.1, width / 2 - 0.1]) {
@@ -214,6 +236,17 @@ export class HomeFixtures {
   }
 
   update(options: FixtureOptions) {
+    for (const television of this.televisions) {
+      television.group.visible = television.mount === options.televisionMount;
+    }
+    for (const backdrop of this.televisionBackdrops) {
+      backdrop.visible = options.cutaway && options.view !== "plan";
+    }
+    const screen = televisionParts[options.televisionMount].screen;
+    for (const label of this.televisionLabels) {
+      label.position.y = screen.position[1] + screen.size[1] / 2 + 0.12;
+      label.element.textContent = options.televisionMount === "wall" ? "挂墙电视 / 电视柜" : "电视 / 电视柜";
+    }
     const sofa = sofaColors.find((item) => item.id === options.sofaColor) ?? sofaColors[0];
     const cabinet = cabinetColors.find((item) => item.id === options.cabinetColor) ?? cabinetColors[0];
     this.sofaMaterial.color.set(sofa.color);
@@ -246,9 +279,13 @@ export class HomeFixtures {
   }
 
   get selectable() {
-    // Raycaster does not skip invisible parents: only send displayed variants.
-    return [this.roofs, this.equipment, ...this.layouts.values(), ...this.enclosures.values()]
-      .filter((group) => group.visible);
+    // Raycaster ignores visibility on nested parents too. Exclude hidden TV
+    // variants and the cutaway backdrop as well as hidden room arrangements.
+    const meshes: THREE.Mesh[] = [];
+    this.group.traverseVisible((object) => {
+      if (object instanceof THREE.Mesh) meshes.push(object);
+    });
+    return meshes;
   }
 
   dispose() {

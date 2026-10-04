@@ -487,6 +487,16 @@ button:hover {
   font-size: 12px;
 }
 .layout-switch.balcony-switch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.television-mount-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.layout-switch.television-mount-switch { grid-template-columns: 1.5fr 1fr; }
+.television-mount-switch button:disabled { opacity: 0.45; }
 .layout-preview .balcony-preview-summary { color: var(--text-primary); }
 .layout-preview .balcony-preview-note { margin-top: 3px; font-size: 10px; }
 .room-detail .room-option-summary { color: var(--tint); }
