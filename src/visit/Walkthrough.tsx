@@ -42,8 +42,8 @@ export function Walkthrough({
             playsInline
             muted
             preload="metadata"
-            poster="/site-visit/video-poster.webp?v=2"
-            src={`/site-visit/walkthrough.mp4?v=2${attempt ? `&retry=${attempt}` : ""}`}
+            poster="/site-visit/video-poster.webp?v=3"
+            src={`/site-visit/walkthrough.mp4?v=3${attempt ? `&retry=${attempt}` : ""}`}
             aria-label="毛坯现场走拍视频"
             onLoadedMetadata={() => {
               if (!video.current) return;
@@ -66,7 +66,7 @@ export function Walkthrough({
             aria-label="播放现场视频"
           >
             <img
-              src="/site-visit/video-poster.webp?v=2"
+              src="/site-visit/video-poster.webp?v=3"
               alt="从客厅看向室内的走拍画面"
               width="520"
               height="924"

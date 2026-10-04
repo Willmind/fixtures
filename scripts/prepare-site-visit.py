@@ -1,25 +1,26 @@
 """Create web copies of a local site visit. Original media is never modified.
 Usage: python3 scripts/prepare-site-visit.py /path/to/实拍图片-毛坯
-Requires macOS sips, FFmpeg with zscale, and Pillow.
+Requires macOS 15+, Swift command-line tools, sips, FFmpeg, and Pillow.
 """
 import argparse
 import json
 from pathlib import Path
 import subprocess
 import tempfile
-from PIL import Image, ImageOps
 
 parser = argparse.ArgumentParser()
 parser.add_argument('source', type=Path)
-parser.add_argument('--ffmpeg', default='ffmpeg', help='FFmpeg binary with zscale support')
+parser.add_argument('--ffmpeg', default='ffmpeg', help='FFmpeg binary with libx264 and libwebp')
 parser.add_argument('--video-only', action='store_true')
 args = parser.parse_args()
-filters = subprocess.run(
-    [args.ffmpeg, '-hide_banner', '-filters'],
+encoders = subprocess.run(
+    [args.ffmpeg, '-hide_banner', '-encoders'],
     check=True, capture_output=True, text=True,
 ).stdout
-if 'zscale' not in filters:
-    parser.error('FFmpeg 缺少 zscale；请通过 --ffmpeg 指定支持 HDR 转 SDR 的版本。')
+if not all(codec in encoders for codec in ('libx264', 'libwebp')):
+    parser.error('FFmpeg 需要 libx264 和 libwebp；请通过 --ffmpeg 指定完整版本。')
+if not args.video_only:
+    from PIL import Image, ImageOps
 root = Path(__file__).resolve().parent.parent
 manifest = root / 'src/visit/photos.json'
 photos = json.loads(manifest.read_text())
@@ -39,11 +40,35 @@ with tempfile.TemporaryDirectory(prefix='fixtures-visit-') as temp:
             full.save(destination / f"{photo['id']}.webp", quality=80, method=6)
             full.thumbnail((520, 520), Image.Resampling.LANCZOS)
             full.save(destination / 'thumbs' / f"{photo['id']}.webp", quality=74, method=6)
-manifest.write_text(json.dumps(photos, ensure_ascii=False, indent=2) + '\n')
-# HDR HLG capture -> SDR H.264, silent, with metadata removed and fast-start playback.
-# Use zscale's 203-nit nominal peak instead of 100 to avoid lifting interior midtones.
-# Keep this a display-format conversion; do not add exposure/brightness enhancements.
+if not args.video_only:
+    manifest.write_text(json.dumps(photos, ensure_ascii=False, indent=2) + '\n')
+# Let AVFoundation convert Dolby Vision / HLG to SDR using Apple's H.264 preset.
+# The previous custom zscale + Mobius mapping visibly lifted the interior midtones.
+# FFmpeg only compresses the already-SDR export; never apply a second tone map.
 video = destination / 'walkthrough.mp4'
-subprocess.run([args.ffmpeg, '-v', 'error', '-y', '-i', str(args.source / '实拍视频.MOV'), '-map', '0:v:0', '-an', '-map_metadata', '-1', '-vf', 'zscale=t=linear:npl=203,format=gbrpf32le,tonemap=tonemap=mobius:desat=0,zscale=p=bt709:t=bt709:m=bt709:r=limited,scale=720:-2,fps=24,format=yuv420p', '-c:v', 'libx264', '-preset', 'medium', '-crf', '27', '-movflags', '+faststart', str(video)], check=True)
-subprocess.run([args.ffmpeg, '-v', 'error', '-y', '-ss', '8', '-i', str(video), '-frames:v', '1', '-vf', 'scale=520:-2', str(destination / 'video-poster.webp')], check=True)
+with tempfile.TemporaryDirectory(prefix='fixtures-video-') as temp:
+    native = Path(temp) / 'native-sdr.mp4'
+    compressed = Path(temp) / 'walkthrough.mp4'
+    poster = Path(temp) / 'video-poster.webp'
+    subprocess.run([
+        'swift', '-module-cache-path', str(Path(temp) / 'swift-cache'),
+        str(root / 'scripts/export-site-video.swift'),
+        str(args.source / '实拍视频.MOV'), str(native),
+    ], check=True)
+    subprocess.run([
+        args.ffmpeg, '-v', 'error', '-y', '-i', str(native),
+        '-map', '0:v:0', '-an', '-map_metadata', '-1',
+        '-vf', 'fps=24,format=yuv420p,sidedata=mode=delete',
+        '-c:v', 'libx264', '-preset', 'medium', '-crf', '27',
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709', '-color_range', 'tv',
+        '-movflags', '+faststart', str(compressed),
+    ], check=True)
+    subprocess.run([
+        args.ffmpeg, '-v', 'error', '-y', '-ss', '8', '-i', str(compressed),
+        '-frames:v', '1', '-vf', 'scale=520:-2', '-c:v', 'libwebp', str(poster),
+    ], check=True)
+    # Keep the current assets intact if either conversion step fails.
+    video.write_bytes(compressed.read_bytes())
+    (destination / 'video-poster.webp').write_bytes(poster.read_bytes())
 print(f"{len(photos)} photos, video {video.stat().st_size / 1e6:.1f} MB, total {sum(p.stat().st_size for p in destination.rglob('*') if p.is_file()) / 1e6:.1f} MB")

@@ -30,11 +30,12 @@
 
 ## 网页副本
 
-原件不移动、不修改，不放入 Git。`public/site-visit/` 是随静态站点发布的网页副本，约 9.6 MB（十进制），其中视频约 6.6 MB。仍使用现有腾讯云 Nginx 和自动发布流程，无新增服务或付费存储。
+原件不移动、不修改，不放入 Git。`public/site-visit/` 是随静态站点发布的网页副本，约 9.5 MB（十进制），其中视频约 6.5 MB。仍使用现有腾讯云 Nginx 和自动发布流程，无新增服务或付费存储。
 
 - 照片：正确旋转，长边最大 1800 px WebP；缩略图长边最大 520 px。去除 EXIF/GPS。
-- 视频：720 × 1280、24 fps、H.264/yuv420p、约 43 秒，HDR HLG 转 SDR BT.709；无声，去除原始元数据。`zscale` 的名义峰值亮度 `npl` 改为 203，修正原先 100 的设置造成的室内中间调偏亮，不添加曝光、亮度或美化滤镜。SDR 显示无法保证与所有 HDR 屏幕完全一致，原始 MOV 保留不变。`moov` 位于媒体内容之前，可边下载边播放。
-- 整理脚本：`scripts/prepare-site-visit.py`。需要 macOS `sips`、Pillow 和包含 `zscale` 的 FFmpeg。HEIC 解码必须能访问 macOS 图像解码服务；受限环境可能输出全黑，脚本会拒绝这类输出。构建及服务器均无需这些工具。
+- 视频：720 × 1280、24 fps、H.264/yuv420p、约 43 秒，无声。原片是 Dolby Vision 8.4 / HLG；使用 `scripts/export-site-video.swift` 调用 AVFoundation 的 H.264 导出预设，先由 macOS 原生转换为 SDR BT.709，再由 FFmpeg 降帧率、压缩及去除元数据，不再添加明暗映射或曝光滤镜。旧版 `zscale + Mobius`（包括 `npl=203` 的修订）在同一时间点的室内墙面、地面上仍明显偏亮，已替换。原片不修改；SDR 仍不能保证与每块 HDR 屏幕显示完全一致。`moov` 位于媒体内容之前，可边下载边播放。
+- 转换方式依据 [Apple 的 HDR / Dolby Vision 转换说明](https://developer.apple.com/av-foundation/Incorporating-HDR-video-with-Dolby-Vision-into-your-apps.pdf)。更新视频时同步生成封面，并修改 `Walkthrough.tsx` 中视频与封面的资源版本号，避免沿用旧缓存。
+- 整理脚本：`scripts/prepare-site-visit.py`。需要 macOS 15+、Swift 命令行工具、`sips`、Pillow（仅处理照片时需要）和包含 `libx264`、`libwebp` 的 FFmpeg。原生图像、视频转换必须能访问 macOS 媒体服务；受限环境可能导致导出失败或 HEIC 全黑，脚本会报错而不覆盖已有视频。构建及服务器均无需这些工具。
 
 ```sh
 python3 scripts/prepare-site-visit.py '/原件目录/实拍图片-毛坯' --ffmpeg /path/to/ffmpeg
