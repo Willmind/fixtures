@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import AccessGate from "./access/AccessGate";
+import { NotebookProvider } from "./notes/NotebookContext";
 import { AppIcon } from "./AppIcon";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import { PagePosition, useWorkspaceNavigation } from "./useWorkspaceNavigation";
@@ -35,46 +36,71 @@ function ProtectedWorkspace() {
 }
 
 function Workspace({ onLock }: { onLock?: () => void }) {
-  const { route, position, revision, navigate, returnToGuide } = useWorkspaceNavigation();
+  const { route, position, revision, navigate, returnToGuide } =
+    useWorkspaceNavigation();
   const [photoIndices, setPhotoIndices] = useState<Record<string, number>>({});
   const { view } = route;
   return (
-    <PageErrorBoundary key={view}>
-      <Suspense fallback={<AppLoading />}>
-        {view === "cad" ? (
-          <CadWorkspace
-            onBack={returnToGuide}
-            onLock={onLock}
-          />
-        ) : view === "model" ? (
-          <HomeViewer
-            selected={route.room}
-            onOpenCad={() => navigate({ view: "cad" }, { anchor: "top" })}
-            onBack={returnToGuide}
-            onVisit={(room) => navigate({ view: "guide", tab: "visit", room }, { anchor: "visit" })}
-            onRoomChange={(room) => navigate({ room }, { replace: true })}
-            onLock={onLock}
-          />
-        ) : (
-          <HomeGuide
-            tab={route.tab}
-            selected={route.room ?? "living"}
-            onTabChange={(tab) => navigate({ tab }, { anchor: "content" })}
-            onPlan={() => navigate({ tab: "rooms" }, { anchor: "plan" })}
-            onVisit={() => navigate({ tab: "visit" }, { anchor: "visit" })}
-            onRoomChange={(room) => navigate({ room }, { replace: true, anchor: route.tab === "visit" ? "visit" : "room", mobileOnly: true })}
-            photoIndices={photoIndices}
-            onPhotoChange={(room, index) => setPhotoIndices((previous) => ({ ...previous, [room]: index }))}
-            onModel={() =>
-              navigate({ view: "model", room: route.room ?? "living" }, { anchor: "top" })
-            }
-            onCad={() => navigate({ view: "cad" }, { anchor: "top" })}
-            onLock={onLock}
-          />
-        )}
-        <PagePosition position={position} revision={revision} />
-      </Suspense>
-    </PageErrorBoundary>
+    <NotebookProvider>
+      <PageErrorBoundary key={view}>
+        <Suspense fallback={<AppLoading />}>
+          {view === "cad" ? (
+            <CadWorkspace onBack={returnToGuide} onLock={onLock} />
+          ) : view === "model" ? (
+            <HomeViewer
+              selected={route.room}
+              onOpenCad={() => navigate({ view: "cad" }, { anchor: "top" })}
+              onBack={returnToGuide}
+              onVisit={(room) =>
+                navigate(
+                  { view: "guide", tab: "visit", room },
+                  { anchor: "visit" },
+                )
+              }
+              onRoomChange={(room) => navigate({ room }, { replace: true })}
+              onLock={onLock}
+            />
+          ) : (
+            <HomeGuide
+              tab={route.tab}
+              selected={route.room ?? "living"}
+              onTabChange={(tab) => navigate({ tab }, { anchor: "content" })}
+              onNotes={() =>
+                navigate(
+                  { tab: route.tab === "visit" ? "visit" : "rooms" },
+                  { anchor: "notes" },
+                )
+              }
+              onPlan={() => navigate({ tab: "rooms" }, { anchor: "plan" })}
+              onVisit={() => navigate({ tab: "visit" }, { anchor: "visit" })}
+              onRoomChange={(room) =>
+                navigate(
+                  { room },
+                  {
+                    replace: true,
+                    anchor: route.tab === "visit" ? "visit" : "room",
+                    mobileOnly: true,
+                  },
+                )
+              }
+              photoIndices={photoIndices}
+              onPhotoChange={(room, index) =>
+                setPhotoIndices((previous) => ({ ...previous, [room]: index }))
+              }
+              onModel={() =>
+                navigate(
+                  { view: "model", room: route.room ?? "living" },
+                  { anchor: "top" },
+                )
+              }
+              onCad={() => navigate({ view: "cad" }, { anchor: "top" })}
+              onLock={onLock}
+            />
+          )}
+          <PagePosition position={position} revision={revision} />
+        </Suspense>
+      </PageErrorBoundary>
+    </NotebookProvider>
   );
 }
 

@@ -2,6 +2,8 @@ import { Icon } from "../icons";
 import { roomGuides } from "../guide/content";
 import { photosForRoom, roomVisits, sitePhotos } from "./content";
 import { PhotoGallery } from "./PhotoGallery";
+import { RoomLocation } from "./RoomLocation";
+import { RoomNotebook } from "../notes/RoomNotebook";
 import { Walkthrough } from "./Walkthrough";
 import "./visit.css";
 
@@ -10,6 +12,7 @@ export function SiteVisit({
   onRoomChange,
   photoIndex,
   onPhotoChange,
+  onNotes,
   onPlan,
   onModel,
   onSource,
@@ -18,6 +21,7 @@ export function SiteVisit({
   onRoomChange: (room: string) => void;
   photoIndex: number;
   onPhotoChange: (index: number) => void;
+  onNotes: () => void;
   onPlan: () => void;
   onModel: () => void;
   onSource: () => void;
@@ -48,6 +52,12 @@ export function SiteVisit({
           </button>
         ))}
       </div>
+      <div className="visit-context-bar">
+        <RoomLocation roomId={roomId} onPlan={onPlan} />
+        <button className="visit-prepare-button" onClick={onNotes}>
+          记录{room.name}的准备事项 ↓
+        </button>
+      </div>
       <div className="visit-room-layout">
         <PhotoGallery
           key={roomId}
@@ -57,7 +67,9 @@ export function SiteVisit({
           roomName={room.name}
         />
         <aside className="visit-room-notes" aria-labelledby="visit-room-title">
-          <p className="guide-kicker">现场记录</p>
+          <p className="guide-kicker">
+            <span className="evidence-badge is-observed">现场实拍</span>
+          </p>
           <h2 id="visit-room-title">{room.name}</h2>
           <section>
             <h3>
@@ -70,16 +82,12 @@ export function SiteVisit({
               ))}
             </ul>
           </section>
-          <section className="visit-measure">
-            <h3>
-              <span className="visit-note-dot" />
-              还要测量
-            </h3>
-            <ul>
-              {visit.measure.map((text) => (
-                <li key={text}>{text}</li>
-              ))}
-            </ul>
+          <section className="visit-next-step">
+            <h3>下一步</h3>
+            <p>{visit.measure[0]}</p>
+            <button className="guide-source-link" onClick={onNotes}>
+              打开测量与确认清单 →
+            </button>
           </section>
           <div className="visit-location-links">
             <button onClick={onPlan}>
@@ -99,8 +107,9 @@ export function SiteVisit({
       </div>
       <p className="visit-evidence-note">
         <Icon name="info" size={16} />
-        照片来自你提供的房间分组；窗台、层高和管线等具体尺寸仍需现场测量。
+        房间按你提供的照片分组定位；蓝点不代表拍摄站位或朝向。
       </p>
+      <RoomNotebook roomId={roomId} />
       <Walkthrough roomName={room.name} roomStart={visit.videoStart} />
     </div>
   );

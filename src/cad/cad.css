@@ -545,3 +545,110 @@
 .cad-home-guide button:disabled {
   opacity: 0.5;
 }
+.cad-viewport {
+  display: flex;
+  flex-direction: column;
+}
+.cad-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.cad-reader {
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid #dfe4ea;
+  background: #fff;
+  color: #252a33;
+  flex-shrink: 0;
+}
+.cad-reader-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cad-reader-heading strong {
+  font-size: 16px;
+}
+.cad-reader-heading span {
+  font-size: 12px;
+  color: #616975;
+}
+.cad-reader-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cad-reader-topics button {
+  min-height: 44px;
+  padding: 10px 15px;
+  font-size: 14px;
+  border-radius: 12px;
+  background: #f0f3f7;
+}
+.cad-reader-topics button[aria-pressed="true"] {
+  background: #0071e3;
+  color: #fff;
+}
+.cad-reader p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #555e6b;
+  margin: 12px 0 0;
+  max-width: 850px;
+}
+@media (max-width: 760px) {
+  .cad-reader {
+    padding: 12px 14px;
+  }
+  .cad-reader-heading {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .cad-reader-heading strong {
+    font-size: 15px;
+  }
+  .cad-reader-heading span {
+    font-size: 11px;
+  }
+  .cad-reader-topics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .cad-reader-topics button {
+    padding: 8px;
+    font-size: 14px;
+  }
+  .cad-reader p {
+    font-size: 13px;
+    margin-top: 10px;
+  }
+  .cad-header-actions {
+    gap: 5px;
+  }
+  .cad-header-actions > button {
+    min-height: 44px;
+    font-size: 12px;
+  }
+  .cad-header-actions .cad-open {
+    padding-inline: 5px;
+  }
+  .cad-toolbar button {
+    min-height: 44px;
+  }
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .cad-reader {
+    padding: 8px 14px;
+  }
+  .cad-reader-heading,
+  .cad-reader p {
+    display: none;
+  }
+  .cad-reader-topics {
+    display: flex;
+  }
+}

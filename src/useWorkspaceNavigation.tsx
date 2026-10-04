@@ -1,14 +1,24 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { readRoute, routeUrl, type RouteState } from "./navigation";
 
-type Destination = "top" | "content" | "plan" | "room" | "visit";
-type Position = { top: number } | { anchor: Destination; mobileOnly?: boolean } | null;
-type Options = { replace?: boolean; anchor?: Destination; mobileOnly?: boolean };
+type Destination = "top" | "content" | "plan" | "room" | "visit" | "notes";
+type Position =
+  | { top: number }
+  | { anchor: Destination; mobileOnly?: boolean }
+  | null;
+type Options = {
+  replace?: boolean;
+  anchor?: Destination;
+  mobileOnly?: boolean;
+};
 const scrollKey = "fixturesScroll";
-const guideKey = (route: RouteState) => `${route.tab}:${route.room ?? "living"}`;
+const guideKey = (route: RouteState) =>
+  `${route.tab}:${route.room ?? "living"}`;
 const savedTop = () => {
   const value: unknown = history.state?.[scrollKey];
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : 0;
 };
 
 export function useWorkspaceNavigation() {
@@ -23,7 +33,10 @@ export function useWorkspaceNavigation() {
     const previous = history.scrollRestoration;
     history.scrollRestoration = "manual";
     const remember = () => {
-      history.replaceState({ ...history.state, [scrollKey]: window.scrollY }, "");
+      history.replaceState(
+        { ...history.state, [scrollKey]: window.scrollY },
+        "",
+      );
       if (routeRef.current.view === "guide")
         guidePositions.current.set(guideKey(routeRef.current), window.scrollY);
     };
@@ -36,7 +49,11 @@ export function useWorkspaceNavigation() {
       cancelAnimationFrame(frame);
       const route = readRoute(location.search);
       routeRef.current = route;
-      setNavigation((previous) => ({ route, position: { top: savedTop() }, revision: previous.revision + 1 }));
+      setNavigation((previous) => ({
+        route,
+        position: { top: savedTop() },
+        revision: previous.revision + 1,
+      }));
     };
     window.addEventListener("scroll", scroll, { passive: true });
     window.addEventListener("popstate", pop);
@@ -48,18 +65,30 @@ export function useWorkspaceNavigation() {
     };
   }, []);
 
-  function navigate(update: Partial<RouteState>, options: Options = {}, restore?: number) {
+  function navigate(
+    update: Partial<RouteState>,
+    options: Options = {},
+    restore?: number,
+  ) {
     const current = routeRef.current;
-    if (current.view === "guide") guidePositions.current.set(guideKey(current), window.scrollY);
+    if (current.view === "guide")
+      guidePositions.current.set(guideKey(current), window.scrollY);
     history.replaceState({ ...history.state, [scrollKey]: window.scrollY }, "");
     const route = { ...current, ...update };
     history[options.replace ? "replaceState" : "pushState"](
-      { [scrollKey]: restore ?? (options.anchor ? 0 : window.scrollY) }, "", routeUrl(location.href, route),
+      { [scrollKey]: restore ?? (options.anchor ? 0 : window.scrollY) },
+      "",
+      routeUrl(location.href, route),
     );
     routeRef.current = route;
     setNavigation((previous) => ({
       route,
-      position: restore !== undefined ? { top: restore } : options.anchor ? { anchor: options.anchor, mobileOnly: options.mobileOnly } : null,
+      position:
+        restore !== undefined
+          ? { top: restore }
+          : options.anchor
+            ? { anchor: options.anchor, mobileOnly: options.mobileOnly }
+            : null,
       revision: previous.revision + 1,
     }));
   }
@@ -71,19 +100,32 @@ export function useWorkspaceNavigation() {
 }
 
 // Inside Suspense: positioning runs only after the destination's DOM is committed.
-export function PagePosition({ position, revision }: { position: Position; revision: number }) {
+export function PagePosition({
+  position,
+  revision,
+}: {
+  position: Position;
+  revision: number;
+}) {
   useLayoutEffect(() => {
     if (!position) return;
     if ("top" in position) {
       window.scrollTo({ top: position.top, behavior: "instant" });
       return;
     }
-    if (position.mobileOnly && !window.matchMedia("(max-width: 760px)").matches) return;
+    if (position.mobileOnly && !window.matchMedia("(max-width: 760px)").matches)
+      return;
     if (position.anchor === "top") {
       window.scrollTo({ top: 0, behavior: "instant" });
       return;
     }
-    const ids = { content: "guide-browse", plan: "room-plan", room: "room-detail", visit: "visit-room" };
+    const ids = {
+      content: "guide-browse",
+      plan: "room-plan",
+      room: "room-detail",
+      visit: "visit-room",
+      notes: "room-notebook",
+    };
     const target = document.getElementById(ids[position.anchor]);
     target?.scrollIntoView({ block: "start", behavior: "instant" });
     if (position.anchor !== "content") target?.focus({ preventScroll: true });

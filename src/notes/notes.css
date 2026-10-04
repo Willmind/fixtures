@@ -1,0 +1,255 @@
+.room-notebook {
+  margin: 28px 0;
+  padding: 28px;
+  border: 1px solid #e5e8ee;
+  border-radius: 26px;
+  background: #fff;
+  scroll-margin-top: 96px;
+}
+.notebook-heading,
+.notebook-storage {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.notebook-heading h2 {
+  font-size: 25px;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+.notebook-heading p,
+.notebook-storage p {
+  margin: 0;
+  color: #62626a;
+  font-size: 14px;
+}
+.notebook-progress {
+  flex-shrink: 0;
+  color: #245e4c;
+  background: #ebf5ef;
+  border-radius: 99px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+.notebook-storage {
+  padding: 18px;
+  border-radius: 16px;
+  background: #f5f6f8;
+  margin: 24px 0;
+}
+.notebook-storage strong {
+  font-size: 14px;
+}
+.notebook-storage p {
+  font-size: 13px;
+  margin-top: 5px;
+  max-width: 570px;
+}
+.notebook-backup-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.room-notebook button,
+.notebook-import button {
+  min-height: 44px;
+  padding: 10px 15px;
+  border-radius: 12px;
+  color: #0065c9;
+  background: #eaf2ff;
+  font-size: 14px;
+}
+.notebook-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+.notebook-fields > label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+  font-size: 15px;
+  font-weight: 550;
+}
+.notebook-fields input,
+.notebook-fields textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd1d9;
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  font-weight: 400;
+  font-size: 16px;
+  background: #fff;
+  color: #242429;
+}
+.notebook-fields textarea {
+  resize: vertical;
+  min-height: 130px;
+}
+.notebook-fields input::placeholder,
+.notebook-fields textarea::placeholder {
+  color: #737982;
+}
+.room-notebook fieldset,
+.notebook-import fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  margin: 0 0 24px;
+}
+.room-notebook legend,
+.notebook-import legend {
+  font-size: 16px;
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+.notebook-fields fieldset > p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #62626a;
+}
+.notebook-dimensions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.notebook-dimensions label {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+}
+.notebook-tasks label,
+.notebook-import fieldset label {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 0;
+  font-size: 15px;
+  line-height: 1.65;
+  cursor: pointer;
+}
+.notebook-tasks input,
+.notebook-import input {
+  width: 20px;
+  height: 20px;
+  accent-color: #0071e3;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+.notebook-tasks .is-done {
+  color: #39705b;
+}
+.notebook-footnote {
+  font-size: 13px;
+  color: #62626a;
+}
+.notebook-error {
+  color: #a02f25;
+  background: #fff1ec;
+  border-radius: 12px;
+  padding: 12px;
+}
+.notebook-message {
+  font-size: 14px;
+  color: #265e49;
+}
+.notebook-import {
+  width: min(580px, calc(100% - 28px));
+  max-height: 85dvh;
+  overflow: auto;
+  border: 0;
+  border-radius: 24px;
+  padding: 26px;
+  color: #242429;
+}
+.notebook-import::backdrop {
+  background: #14223875;
+  backdrop-filter: blur(5px);
+}
+.notebook-import header,
+.notebook-import footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.notebook-import h2 {
+  font-size: 22px;
+  margin: 0;
+}
+.notebook-import p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.notebook-import ul {
+  list-style: none;
+  padding: 0;
+}
+.notebook-import li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+.notebook-import li span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.notebook-import li small {
+  color: #865b1d;
+}
+.notebook-import .notebook-primary {
+  background: #0071e3;
+  color: white;
+}
+@media (max-width: 760px) {
+  .room-notebook {
+    padding: 20px 16px;
+    border-radius: 22px;
+  }
+  .notebook-heading,
+  .notebook-storage {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .notebook-heading h2 {
+    font-size: 23px;
+  }
+  .notebook-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .notebook-tasks label {
+    font-size: 16px;
+  }
+  .notebook-storage {
+    padding: 14px;
+  }
+  .notebook-backup-actions {
+    width: 100%;
+  }
+  .notebook-backup-actions button {
+    flex: 1;
+  }
+}
+.notebook-heading {
+  cursor: pointer;
+  list-style: none;
+}
+.notebook-heading::-webkit-details-marker {
+  display: none;
+}
+.notebook-heading::after {
+  content: "展开 ＋";
+  font-size: 14px;
+  color: #0065c9;
+  white-space: nowrap;
+}
+.room-notebook[open] > .notebook-heading::after {
+  content: "收起 −";
+}

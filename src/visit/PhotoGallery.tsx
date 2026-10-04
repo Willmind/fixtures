@@ -23,7 +23,12 @@ function PhotoImage({
   return (
     <div className={`visit-image ${status === "ready" ? "is-ready" : ""}`}>
       {!thumbnail && status !== "ready" ? (
-        <img className="visit-image-preview" src={photoUrl(photo, true)} alt="" aria-hidden="true" />
+        <img
+          className="visit-image-preview"
+          src={photoUrl(photo, true)}
+          alt=""
+          aria-hidden="true"
+        />
       ) : null}
       <img
         ref={image}
@@ -86,7 +91,10 @@ export function PhotoGallery({
   const photo = photos[index];
   useEffect(() => {
     if (photos.length < 2) return;
-    const timer = window.setTimeout(() => warmImage(photoUrl(photos[(index + 1) % photos.length])), 500);
+    const timer = window.setTimeout(
+      () => warmImage(photoUrl(photos[(index + 1) % photos.length])),
+      500,
+    );
     return () => window.clearTimeout(timer);
   }, [index, photos]);
   function move(offset: number) {

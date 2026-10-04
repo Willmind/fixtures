@@ -120,7 +120,7 @@ export default function CadWorkspace({
         setReport(file.report ?? null);
         setName(file.name);
         setHomeDrawing(Boolean(file.bounds));
-        setHomeView("all");
+        setHomeView(file.bounds ? "lighting" : "all");
         const viewer = new DxfViewer(host.current, {
           autoResize: true,
           antialias: true,
@@ -202,11 +202,12 @@ export default function CadWorkspace({
         host.current.dataset.layers = String(next.length);
         if (file.bounds) {
           const origin = viewer.GetOrigin();
+          const initialView = homeViews[0];
           viewer.FitView(
-            file.bounds.minX - origin.x,
-            file.bounds.maxX - origin.x,
-            file.bounds.minY - origin.y,
-            file.bounds.maxY - origin.y,
+            initialView.minX - origin.x,
+            initialView.maxX - origin.x,
+            initialView.minY - origin.y,
+            initialView.maxY - origin.y,
           );
           viewer.Render();
         }
@@ -472,27 +473,6 @@ export default function CadWorkspace({
               </div>
             ) : null}
           </div>
-          {homeDrawing ? (
-            <section className="cad-home-guide" aria-label="按生活问题看电气图">
-              <h2>你想了解什么？</h2>
-              <div>
-                {homeViews.map((view) => (
-                  <button
-                    key={view.id}
-                    disabled={!loaded || busy}
-                    aria-pressed={homeView === view.id}
-                    onClick={() => focusHome(view)}
-                  >
-                    {view.title}
-                  </button>
-                ))}
-              </div>
-              <p>
-                {homeViews.find((view) => view.id === homeView)?.description ??
-                  "这四幅小图是同一个 D 户型：分别表达照明、插座、弱电和综合点位。点上面的按钮可直接放大对应区域。"}
-              </p>
-            </section>
-          ) : null}
           <div className="cad-layer-heading">
             <h2>图层</h2>
             <button
@@ -597,126 +577,153 @@ export default function CadWorkspace({
           className={`cad-viewport ${dark ? "is-dark" : ""}`}
           aria-label="CAD 图纸查看器"
         >
-          <div className="cad-canvas" ref={host} />
-          <div className="cad-toolbar">
-            <button
-              className="cad-mobile-layers"
-              onClick={() => setPanel(true)}
-            >
-              <Icon name="layers" size={16} />
-              图层
-            </button>
-            <span>二维原图</span>
-            <button disabled={!loaded} onClick={fit}>
-              <Icon name="reset" size={16} />
-              显示全图
-            </button>
-            <button
-              onClick={() => {
-                const next = !dark;
-                setDark(next);
-                darkRef.current = next;
-                engine.current?.SetClearColor(next ? "#172229" : "#fafbf9");
-              }}
-            >
-              {dark ? "浅色背景" : "深色背景"}
-            </button>
-            {loaded ? <button onClick={download}>下载 DXF</button> : null}
-          </div>
-          {!loaded && !busy ? (
-            <div className="cad-empty">
-              <span className="cad-empty-icon">
-                <Icon name="plan" size={38} />
-              </span>
-              <span className="eyebrow">YOUR ORIGINAL DRAWING</span>
-              <h2>我家的 D 户型电气图</h2>
-              <p>
-                图纸已经随网站保存。加载失败时可以重试，也可以另行打开文件。
+          {homeDrawing ? (
+            <section className="cad-reader" aria-label="按生活问题看电气图">
+              <div className="cad-reader-heading">
+                <strong>先选你关心的问题</strong>
+                <span>整户原设计 · 2019.03</span>
+              </div>
+              <div className="cad-reader-topics">
+                {homeViews.map((view) => (
+                  <button
+                    key={view.id}
+                    disabled={!loaded || busy}
+                    aria-pressed={homeView === view.id}
+                    onClick={() => focusHome(view)}
+                  >
+                    {view.title}
+                  </button>
+                ))}
+              </div>
+              <p aria-live="polite">
+                {homeViews.find((view) => view.id === homeView)?.description ??
+                  "四幅小图分别是照明、插座、弱电和综合点位。选择一个问题，直接放大对应区域。"}
               </p>
+            </section>
+          ) : null}
+          <div className="cad-stage">
+            <div className="cad-canvas" ref={host} />
+            <div className="cad-toolbar">
               <button
-                className="primary-button"
-                onClick={() => void openHome()}
+                className="cad-mobile-layers"
+                onClick={() => setPanel(true)}
               >
-                重新加载我家图纸
+                <Icon name="layers" size={16} />
+                图层
+              </button>
+              <span>二维原图</span>
+              <button disabled={!loaded} onClick={fit}>
+                <Icon name="reset" size={16} />
+                显示全图
               </button>
               <button
-                className="primary-button"
-                onClick={() => input.current?.click()}
+                onClick={() => {
+                  const next = !dark;
+                  setDark(next);
+                  darkRef.current = next;
+                  engine.current?.SetClearColor(next ? "#172229" : "#fafbf9");
+                }}
               >
-                选择 {local ? "DWG / DXF" : "DXF"} 文件
+                {dark ? "浅色背景" : "深色背景"}
               </button>
-              {local ? (
+              {loaded ? <button onClick={download}>下载 DXF</button> : null}
+            </div>
+            {!loaded && !busy ? (
+              <div className="cad-empty">
+                <span className="cad-empty-icon">
+                  <Icon name="plan" size={38} />
+                </span>
+                <span className="eyebrow">YOUR ORIGINAL DRAWING</span>
+                <h2>我家的 D 户型电气图</h2>
+                <p>
+                  图纸已经随网站保存。加载失败时可以重试，也可以另行打开文件。
+                </p>
                 <button
-                  className="cad-reference"
-                  onClick={() => void openReference()}
+                  className="primary-button"
+                  onClick={() => void openHome()}
                 >
-                  打开本机已解析的图纸
+                  重新加载我家图纸
                 </button>
-              ) : null}
-              <small>
-                {local
-                  ? "DWG 在本机转换 · DXF 在浏览器读取"
-                  : "DXF 在当前浏览器读取，不上传文件"}
-                <br />
-                也可以将图纸拖到这里
-              </small>
-            </div>
-          ) : null}
-          {busy ? (
-            <div className="cad-loading-overlay" role="status">
-              <span className="cad-spinner" />
-              <strong>{phase}</strong>
-              <span>保留图层与原始绘图坐标</span>
-            </div>
-          ) : null}
-          {error ? (
-            <div className="cad-error" role="alert">
-              <Icon name="info" size={18} />
-              <span>{error}</span>
-              <button
-                className="icon-button"
-                aria-label="关闭错误提示"
-                onClick={() => setError("")}
-              >
-                <Icon name="close" size={16} />
-              </button>
-            </div>
-          ) : null}
-          {loaded ? (
-            <>
-              <div className="camera-tools cad-camera-tools">
-                <button aria-label="放大图纸" onClick={() => zoom(1.5)}>
-                  <Icon name="plus" />
+                <button
+                  className="primary-button"
+                  onClick={() => input.current?.click()}
+                >
+                  选择 {local ? "DWG / DXF" : "DXF"} 文件
                 </button>
-                <button aria-label="缩小图纸" onClick={() => zoom(1 / 1.5)}>
-                  <Icon name="minus" />
-                </button>
-                <button aria-label="适合窗口" onClick={fit}>
-                  <Icon name="reset" />
+                {local ? (
+                  <button
+                    className="cad-reference"
+                    onClick={() => void openReference()}
+                  >
+                    打开本机已解析的图纸
+                  </button>
+                ) : null}
+                <small>
+                  {local
+                    ? "DWG 在本机转换 · DXF 在浏览器读取"
+                    : "DXF 在当前浏览器读取，不上传文件"}
+                  <br />
+                  也可以将图纸拖到这里
+                </small>
+              </div>
+            ) : null}
+            {busy ? (
+              <div className="cad-loading-overlay" role="status">
+                <span className="cad-spinner" />
+                <strong>{phase}</strong>
+                <span>保留图层与原始绘图坐标</span>
+              </div>
+            ) : null}
+            {error ? (
+              <div className="cad-error" role="alert">
+                <Icon name="info" size={18} />
+                <span>{error}</span>
+                <button
+                  className="icon-button"
+                  aria-label="关闭错误提示"
+                  onClick={() => setError("")}
+                >
+                  <Icon name="close" size={16} />
                 </button>
               </div>
-              <div className="cad-status">
-                <span>拖动平移 · 滚轮 / 双指缩放</span>
-                <span>模型空间 · 图纸单位需核对</span>
-              </div>
-            </>
-          ) : null}
-          {loaded ? (
-            <details className="cad-compatibility">
-              <summary>显示兼容性说明</summary>
-              <p>
-                {report?.unsupportedCount
-                  ? `转换器报告 ${report.unsupportedCount} 个未识别对象；部分内容可能缺失。`
-                  : homeDrawing
-                    ? "本页默认显示从 DWG 提取的 ZD11 图纸，原文件转换有 711 个未识别对象，不能保证全部符号完整。"
-                    : "当前使用通用字体显示标注。"}{" "}
-                线型、字体与部分标注样式可能与 CAD 原软件不同，请结合原图核对。
-              </p>
-              {warnings.map((warning) => (
-                <p key={warning}>{warning}</p>
-              ))}
-            </details>
-          ) : null}
+            ) : null}
+            {loaded ? (
+              <>
+                <div className="camera-tools cad-camera-tools">
+                  <button aria-label="放大图纸" onClick={() => zoom(1.5)}>
+                    <Icon name="plus" />
+                  </button>
+                  <button aria-label="缩小图纸" onClick={() => zoom(1 / 1.5)}>
+                    <Icon name="minus" />
+                  </button>
+                  <button aria-label="适合窗口" onClick={fit}>
+                    <Icon name="reset" />
+                  </button>
+                </div>
+                <div className="cad-status">
+                  <span>拖动平移 · 滚轮 / 双指缩放</span>
+                  <span>模型空间 · 图纸单位需核对</span>
+                </div>
+              </>
+            ) : null}
+            {loaded ? (
+              <details className="cad-compatibility">
+                <summary>显示兼容性说明</summary>
+                <p>
+                  {report?.unsupportedCount
+                    ? `转换器报告 ${report.unsupportedCount} 个未识别对象；部分内容可能缺失。`
+                    : homeDrawing
+                      ? "本页默认显示从 DWG 提取的 ZD11 图纸，原文件转换有 711 个未识别对象，不能保证全部符号完整。"
+                      : "当前使用通用字体显示标注。"}{" "}
+                  线型、字体与部分标注样式可能与 CAD
+                  原软件不同，请结合原图核对。
+                </p>
+                {warnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+              </details>
+            ) : null}
+          </div>
         </section>
       </main>
     </div>
