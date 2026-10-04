@@ -15,8 +15,10 @@ import {
 import type { Point } from "./plan";
 import { splitWall } from "./geometry";
 import { SelectionGesture } from "./SelectionGesture";
+import { HomeFixtures } from "./HomeFixtures";
+import type { FixtureOptions } from "./HomeFixtures";
 
-export type ViewOptions = {
+export type ViewOptions = FixtureOptions & {
   view: "perspective" | "plan";
   cutaway: boolean;
   wallHeight: number;
@@ -35,6 +37,7 @@ export class HomeScene {
   private architecture = new THREE.Group();
   private labelGroup = new THREE.Group();
   private dimensions = new THREE.Group();
+  private fixtures = new HomeFixtures();
   private floors: THREE.Mesh<
     THREE.ExtrudeGeometry,
     THREE.MeshStandardMaterial
@@ -150,7 +153,7 @@ export class HomeScene {
     this.grid = new THREE.GridHelper(100, 100, 0xc5cfce, 0xd4dcdb);
     this.grid.position.y = -0.18;
     this.scene.add(this.grid);
-    this.scene.add(this.architecture, this.labelGroup, this.dimensions);
+    this.scene.add(this.architecture, this.labelGroup, this.dimensions, this.fixtures.group);
     this.buildFloors(concrete);
     this.buildDimensions();
     this.buildWalls();
@@ -454,6 +457,7 @@ export class HomeScene {
   }
 
   private applyVisibility() {
+    this.fixtures.update(this.options);
     this.labelGroup.visible = this.options.labels;
     this.dimensions.visible = this.options.dimensions;
     this.grid.visible = this.options.grid;
@@ -574,7 +578,7 @@ export class HomeScene {
     this.raycaster.setFromCamera(mouse, this.camera);
     // Include walls so a click on a wall cannot select an invisible floor behind it.
     const hits = this.raycaster.intersectObjects(
-      [...this.floors, this.architecture],
+      [...this.floors, this.architecture, ...this.fixtures.selectable],
       true,
     );
     const first = hits.find((hit) => hit.object instanceof THREE.Mesh);
@@ -615,6 +619,7 @@ export class HomeScene {
       if (object instanceof CSS2DObject) object.element.remove();
     });
     for (const material of this.materials) material.dispose();
+    this.fixtures.dispose();
     for (const texture of this.textures) texture.dispose();
     const gridMaterials = Array.isArray(this.grid.material)
       ? this.grid.material

@@ -5,6 +5,8 @@ import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
+import { livingLayouts } from "./model/arrangements";
+import type { LayoutPreview } from "./model/arrangements";
 
 function Toggle({
   label,
@@ -50,9 +52,13 @@ export default function HomeViewer({
   const [labels, setLabels] = useState(true);
   const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
+  const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
+  const [balconyRoofs, setBalconyRoofs] = useState(true);
+  const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const room = rooms.find((item) => item.id === selected);
+  const currentLayout = livingLayouts.find((item) => item.id === layout);
   const options = {
     selected,
     view,
@@ -61,6 +67,9 @@ export default function HomeViewer({
     labels,
     dimensions,
     grid,
+    layout,
+    balconyRoofs,
+    equipment,
   };
 
   return (
@@ -181,6 +190,10 @@ export default function HomeViewer({
               onChange={setDimensions}
             />
             <Toggle label="参考网格" checked={grid} onChange={setGrid} />
+            <Toggle label="阳台顶板" checked={balconyRoofs} onChange={setBalconyRoofs} />
+            <p className="setting-note">半高墙、俯视时顶板半透明，完整墙高时显示实体。</p>
+            <Toggle label="洗衣机 / 热水器位置" checked={equipment} onChange={setEquipment} />
+            <p className="setting-note">已确定放在生活阳台靠厨房侧，机型与安装尺寸待定。</p>
             <div className="height-control">
               <div>
                 <label htmlFor="wall-height">墙体高度</label>
@@ -208,7 +221,7 @@ export default function HomeViewer({
           <div className="sidebar-footer">
             <Icon name="layers" size={17} />
             <span>
-              图纸空间 + 现场外观参考<span>无家具 · 尺寸待现场复测</span>
+              图纸空间 + 现场外观参考<span>摆放为示意 · 尺寸待现场复测</span>
             </span>
           </div>
         </aside>
@@ -232,10 +245,30 @@ export default function HomeViewer({
                 俯视平面
               </button>
             </div>
-            <span className="view-caption">
-              D / {view === "plan" ? "俯视" : "鸟瞰"}
-            </span>
           </div>
+          <section className="layout-preview" aria-label="客厅摆放方案">
+            <div className="layout-preview-heading">
+              <span>客厅摆放</span><small>两个候选 · 尚未定案</small>
+            </div>
+            <div className="layout-switch" role="group" aria-label="切换客厅摆放">
+              <button aria-pressed={layout === "empty"} onClick={() => setLayout("empty")}>
+                只看毛坯
+              </button>
+              {livingLayouts.map((item) => (
+                <button
+                  key={item.id}
+                  aria-pressed={layout === item.id}
+                  aria-label={`${item.name}：${item.description}`}
+                  onClick={() => setLayout(item.id)}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+            <p aria-live="polite">
+              {currentLayout?.description ?? "选择一个方案，对比电视和沙发的朝向"}
+            </p>
+          </section>
           <ModelViewer options={options} onSelect={setSelected} />
           <div className="orientation-marker" aria-hidden="true">
             <span className="axis-y">Y</span>
@@ -355,20 +388,20 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>已参考</dt>
             <dd>
-              图纸中的房间关系、主要墙体、门窗位置与轴线尺寸；实拍中的白色墙面、深色窗框和阳台玻璃栏板。
+              图纸中的房间关系、主要墙体、门窗位置与轴线尺寸；实拍中的墙面、窗框和栏板。两个阳台有顶板，已由你确认。
             </dd>
           </div>
           <div>
             <dt>仍是估值</dt>
             <dd>
               墙厚默认 0.20 m，墙高默认 2.80
-              m；门窗高度、局部净尺寸、阳台栏杆与细部尚未实测。未还原局部飘窗和设备平台。
+              m；顶板厚度与高度、门窗高度、局部净尺寸和栏杆细部尚未实测。家具、电器是示意体量，未还原局部飘窗和设备平台。
             </dd>
           </div>
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内及两个阳台，不含家具、电梯及公共管井。墙面颜色与栏杆形式参考实拍，材质分界和构件尺寸仍为示意。房间命名不代表最终用途。
+              毛坯室内与两个阳台；客厅可切换你提出的两种电视、沙发布局，均为候选。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
             </dd>
           </div>
         </dl>

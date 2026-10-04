@@ -64,7 +64,7 @@ export const rooms: Room[] = [
       [2.6, 5.15],
       [0, 5.15],
     ],
-    description: "玄关、餐厅、客厅与卧室过道连通。前侧连接主阳台。",
+    description: "前侧连接主阳台。客厅保留两种电视、沙发相对摆法，可在上方切换对比。",
   },
   {
     id: "master",
@@ -114,7 +114,7 @@ export const rooms: Room[] = [
     kind: "kitchen",
     polygon: rect(0.6, 0, 2, 3.7),
     label: [1.6, 1.9],
-    description: "保留厨房边界；烟道细部尚未建模，未添加橱柜、电器或水槽。",
+    description: "厨房与生活阳台之间是实墙，没有连通门；厨房从餐厅一侧进入。橱柜和烟道细部未建模。",
   },
   {
     id: "bath",
@@ -139,7 +139,7 @@ export const rooms: Room[] = [
     kind: "balcony",
     polygon: rect(2.6, 8.65, 4.2, 1.2),
     label: [4.7, 9.25],
-    description: "连接客厅的前侧阳台。栏杆仅为体量示意，未建模封窗。",
+    description: "连接客厅，上方有顶板。半高墙与俯视时顶板半透明，完整墙高时显示实体；未建模封窗。",
   },
   {
     id: "utility",
@@ -148,7 +148,7 @@ export const rooms: Room[] = [
     kind: "balcony",
     polygon: rect(2.6, 0, 3.2, 1.2),
     label: [4.2, 0.6],
-    description: "位于厨房与餐厅旁。保留原图空间，未布置洗烘设备。",
+    description: "上方有顶板。洗衣机、热水器位于靠厨房一侧；与厨房之间无门。设备形状和安装高度仍为示意。",
   },
 ];
 
@@ -180,7 +180,8 @@ export const walls: Wall[] = [
     id: "kitchen-east",
     from: [2.6, 0],
     to: [2.6, 3.7],
-    openings: [door(0.18, 0.8), door(1.75, 1.2)],
+    // Owner confirmed no door between kitchen and utility balcony.
+    openings: [door(1.75, 1.2)],
   },
   { id: "entry-recess", from: [0, 3.7], to: [0.6, 3.7] },
   { id: "entry", from: [0, 3.7], to: [0, 5.15], openings: [door(0.13, 1.15)] },
