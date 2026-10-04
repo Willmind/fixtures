@@ -17,7 +17,6 @@ export type Room = {
 };
 export type Opening = {
   kind: "door" | "window";
-  glazed?: boolean;
   start: number;
   end: number;
   sill: number;
@@ -149,7 +148,7 @@ export const rooms: Room[] = [
     kind: "balcony",
     polygon: rect(2.6, 0, 3.2, 1.2),
     label: [4.2, 0.6],
-    description: "上方有顶板，通过落地推拉玻璃门连接餐厅，门洞两侧保留墙体。可独立对比保持原样与落地玻璃封窗。洗衣机、热水器靠厨房侧，与厨房之间无门；设备安装仍为示意。",
+    description: "上方有顶板，模型按与客餐厅敞开连接的方案展示。外侧可独立对比保持原样与落地玻璃封窗。洗衣机、热水器靠厨房侧，与厨房之间无门；设备安装仍为示意。",
   },
 ];
 
@@ -206,14 +205,8 @@ export const walls: Wall[] = [
     to: [6.8, 8.65],
     openings: [door(0.6, 2.8)],
   },
-  {
-    id: "living-north",
-    from: [2.6, 1.2],
-    to: [5.8, 1.2],
-    // Dining photo shows a floor-level sliding glass door with walls on both
-    // sides, not a window sill plus a separate door. Dimensions are schematic.
-    openings: [{ ...door(0.7, 1.8), glazed: true }],
-  },
+  // Owner-requested open connection between the utility balcony and dining
+  // area: omit the entire divider, including its glazing and side wall pieces.
   { id: "bath-west", from: [5.8, 1.2], to: [5.8, 4.25] },
   { id: "bath-east", from: [7.6, 1.2], to: [7.6, 4.25] },
   {
