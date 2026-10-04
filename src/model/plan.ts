@@ -139,7 +139,7 @@ export const rooms: Room[] = [
     kind: "balcony",
     polygon: rect(2.6, 8.65, 4.2, 1.2),
     label: [4.7, 9.25],
-    description: "连接客厅，上方有顶板。半高墙与俯视时顶板半透明，完整墙高时显示实体；未建模封窗。",
+    description: "连接客厅，上方有顶板。可独立对比保持原样与封窗；封窗的窗型、分格和开启方式尚未确定。",
   },
   {
     id: "utility",
@@ -148,7 +148,7 @@ export const rooms: Room[] = [
     kind: "balcony",
     polygon: rect(2.6, 0, 3.2, 1.2),
     label: [4.2, 0.6],
-    description: "上方有顶板。洗衣机、热水器位于靠厨房一侧；与厨房之间无门。设备形状和安装高度仍为示意。",
+    description: "上方有顶板，可独立对比保持原样与封窗。洗衣机、热水器靠厨房侧，与厨房之间无门；设备安装仍为示意。",
   },
 ];
 
@@ -286,12 +286,12 @@ export const walls: Wall[] = [
   },
 ];
 
-export const railings: { from: Point; to: Point }[] = [
-  { from: [2.6, 8.65], to: [2.6, 9.85] },
-  { from: [2.6, 9.85], to: [6.8, 9.85] },
-  { from: [6.8, 9.85], to: [6.8, 8.65] },
-  { from: [2.6, 0], to: [5.8, 0] },
-  { from: [5.8, 0], to: [5.8, 1.2] },
+export const railings: { roomId: "balcony" | "utility"; from: Point; to: Point }[] = [
+  { roomId: "balcony", from: [2.6, 8.65], to: [2.6, 9.85] },
+  { roomId: "balcony", from: [2.6, 9.85], to: [6.8, 9.85] },
+  { roomId: "balcony", from: [6.8, 9.85], to: [6.8, 8.65] },
+  { roomId: "utility", from: [2.6, 0], to: [5.8, 0] },
+  { roomId: "utility", from: [5.8, 0], to: [5.8, 1.2] },
 ];
 
 export const dimensionLines = [

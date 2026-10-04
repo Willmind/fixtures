@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { balconyRoofs, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
+import { balconyRoofs, balconyWindowRuns, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
 import { rooms, walls } from "./plan.ts";
 
 test("两种方案交换电视和沙发的墙侧，并保持相向且不堵阳台通道", () => {
@@ -19,6 +19,22 @@ test("两种方案交换电视和沙发的墙侧，并保持相向且不堵阳�
       assert.ok(object.center[1] + size.width / 2 < 8.15);
     }
   }
+});
+
+test("封窗只覆盖阳台开敞外沿，不封住室内入口或厨房侧墙", () => {
+  const main = balconyWindowRuns.filter((run) => run.roomId === "balcony");
+  const utility = balconyWindowRuns.filter((run) => run.roomId === "utility");
+  assert.equal(main.length, 3);
+  assert.equal(utility.length, 2);
+  for (const run of [...main, ...utility]) {
+    assert.ok(run.length > 0);
+    // Transforming a frame's local endpoint must land on its real world edge.
+    assert.ok(Math.abs(run.from[0] + Math.cos(run.rotation) * run.length - run.to[0]) < 1e-9);
+    assert.ok(Math.abs(run.from[1] - Math.sin(run.rotation) * run.length - run.to[1]) < 1e-9);
+  }
+  assert.ok(main.every((run) => !(run.from[1] === 8.65 && run.to[1] === 8.65)));
+  assert.ok(utility.every((run) => !(run.from[1] === 1.2 && run.to[1] === 1.2)));
+  assert.ok(utility.every((run) => !(run.from[0] === 2.6 && run.to[0] === 2.6)));
 });
 
 test("两块顶板覆盖对应阳台，厨房侧保留实墙和餐厅入口", () => {

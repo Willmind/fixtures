@@ -1,4 +1,4 @@
-import { rooms } from "./plan.ts";
+import { railings, rooms } from "./plan.ts";
 import type { Point } from "./plan.ts";
 
 export const livingLayouts = [
@@ -19,6 +19,29 @@ export const livingLayouts = [
 ] as const;
 export type LivingLayout = (typeof livingLayouts)[number]["id"];
 export type LayoutPreview = LivingLayout | "empty";
+
+export const balconyChoices = [
+  { id: "balcony", name: "主阳台" },
+  { id: "utility", name: "生活阳台" },
+] as const;
+export type BalconyId = (typeof balconyChoices)[number]["id"];
+export type BalconyMode = "original" | "enclosed";
+export type BalconyModes = Record<BalconyId, BalconyMode>;
+export const balconyModeLabels: Record<BalconyMode, string> = {
+  original: "保持原样",
+  enclosed: "封窗",
+};
+
+// Add glazing only along the existing exterior railings, never across doors or
+// the shared kitchen wall. Keep the original rails in either preview mode.
+export const balconyWindowSill = 1.1;
+export const balconyWindowRuns = railings.map(({ roomId, from, to }) => ({
+  roomId,
+  from,
+  to,
+  length: Math.hypot(to[0] - from[0], to[1] - from[1]),
+  rotation: -Math.atan2(to[1] - from[1], to[0] - from[0]),
+}));
 
 // These are illustrative envelopes, not chosen products or surveyed dimensions.
 export const furnitureSize = {

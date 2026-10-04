@@ -5,16 +5,20 @@ import { modelCenter } from "./plan";
 import type { Point } from "./plan";
 import {
   balconyRoofs,
+  balconyChoices,
+  balconyWindowRuns,
+  balconyWindowSill,
   furnitureSize,
   livingLayouts,
   livingPlacement,
   utilityEquipment,
 } from "./arrangements";
-import type { LayoutPreview } from "./arrangements";
+import type { BalconyId, BalconyModes, LayoutPreview } from "./arrangements";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
   balconyRoofs: boolean;
+  balconyModes: BalconyModes;
   equipment: boolean;
   cutaway: boolean;
   view: "perspective" | "plan";
@@ -28,6 +32,7 @@ export class HomeFixtures {
   private roofs = new THREE.Group();
   private equipment = new THREE.Group();
   private layouts = new Map<LayoutPreview, THREE.Group>();
+  private enclosures = new Map<BalconyId, THREE.Group>();
   private labels: CSS2DObject[] = [];
   private equipmentLabels: CSS2DObject[] = [];
   private equipmentPlanLabel?: CSS2DObject;
@@ -38,11 +43,17 @@ export class HomeFixtures {
   private cushionMaterial = this.material({ color: "#a5b4aa", roughness: 1 });
   private whiteMaterial = this.material({ color: "#eeeae2", roughness: 0.7 });
   private darkMaterial = this.material({ color: "#38434a", roughness: 0.45 });
+  private windowFrameMaterial = this.material({ color: "#46565b", roughness: 0.6, metalness: 0.25 });
+  private windowGlassMaterial = this.material({
+    color: "#a8c5cf", roughness: 0.2, transparent: true, opacity: 0.24,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
 
   constructor() {
     this.group.name = "balcony-roofs-and-layout-previews";
     this.group.add(this.roofs, this.equipment);
     this.buildRoofs();
+    this.buildEnclosures();
     for (const layout of livingLayouts) {
       const group = new THREE.Group();
       group.name = layout.id;
@@ -131,6 +142,37 @@ export class HomeFixtures {
     this.box(group, [0.5, 0.025, 0.18], [0, 0.44, -0.02], this.darkMaterial);
   }
 
+  private buildEnclosures() {
+    for (const balcony of balconyChoices) {
+      const group = new THREE.Group();
+      group.name = `${balcony.id}-enclosure-preview`;
+      group.position.y = balconyWindowSill;
+      this.group.add(group);
+      this.enclosures.set(balcony.id, group);
+      for (const run of balconyWindowRuns.filter((item) => item.roomId === balcony.id)) {
+        const frame = this.at(group, run.from, run.rotation);
+        // Unit-height frames scale up to the roof without rebuilding geometry.
+        for (const y of [0.015, 0.985]) {
+          this.box(frame, [run.length, 0.03, 0.065],
+            [run.length / 2, y, 0], this.windowFrameMaterial);
+        }
+        const panels = Math.ceil(run.length / 1.05);
+        const panelWidth = run.length / panels;
+        for (let index = 0; index <= panels; index++) {
+          this.box(frame, [0.045, 1, 0.065],
+            [index * panelWidth, 0.5, 0], this.windowFrameMaterial);
+          if (index === panels) continue;
+          const pane = new THREE.Mesh(
+            new THREE.PlaneGeometry(panelWidth - 0.045, 0.94), this.windowGlassMaterial,
+          );
+          pane.position.set((index + 0.5) * panelWidth, 0.5, 0);
+          frame.add(pane);
+        }
+      }
+      this.tagRoom(group, balcony.id);
+    }
+  }
+
   private buildSofa(group: THREE.Group) {
     const { width, depth, height } = furnitureSize.sofa;
     this.box(group, [width, 0.25, depth], [0, 0.23, 0], this.sofaMaterial, 0.07);
@@ -172,6 +214,10 @@ export class HomeFixtures {
     this.equipment.visible = options.equipment;
     this.roofs.visible = options.balconyRoofs;
     this.roofs.position.y = options.wallHeight;
+    for (const [id, group] of this.enclosures) {
+      group.visible = options.balconyModes[id] === "enclosed";
+      group.scale.y = options.wallHeight - balconyWindowSill;
+    }
     const transparent = options.cutaway || options.view === "plan";
     const materialChanged = this.roofMaterial.transparent !== transparent;
     this.roofMaterial.transparent = transparent;
@@ -192,7 +238,8 @@ export class HomeFixtures {
 
   get selectable() {
     // Raycaster does not skip invisible parents: only send displayed variants.
-    return [this.roofs, this.equipment, ...this.layouts.values()].filter((group) => group.visible);
+    return [this.roofs, this.equipment, ...this.layouts.values(), ...this.enclosures.values()]
+      .filter((group) => group.visible);
   }
 
   dispose() {

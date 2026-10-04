@@ -5,8 +5,8 @@ import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
-import { livingLayouts } from "./model/arrangements";
-import type { LayoutPreview } from "./model/arrangements";
+import { balconyChoices, balconyModeLabels, livingLayouts } from "./model/arrangements";
+import type { BalconyModes, LayoutPreview } from "./model/arrangements";
 
 function Toggle({
   label,
@@ -54,11 +54,14 @@ export default function HomeViewer({
   const [grid, setGrid] = useState(true);
   const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
   const [balconyRoofs, setBalconyRoofs] = useState(true);
+  const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "original" });
+  const [previewTab, setPreviewTab] = useState<"living" | "balconies">("balconies");
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const room = rooms.find((item) => item.id === selected);
   const currentLayout = livingLayouts.find((item) => item.id === layout);
+  const selectedBalcony = balconyChoices.find((item) => item.id === selected);
   const options = {
     selected,
     view,
@@ -69,6 +72,7 @@ export default function HomeViewer({
     grid,
     layout,
     balconyRoofs,
+    balconyModes,
     equipment,
   };
 
@@ -246,28 +250,60 @@ export default function HomeViewer({
               </button>
             </div>
           </div>
-          <section className="layout-preview" aria-label="客厅摆放方案">
+          <section className="layout-preview" aria-label="空间方案对比">
             <div className="layout-preview-heading">
-              <span>客厅摆放</span><small>两个候选 · 尚未定案</small>
-            </div>
-            <div className="layout-switch" role="group" aria-label="切换客厅摆放">
-              <button aria-pressed={layout === "empty"} onClick={() => setLayout("empty")}>
-                只看毛坯
-              </button>
-              {livingLayouts.map((item) => (
-                <button
-                  key={item.id}
-                  aria-pressed={layout === item.id}
-                  aria-label={`${item.name}：${item.description}`}
-                  onClick={() => setLayout(item.id)}
-                >
-                  {item.name}
+              <div className="preview-tabs" role="group" aria-label="选择对比内容">
+                <button aria-pressed={previewTab === "living"} onClick={() => setPreviewTab("living")}>
+                  客厅摆放
                 </button>
-              ))}
+                <button aria-pressed={previewTab === "balconies"} onClick={() => setPreviewTab("balconies")}>
+                  阳台封窗
+                </button>
+              </div>
+              <small>仅预览 · 尚未定案</small>
             </div>
-            <p aria-live="polite">
-              {currentLayout?.description ?? "选择一个方案，对比电视和沙发的朝向"}
-            </p>
+            {previewTab === "living" ? <>
+              <div className="layout-switch" role="group" aria-label="切换客厅摆放">
+                <button aria-pressed={layout === "empty"} onClick={() => setLayout("empty")}>
+                  只看毛坯
+                </button>
+                {livingLayouts.map((item) => (
+                  <button
+                    key={item.id}
+                    aria-pressed={layout === item.id}
+                    aria-label={`${item.name}：${item.description}`}
+                    onClick={() => setLayout(item.id)}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+              <p aria-live="polite">
+                {currentLayout?.description ?? "选择一个方案，对比电视和沙发的朝向"}
+              </p>
+            </> : <>
+              {balconyChoices.map((item) => (
+                <div className="balcony-option-row" key={item.id}>
+                  <span>{item.name}</span>
+                  <div className="layout-switch balcony-switch" role="group" aria-label={`${item.name}方案`}>
+                    {(["original", "enclosed"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        aria-label={`${item.name}：${balconyModeLabels[mode]}`}
+                        aria-pressed={balconyModes[item.id] === mode}
+                        onClick={() => setBalconyModes((current) => ({ ...current, [item.id]: mode }))}
+                      >
+                        {balconyModeLabels[mode]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <p className="balcony-preview-summary" aria-live="polite">
+                主阳台：{balconyModeLabels[balconyModes.balcony]} · 生活阳台：{balconyModeLabels[balconyModes.utility]}
+              </p>
+              <p className="balcony-preview-note">封窗保留现有栏杆，窗型与开启方式待定。</p>
+            </>}
           </section>
           <ModelViewer options={options} onSelect={setSelected} />
           <div className="orientation-marker" aria-hidden="true">
@@ -286,6 +322,9 @@ export default function HomeViewer({
                 <span className="detail-eyebrow">已选择空间</span>
                 <h2>{room.name}</h2>
                 <p>{room.description}</p>
+                {selectedBalcony ? (
+                  <p className="room-option-summary">当前预览：{balconyModeLabels[balconyModes[selectedBalcony.id]]}</p>
+                ) : null}
                 <button
                   className="model-visit-link"
                   onClick={() => onVisit(room.id)}
@@ -401,7 +440,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内与两个阳台；客厅可切换你提出的两种电视、沙发布局，均为候选。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
+              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局。两个阳台各自对比保持原样和封窗，默认原样；封窗预览保留栏杆，窗型、分格与开启方式均待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
             </dd>
           </div>
         </dl>
