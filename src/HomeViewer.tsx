@@ -48,7 +48,7 @@ export default function HomeViewer({
   const [cutaway, setCutaway] = useState(true);
   const [wallHeight, setWallHeight] = useState<number>(defaults.wallHeight);
   const [labels, setLabels] = useState(true);
-  const [dimensions, setDimensions] = useState(false);
+  const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
