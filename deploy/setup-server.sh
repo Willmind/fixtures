@@ -10,7 +10,7 @@ site_root=/var/www/fixtures-home
 state_dir=/var/lib/fixtures-home-deploy
 deploy_user=fixtures-deploy
 
-for command in python3 git curl nginx systemctl useradd runuser; do
+for command in python3 curl nginx systemctl useradd runuser; do
   command -v "$command" >/dev/null || fail "缺少 $command，请先安装后再执行。"
 done
 for file in pull-site.py fixtures-home-deploy.service fixtures-home-deploy.timer; do
@@ -20,9 +20,14 @@ done
 nginx -t
 systemctl is-active --quiet nginx || fail 'Nginx 未运行。'
 # 在改动系统前确认公开产物分支可访问。
-GIT_TERMINAL_PROMPT=0 timeout 45 git ls-remote --exit-code \
-  https://github.com/Willmind/fixtures.git refs/heads/codex/site-dist >/dev/null \
+python3 - "$bundle/pull-site.py" <<'PY' \
   || fail '暂时无法读取 GitHub 的构建产物，请稍后重试。'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('fixtures_preflight', sys.argv[1])
+deploy = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(deploy)
+deploy.published_revision()
+PY
 
 python3 - "$site_config" <<'PY'
 from pathlib import Path

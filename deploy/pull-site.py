@@ -15,32 +15,39 @@ import time
 
 ROOT = Path('/var/www/fixtures-home')
 STATE = Path('/var/lib/fixtures-home-deploy')
-REMOTE = 'https://github.com/Willmind/fixtures.git'
 BRANCH = 'refs/heads/codex/site-dist'
+REFERENCE_URL = 'https://api.github.com/repos/Willmind/fixtures/git/ref/heads/codex/site-dist'
+ARCHIVE_URL = 'https://codeload.github.com/Willmind/fixtures/tar.gz/'
 MAX_SIZE = 50 * 1024 * 1024
 
 
 def run(*args, timeout=90):
-    return subprocess.check_output(args, timeout=timeout, env={
-        **os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GIT_CONFIG_NOSYSTEM': '1',
-    }).decode().strip()
+    return subprocess.check_output(args, timeout=timeout).decode().strip()
 
 
-def extract_site(stream, target):
+def extract_site(stream, target, prefix=None):
     """逐项复制普通文件，禁止归档路径穿越、链接和异常体积。"""
     total = 0
     count = 0
     with tarfile.open(fileobj=stream, mode='r|*') as archive:
         for member in archive:
             count += 1
+            total += member.size
+            if count > 2000 or total > MAX_SIZE:
+                raise ValueError('产物超过大小限制')
             path = PurePosixPath(member.name)
             if path.is_absolute() or '..' in path.parts or any(p.startswith('.') for p in path.parts):
                 raise ValueError('产物包含不允许的路径')
             if not (member.isdir() or member.isfile()):
                 raise ValueError('产物只能包含普通文件和目录')
-            total += member.size
-            if count > 2000 or total > MAX_SIZE:
-                raise ValueError('产物超过大小限制')
+            if prefix is not None:
+                if not path.parts or path.parts[0] != prefix:
+                    raise ValueError('归档目录与指定产物版本不匹配')
+                if len(path.parts) == 1:
+                    if not member.isdir():
+                        raise ValueError('归档顶层必须是目录')
+                    continue
+                path = PurePosixPath(*path.parts[1:])
             destination = target.joinpath(*path.parts)
             if member.isdir():
                 destination.mkdir(parents=True, exist_ok=True)
@@ -112,7 +119,7 @@ def prune(root, keep=5):
             shutil.rmtree(release)
 
 
-def deploy_archive(root, revision, stream, check=healthy):
+def deploy_archive(root, revision, stream, check=healthy, archive_prefix=None):
     if not re.fullmatch(r'[0-9a-f]{40}', revision):
         raise ValueError('无效的产物版本')
     root = root.resolve()
@@ -122,7 +129,7 @@ def deploy_archive(root, revision, stream, check=healthy):
         return False
     with tempfile.TemporaryDirectory(prefix='.incoming-', dir=releases) as temporary:
         staging = Path(temporary)
-        metadata = extract_site(stream, staging)
+        metadata = extract_site(stream, staging, prefix=archive_prefix)
         staging.chmod(0o755)
         created = not release.exists()
         if created:
@@ -140,6 +147,42 @@ def deploy_archive(root, revision, stream, check=healthy):
     return True
 
 
+def published_revision():
+    response = json.loads(run(
+        'curl', '--fail', '--silent', '--show-error', '--proto', '=https',
+        '--connect-timeout', '10', '--max-time', '20',
+        '--header', 'Accept: application/vnd.github+json', REFERENCE_URL, timeout=25,
+    ))
+    if not isinstance(response, dict) or not isinstance(response.get('object'), dict):
+        raise ValueError('GitHub 未返回有效的产物分支版本')
+    commit = response['object']
+    revision = commit.get('sha', '')
+    if (response.get('ref') != BRANCH or commit.get('type') != 'commit'
+            or not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision)):
+        raise ValueError('GitHub 未返回有效的产物分支版本')
+    return revision
+
+
+def pull_latest(root, check=healthy):
+    revision = published_revision()
+    if (root / 'current').resolve().name == revision:
+        print('线上版本已是最新', flush=True)
+        return False
+    # Stateless, commit-pinned downloads avoid a damaged Git cache or stale locks.
+    # A failed download is discarded; the next timer run retries from a fresh file.
+    with tempfile.TemporaryDirectory(prefix='fixtures-download-') as directory:
+        archive = Path(directory) / 'site.tar.gz'
+        run('curl', '--fail', '--silent', '--show-error', '--proto', '=https',
+            '--connect-timeout', '10', '--max-time', '120',
+            '--speed-limit', '100', '--speed-time', '30',
+            '--max-filesize', str(MAX_SIZE), '--output', str(archive),
+            ARCHIVE_URL + revision, timeout=130)
+        if archive.stat().st_size > MAX_SIZE:
+            raise ValueError('归档超过大小限制')
+        with archive.open('rb') as stream:
+            return deploy_archive(root, revision, stream, check=check, archive_prefix='fixtures-' + revision)
+
+
 def main():
     os.umask(0o022)
     def interrupted(signum, frame):
@@ -154,23 +197,7 @@ def main():
             return
         if sys.argv[1:]:
             raise ValueError('不支持的参数')
-        repository = STATE / 'repo.git'
-        if not repository.exists():
-            run('git', 'init', '--bare', '--quiet', str(repository))
-        git = ('git', '--git-dir=' + str(repository))
-        run(*git, '-c', 'http.lowSpeedLimit=100', '-c', 'http.lowSpeedTime=30',
-            'fetch', '--quiet', '--depth=1', '--no-tags', REMOTE, '+' + BRANCH + ':refs/heads/site')
-        revision = run(*git, 'rev-parse', 'refs/heads/site')
-        if (ROOT / 'current').resolve().name == revision:
-            print('线上版本已是最新', flush=True)
-            return
-        with tempfile.TemporaryFile() as archive:
-            subprocess.run((*git, 'archive', '--format=tar', revision), stdout=archive,
-                           check=True, timeout=30)
-            if archive.tell() > MAX_SIZE:
-                raise ValueError('归档超过大小限制')
-            archive.seek(0)
-            deploy_archive(ROOT, revision, archive)
+        pull_latest(ROOT)
 
 
 if __name__ == '__main__':
