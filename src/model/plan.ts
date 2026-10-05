@@ -64,7 +64,7 @@ export const rooms: Room[] = [
       [2.6, 5.15],
       [0, 5.15],
     ],
-    description: "前侧连接主阳台。客厅保留两种电视、沙发相对摆法，可在上方切换对比。",
+    description: "前侧连接主阳台。客厅保留两种电视、沙发相对摆法，餐厅暂放一张四人餐桌和四把椅子。",
   },
   {
     id: "master",
@@ -80,7 +80,7 @@ export const rooms: Room[] = [
       [10.2, 4.25],
       [12, 4.25],
     ],
-    description: "保留原图右侧的主卧套间布局，内侧连接独立卫生间。",
+    description: "保留原图右侧的主卧套间布局，内侧连接独立卫生间。暂放一张 1.8 m 宽的床，位置与尺寸可再调整。",
   },
   {
     id: "parents",
@@ -89,7 +89,7 @@ export const rooms: Room[] = [
     kind: "bedroom",
     polygon: rect(6.8, 5.15, 3.4, 3.5),
     label: [8.5, 6.9],
-    description: "原图标注「女孩房」。仅按原始空间建模，使用用途尚未确定。",
+    description: "原图标注「女孩房」。暂放一张 1.5 m 宽的床，使用用途与最终摆放尚未确定。",
   },
   {
     id: "study",
@@ -98,7 +98,7 @@ export const rooms: Room[] = [
     kind: "bedroom",
     polygon: rect(7.6, 1.2, 2.6, 3.05),
     label: [8.9, 2.8],
-    description: "原图标注「男孩房」。可作为书房的候选空间，模型未修改墙体。",
+    description: "原图标注「男孩房」。暂放一张 1.2 m 宽的床，仍保留作为书房的候选，模型未修改墙体。",
   },
   {
     id: "guest",
@@ -114,7 +114,7 @@ export const rooms: Room[] = [
     kind: "kitchen",
     polygon: rect(0.6, 0, 2, 3.7),
     label: [1.6, 1.9],
-    description: "厨房与生活阳台之间是实墙，没有连通门；厨房从餐厅一侧进入。橱柜和烟道细部未建模。",
+    description: "厨房从餐厅一侧进入，与生活阳台之间无门。暂放抽油烟机和紧凑岛台；岛台通行尺寸、烟道位置待复测。",
   },
   {
     id: "bath",
@@ -122,7 +122,7 @@ export const rooms: Room[] = [
     kind: "bathroom",
     polygon: rect(5.8, 1.2, 1.8, 3.05),
     label: [6.7, 2.8],
-    description: "由公共过道进入，空房示意。排水点位尚未依据现场核实。",
+    description: "由公共过道进入，暂放一个马桶。摆放仅为示意，排水点位尚未依据现场核实。",
   },
   {
     id: "ensuite",
@@ -130,7 +130,7 @@ export const rooms: Room[] = [
     kind: "bathroom",
     polygon: rect(10.2, 1.2, 1.8, 3.05),
     label: [11.1, 2.8],
-    description: "主卧内的独立卫生间，不含洁具或淋浴隔断。",
+    description: "主卧内的独立卫生间，暂放一个马桶；排水点位待核实，未加入淋浴隔断。",
   },
   {
     id: "balcony",

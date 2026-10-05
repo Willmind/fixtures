@@ -99,3 +99,33 @@ export const utilityEquipment = {
   washer: { center: [3.05, 0.6] as Point, rotation: Math.PI / 2 },
   heater: { center: [2.89, 0.6] as Point, rotation: Math.PI / 2 },
 };
+
+// Temporary furniture footprints, measured in metres. Positions follow the
+// simplified room polygons; products, service points and clearances are not final.
+export const bedroomBeds = [
+  { roomId: "master", center: [11.45, 6.85] as Point, rotation: Math.PI / 2, width: 1.8 },
+  { roomId: "parents", center: [8.94, 6.82] as Point, rotation: -Math.PI / 2, width: 1.5 },
+  { roomId: "study", center: [8.42, 2.47] as Point, rotation: 0, width: 1.2 },
+] as const;
+
+export const bathroomToilets = [
+  { roomId: "bath", center: [6.7, 1.75] as Point },
+  { roomId: "ensuite", center: [11.1, 1.75] as Point },
+] as const;
+
+export const kitchenFurniture = {
+  hood: { center: [0.97, 0.95] as Point, rotation: Math.PI / 2 },
+  island: { center: [1.6, 2.8] as Point, width: 0.55, depth: 1.0 },
+};
+
+export const diningFurniture = {
+  center: [4.25, 2.65] as Point,
+  width: 1.35,
+  depth: 0.8,
+  chairs: [
+    { x: -0.37, z: -0.74, rotation: 0 },
+    { x: 0.37, z: -0.74, rotation: 0 },
+    { x: -0.37, z: 0.74, rotation: Math.PI },
+    { x: 0.37, z: 0.74, rotation: Math.PI },
+  ],
+};
