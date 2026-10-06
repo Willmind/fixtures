@@ -505,7 +505,7 @@ export class HomeScene {
     this.controls.touches.ONE = plan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     this.renderer.domElement.setAttribute(
       "aria-label",
-      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间`,
+      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击窗帘切换开合`,
     );
     this.camera.lookAt(0, 0, 0);
     this.camera.updateProjectionMatrix();
@@ -544,12 +544,14 @@ export class HomeScene {
     this.frame = requestAnimationFrame(this.render);
   };
 
-  private render = () => {
+  private render = (now: number) => {
     this.frame = 0;
     if (this.disposed) return;
     this.controls.update();
+    const curtainsMoving = this.fixtures.animateCurtains(now);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
+    if (curtainsMoving) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -586,7 +588,18 @@ export class HomeScene {
       [...this.floors, ...architecture, ...this.fixtures.selectable],
       false,
     );
-    const first = hits.find((hit) => hit.object instanceof THREE.Mesh);
+    // Transparent glazing must not intercept a tap on the curtain visible behind
+    // it. Solid walls, window frames and furniture still block the hit normally.
+    const first = hits.find(({ object }) => {
+      if (!(object instanceof THREE.Mesh)) return false;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      return materials.some((material) => !material.transparent || material.opacity >= 0.5 || material.depthWrite);
+    });
+    if (first && this.fixtures.toggleCurtain(first.object, performance.now(),
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+      this.requestRender();
+      return;
+    }
     this.onSelect(first?.object.userData.roomId ?? null);
   };
 

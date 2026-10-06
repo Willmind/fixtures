@@ -24,7 +24,7 @@ import {
 import type { BalconyId, BalconyModes, LayoutPreview } from "./arrangements";
 import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
 import type { BoxPart, TelevisionMount } from "./furniture";
-import { createCurtainPanel, createCurtainWeave } from "./curtains";
+import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -45,7 +45,12 @@ export class HomeFixtures {
   private equipment = new THREE.Group();
   private furnishings = new THREE.Group();
   private hoodChimney?: THREE.Mesh;
-  private curtains: THREE.Group[] = [];
+  private curtains: {
+    group: THREE.Group;
+    panels: THREE.Mesh[];
+    hooks: { mesh: THREE.Mesh; openX: number; closedX: number }[];
+    transition: CurtainTransition;
+  }[] = [];
   private airConditioners: { unit: THREE.Group; backdrop: THREE.Mesh }[] = [];
   private layouts = new Map<LayoutPreview, THREE.Group>();
   private enclosures = new Map<BalconyId, THREE.Group>();
@@ -380,28 +385,57 @@ export class HomeFixtures {
     for (const placement of roomCurtains) {
       const group = this.at(this.furnishings, placement.center);
       group.name = `${placement.roomId}-curtains`;
-      this.curtains.push(group);
+      const state = { group, panels: [] as THREE.Mesh[],
+        hooks: [] as { mesh: THREE.Mesh; openX: number; closedX: number }[],
+        transition: new CurtainTransition() };
+      const curtainIndex = this.curtains.length;
+      this.curtains.push(state);
       this.box(group, [placement.width + 0.1, 0.014, 0.07], [0, 1.017, 0], this.whiteMaterial, 0.005);
       const panelWidth = Math.min(0.64, placement.width * 0.25);
       for (const side of [-1, 1]) {
-        const geometry = createCurtainPanel(panelWidth, side);
+        const geometry = createSlidingCurtainPanel(placement.width, side);
         const curtain = new THREE.Mesh(geometry, this.curtainMaterial);
         const centerX = side * (placement.width - panelWidth) / 2;
-        curtain.position.x = centerX;
         curtain.castShadow = true;
         curtain.receiveShadow = true;
         group.add(curtain);
+        state.panels.push(curtain);
         const hooks = Math.max(4, Math.round(panelWidth / 0.105));
         for (let index = 0; index <= hooks; index++) {
           const hook = new THREE.Mesh(new THREE.TorusGeometry(0.011, 0.0025, 5, 12), this.whiteMaterial);
           hook.rotation.y = Math.PI / 2;
-          hook.position.set(centerX + (index / hooks - 0.5) * panelWidth * 0.84 + side * panelWidth * 0.08,
-            1.004, 0.017);
+          const openX = centerX + (index / hooks - 0.5) * panelWidth * 0.84 + side * panelWidth * 0.08;
+          const closedX = side * placement.width / 4 + (index / hooks - 0.5) * placement.width / 2;
+          hook.position.set(openX, 1.004, 0.017);
           group.add(hook);
+          state.hooks.push({ mesh: hook, openX, closedX });
         }
       }
       this.tagRoom(group, placement.roomId);
+      group.traverse((object) => {
+        if (object instanceof THREE.Mesh) object.userData.curtainIndex = curtainIndex;
+      });
     }
+  }
+
+  toggleCurtain(object: THREE.Object3D, now: number, reducedMotion: boolean) {
+    const index = object.userData.curtainIndex;
+    if (!Number.isInteger(index) || !this.furnishings.visible) return false;
+    const curtain = this.curtains[index];
+    if (!curtain) return false;
+    curtain.transition.toggle(now, reducedMotion);
+    return true;
+  }
+
+  animateCurtains(now: number) {
+    if (!this.furnishings.visible) return false;
+    let moving = false;
+    for (const { panels, hooks, transition } of this.curtains) {
+      moving = transition.advance(now) || moving;
+      for (const panel of panels) panel.morphTargetInfluences![0] = transition.value;
+      for (const hook of hooks) hook.mesh.position.x = THREE.MathUtils.lerp(hook.openX, hook.closedX, transition.value);
+    }
+    return moving;
   }
 
   private buildVanity(group: THREE.Group) {
@@ -713,7 +747,7 @@ export class HomeFixtures {
     }
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.furnishings.visible = options.layout !== "empty";
-    for (const curtain of this.curtains) curtain.scale.y = options.wallHeight - 0.12;
+    for (const { group } of this.curtains) group.scale.y = options.wallHeight - 0.12;
     for (const { unit, backdrop } of this.airConditioners) {
       unit.position.y = options.wallHeight - 0.35;
       const top = unit.position.y + 0.24;

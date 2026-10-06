@@ -149,6 +149,7 @@ export const diningFurniture = {
 };
 
 export const roomCurtains = [
+  { roomId: "guest", center: [1.3, 8.46] as Point, width: 2.15 },
   { roomId: "master", center: [11.9, 8.46] as Point, width: 2.15 },
   { roomId: "master", center: [12.8, 1.39] as Point, width: 1.3 },
   { roomId: "parents", center: [8.5, 8.46] as Point, width: 2.15 },

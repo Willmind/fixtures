@@ -2,22 +2,21 @@ import * as THREE from "three";
 
 /** A sewn panel: gathered at the heading, fuller and gently uneven at the hem.
  * Height stays normalized so it follows the model's adjustable ceiling. */
-export function createCurtainPanel(width: number, side: number) {
+export function createCurtainPanel(width: number, side: number, closed = false, folds = Math.max(4, Math.round(width / 0.105))) {
   const columns = 56, rows = 28;
   const stride = columns + 1;
   const faceSize = stride * (rows + 1);
   const positions: number[] = [], uvs: number[] = [], colors: number[] = [], indices: number[] = [];
-  const folds = Math.max(4, Math.round(width / 0.105));
 
   for (const face of [1, -1]) {
     for (let row = 0; row <= rows; row++) {
       const drop = row / rows;
-      const spread = 0.84 + 0.16 * Math.sin(drop * Math.PI / 2);
+      const spread = closed ? 1 : 0.84 + 0.16 * Math.sin(drop * Math.PI / 2);
       for (let column = 0; column <= columns; column++) {
         const u = column / columns;
         const phase = u * Math.PI * 2 * folds;
         const drift = Math.sin(drop * Math.PI) * (0.17 * Math.sin(u * 7 + side));
-        const amplitude = 0.031 + 0.014 * drop;
+        const amplitude = (closed ? 0.024 : 0.031) + 0.014 * drop;
         const fold = Math.cos(phase + drift) + 0.14 * Math.cos(phase * 2 + 0.4);
         // The outside edge stays by the jamb while the free edge opens out.
         const x = (u - 0.5) * width * spread + side * width * (1 - spread) / 2;
@@ -58,6 +57,47 @@ export function createCurtainPanel(width: number, side: number) {
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
+}
+
+/** Precompute both shapes once; the GPU unfolds them without rebuilding meshes. */
+export function createSlidingCurtainPanel(windowWidth: number, side: number) {
+  const openWidth = Math.min(0.64, windowWidth * 0.25);
+  const closedWidth = windowWidth / 2;
+  const folds = Math.max(4, Math.round(openWidth / 0.105));
+  const open = createCurtainPanel(openWidth, side, false, folds);
+  const closed = createCurtainPanel(closedWidth, side, true, folds);
+  open.translate(side * (windowWidth - openWidth) / 2, 0, 0);
+  closed.translate(side * (windowWidth - closedWidth) / 2, 0, 0);
+  open.morphAttributes.position = [closed.getAttribute("position")];
+  open.morphAttributes.normal = [closed.getAttribute("normal")];
+  open.computeBoundingBox();
+  open.computeBoundingSphere();
+  closed.dispose();
+  return open;
+}
+
+export class CurtainTransition {
+  value = 0;
+  closed = false;
+  private from = 0;
+  private startedAt = 0;
+  private duration = 0;
+
+  toggle(now: number, reducedMotion = false) {
+    this.advance(now);
+    this.closed = !this.closed;
+    this.from = this.value;
+    this.startedAt = now;
+    this.duration = reducedMotion ? 0 : 550 * Math.abs(Number(this.closed) - this.from);
+    this.advance(now);
+  }
+
+  advance(now: number) {
+    const fraction = this.duration ? THREE.MathUtils.clamp((now - this.startedAt) / this.duration, 0, 1) : 1;
+    const eased = fraction * fraction * (3 - 2 * fraction);
+    this.value = THREE.MathUtils.lerp(this.from, Number(this.closed), eased);
+    return fraction < 1;
+  }
 }
 
 export function createCurtainWeave() {
