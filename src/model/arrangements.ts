@@ -129,7 +129,8 @@ export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom")
   const showerDepth = 0.9, partitionZ = north + showerDepth;
   return {
     roomId: room.id,
-    vanity: { center: [west + 0.26, south - 0.47] as Point, rotation: Math.PI / 2 },
+    // The 0.48 m basin's back edge sits flush with the left wall's inner face.
+    vanity: { center: [west + 0.24, south - 0.47] as Point, rotation: Math.PI / 2 },
     toilet: { center: [west + 0.34, partitionZ + 0.55] as Point, rotation: Math.PI / 2 },
     shower: { center: [west + 0.015, north + 0.42] as Point, rotation: Math.PI / 2 },
     enclosure: {

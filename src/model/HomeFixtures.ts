@@ -699,11 +699,12 @@ export class HomeFixtures {
   }
 
   private buildVanity(group: THREE.Group) {
-    this.box(group, [0.56, 0.12, 0.36], [0, 0.06, 0], this.supportMaterial);
-    this.box(group, [0.64, 0.59, 0.44], [0, 0.405, 0], this.woodMaterial, 0.025);
-    this.box(group, [0.006, 0.55, 0.006], [0, 0.405, 0.222], this.supportMaterial);
+    const wallZ = -0.24;
+    // Wall-hung cabinet: keep the basin height and leave 0.30 m clear below.
+    this.box(group, [0.64, 0.40, 0.44], [0, 0.50, wallZ + 0.22], this.woodMaterial, 0.025);
+    this.box(group, [0.006, 0.36, 0.006], [0, 0.50, 0.202], this.supportMaterial);
     for (const x of [-0.1, 0.1]) {
-      this.box(group, [0.12, 0.012, 0.025], [x, 0.625, 0.23], this.steelMaterial);
+      this.box(group, [0.12, 0.012, 0.025], [x, 0.625, 0.21], this.steelMaterial);
     }
     this.box(group, [0.68, 0.04, 0.48], [0, 0.72, 0], this.ceramicMaterial, 0.015);
     for (const x of [-0.32, 0.32]) {
@@ -717,12 +718,12 @@ export class HomeFixtures {
     group.add(drain);
     this.pipe(group, [[0, 0.83, -0.205], [0, 1.03, -0.205], [0, 1.06, -0.12], [0, 1.02, 0.02]], 0.014);
     this.box(group, [0.065, 0.018, 0.025], [0.028, 0.9, -0.205], this.steelMaterial);
-    this.box(group, [0.68, 0.82, 0.045], [0, 1.53, -0.235], this.woodMaterial, 0.04);
-    this.box(group, [0.61, 0.75, 0.008], [0, 1.53, -0.208], this.mirrorMaterial, 0.025);
+    this.box(group, [0.68, 0.82, 0.045], [0, 1.53, wallZ + 0.0225], this.woodMaterial, 0.04);
+    this.box(group, [0.61, 0.75, 0.008], [0, 1.53, wallZ + 0.049], this.mirrorMaterial, 0.025);
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
       [0.78, 2.0 - defaults.cutHeight, defaults.wallThickness],
-      [0, (2.0 + defaults.cutHeight) / 2, -0.36],
+      [0, (2.0 + defaults.cutHeight) / 2, wallZ - defaults.wallThickness / 2],
       [this.backdropMaterial, this.backdropMaterial, this.backdropMaterial, this.backdropMaterial,
         this.wetWallMaterial, this.backdropMaterial]));
   }
