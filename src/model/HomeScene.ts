@@ -18,6 +18,7 @@ import { SelectionGesture } from "./SelectionGesture";
 import { HomeFixtures } from "./HomeFixtures";
 import type { FixtureOptions } from "./HomeFixtures";
 import type { BalconyId } from "./arrangements";
+import { previewPalette } from "./arrangements";
 
 export type ViewOptions = FixtureOptions & {
   view: "perspective" | "plan";
@@ -55,7 +56,6 @@ export class HomeScene {
   private selectionGesture = new SelectionGesture();
   private labels: Map<string, HTMLElement> = new Map();
   private wallMaterial: THREE.MeshStandardMaterial;
-  private concreteWallMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial: THREE.LineBasicMaterial;
   private frameMaterial: THREE.MeshStandardMaterial;
   private glassMaterial: THREE.MeshStandardMaterial;
@@ -101,13 +101,8 @@ export class HomeScene {
 
     const concrete = this.makeConcreteTexture();
     this.wallMaterial = this.material({
-      color: "#efeee9",
+      color: previewPalette.wall,
       roughness: 0.96,
-    });
-    this.concreteWallMaterial = this.material({
-      color: "#bbbcb9",
-      roughness: 0.96,
-      map: concrete,
     });
     this.frameMaterial = this.material({
       color: "#343b3d",
@@ -312,9 +307,7 @@ export class HomeScene {
           (piece.start + piece.end) / 2,
           (piece.top + piece.bottom) / 2,
           0,
-          /^(kitchen|bath|ensuite)-/.test(wall.id)
-            ? this.concreteWallMaterial
-            : this.wallMaterial,
+          this.wallMaterial,
           true,
         );
       }
@@ -391,7 +384,7 @@ export class HomeScene {
         length / 2,
         0.06,
         0,
-        this.concreteWallMaterial,
+        this.wallMaterial,
       );
       this.box(group, length, 0.04, 0.05, length / 2, h, 0, this.frameMaterial);
       // Site photos show glass infill. Heights and post spacing remain schematic.

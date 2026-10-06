@@ -85,8 +85,9 @@ export default function HomeViewer({
   const [cabinetColor, setCabinetColor] = useState<CabinetColor>(cabinetColors[0].id);
   const [televisionMount, setTelevisionMount] = useState<TelevisionMount>("cabinet");
   const [balconyRoofs, setBalconyRoofs] = useState(true);
-  const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "original" });
+  const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "enclosed" });
   const [previewTab, setPreviewTab] = useState<"living" | "colors" | "balconies">("living");
+  const [previewOpen, setPreviewOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
@@ -134,7 +135,9 @@ export default function HomeViewer({
           <button className="text-button" onClick={onOpenCad}>
             <Icon name="layers" size={17} /> CAD 图纸
           </button>
-          <span className="shell-badge">毛坯模型</span>
+          <button className="text-button model-guide-button" onClick={onBack} aria-label="户型资料" title="户型资料与实拍">
+            <Icon name="plan" size={17} /> 户型资料
+          </button>
           <button
             className="text-button source-button"
             onClick={() => setShowSource(true)}
@@ -284,7 +287,15 @@ export default function HomeViewer({
               </button>
             </div>
           </div>
-          <section className="layout-preview" aria-label="空间方案对比">
+          <section className={`layout-preview${previewOpen ? "" : " is-collapsed"}`} aria-label="空间方案对比">
+            <button className="preview-panel-toggle" aria-expanded={previewOpen} aria-controls="model-preview-controls"
+              aria-label={previewOpen ? "收起方案面板" : "展开方案面板"}
+              onClick={() => setPreviewOpen((open) => !open)}>
+              <Icon name="sliders" size={16} />
+              <span>{previewOpen ? "收起方案" : "摆放与配色"}</span>
+              <Icon name="chevron" size={14} />
+            </button>
+            <div id="model-preview-controls" hidden={!previewOpen}>
             <div className="layout-preview-heading">
               <div className="preview-tabs" role="group" aria-label="选择对比内容">
                 <button aria-pressed={previewTab === "living"} onClick={() => setPreviewTab("living")}>
@@ -366,6 +377,7 @@ export default function HomeViewer({
               </p>
               <p className="balcony-preview-note">整面通高玻璃，预览中不显示原栏杆；窗框与开启方式待定。</p>
             </>}
+            </div>
           </section>
           <ModelViewer options={options} onSelect={setSelected} />
           <div className="orientation-marker" aria-hidden="true">
@@ -502,7 +514,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。主卧、次卧 A/B 各暂放一张床，客房不放床；厨房增加油烟机和紧凑岛台，两个卫生间各放一个马桶，餐厅放一桌四椅。新增家具跟随「只看毛坯」隐藏，产品、尺寸和点位均未定案。两个阳台各自对比保持原样和落地玻璃，默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
+              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。主卧、次卧 A/B 各暂放一张床，客房不放床；厨房沿墙布置橱柜台面，配燃气灶、抽油烟机、水槽和水龙头，两个卫生间各有马桶、洗手池、镜子和花洒，餐厅放一桌四椅。墙面统一暖米白，床架、餐桌和餐椅采用浅胡桃木色。主卧、次卧及主阳台入口有两侧拉开的暖米白窗帘。四个卧室各有壁挂空调，客厅主阳台旁暂放柜机。新增家具跟随「只看毛坯」隐藏，产品、尺寸和点位均未定案。两个阳台各自对比保持原样和落地玻璃，生活阳台默认落地玻璃，主阳台默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
             </dd>
           </div>
         </dl>

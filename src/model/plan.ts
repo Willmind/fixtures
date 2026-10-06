@@ -114,7 +114,7 @@ export const rooms: Room[] = [
     kind: "kitchen",
     polygon: rect(0.6, 0, 2, 3.7),
     label: [1.6, 1.9],
-    description: "厨房从餐厅一侧进入，与生活阳台之间无门。暂放抽油烟机和紧凑岛台；岛台通行尺寸、烟道位置待复测。",
+    description: "厨房从餐厅一侧进入，与生活阳台之间无门。沿墙暂摆橱柜、燃气灶、抽油烟机、水槽和水龙头；尺寸与水电、烟道点位待复测。",
   },
   {
     id: "bath",
@@ -122,7 +122,7 @@ export const rooms: Room[] = [
     kind: "bathroom",
     polygon: rect(5.8, 1.2, 1.8, 3.05),
     label: [6.7, 2.8],
-    description: "由公共过道进入，暂放一个马桶。摆放仅为示意，排水点位尚未依据现场核实。",
+    description: "由公共过道进入，暂放马桶、洗手池、镜子和花洒。摆放仅为示意，给排水点位待现场核实。",
   },
   {
     id: "ensuite",
@@ -130,7 +130,7 @@ export const rooms: Room[] = [
     kind: "bathroom",
     polygon: rect(10.2, 1.2, 1.8, 3.05),
     label: [11.1, 2.8],
-    description: "主卧内的独立卫生间，暂放一个马桶；排水点位待核实，未加入淋浴隔断。",
+    description: "主卧内的独立卫生间，暂放马桶、洗手池、镜子和花洒；给排水点位待核实，未加入淋浴隔断。",
   },
   {
     id: "balcony",

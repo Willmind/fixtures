@@ -1,6 +1,11 @@
 import { railings, rooms } from "./plan.ts";
 import type { Point } from "./plan.ts";
 
+export const previewPalette = {
+  wall: "#f3eddf",
+  lightWalnut: "#b18f73",
+};
+
 export const livingLayouts = [
   {
     id: "tv-guest",
@@ -105,7 +110,7 @@ export const utilityEquipment = {
 export const bedroomBeds = [
   { roomId: "master", center: [11.45, 6.85] as Point, rotation: Math.PI / 2, width: 1.8 },
   { roomId: "parents", center: [8.94, 6.82] as Point, rotation: -Math.PI / 2, width: 1.5 },
-  { roomId: "study", center: [8.42, 2.47] as Point, rotation: 0, width: 1.2 },
+  { roomId: "study", center: [8.42, 2.63] as Point, rotation: 0, width: 1.2 },
 ] as const;
 
 export const bathroomToilets = [
@@ -113,9 +118,17 @@ export const bathroomToilets = [
   { roomId: "ensuite", center: [11.1, 1.75] as Point },
 ] as const;
 
+export const bathroomFittings = bathroomToilets.map(({ roomId, center: [x] }) => ({
+  roomId,
+  vanity: { center: [x - 0.54, 2.8] as Point, rotation: Math.PI / 2 },
+  shower: { center: [x + 0.78, 2.8] as Point, rotation: -Math.PI / 2 },
+}));
+
 export const kitchenFurniture = {
   hood: { center: [0.97, 0.95] as Point, rotation: Math.PI / 2 },
-  island: { center: [1.6, 2.8] as Point, width: 0.55, depth: 1.0 },
+  counter: { center: [1.0, 1.9] as Point, rotation: Math.PI / 2, width: 3.2, depth: 0.6 },
+  cooktopOffset: 0.95,
+  sinkOffset: -0.75,
 };
 
 export const diningFurniture = {
@@ -129,3 +142,20 @@ export const diningFurniture = {
     { x: 0.37, z: 0.74, rotation: Math.PI },
   ],
 };
+
+export const roomCurtains = [
+  { roomId: "master", center: [11.9, 8.46] as Point, width: 2.15 },
+  { roomId: "master", center: [12.8, 1.39] as Point, width: 1.3 },
+  { roomId: "parents", center: [8.5, 8.46] as Point, width: 2.15 },
+  { roomId: "study", center: [8.9, 1.39] as Point, width: 2.15 },
+  { roomId: "living", center: [4.6, 8.44] as Point, width: 3.15 },
+] as const;
+
+export const bedroomAirConditioners = [
+  { roomId: "guest", center: [0.205, 5.8] as Point, rotation: Math.PI / 2 },
+  { roomId: "parents", center: [9.4, 5.355] as Point, rotation: 0 },
+  { roomId: "study", center: [9.995, 2.5] as Point, rotation: -Math.PI / 2 },
+  { roomId: "master", center: [13.375, 6.9] as Point, rotation: -Math.PI / 2 },
+] as const;
+
+export const livingAirConditioner = { center: [6.4, 8.23] as Point, rotation: -Math.PI / 2 };

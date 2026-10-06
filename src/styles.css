@@ -462,6 +462,23 @@ button:hover {
   color: var(--text-secondary);
   font-weight: 400;
 }
+.preview-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 0;
+  margin-bottom: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.preview-panel-toggle span { flex: 1; text-align: left; }
+.preview-panel-toggle svg:last-child { transform: rotate(-90deg); }
+.layout-preview.is-collapsed { width: 145px; padding: 3px 12px; }
+.is-collapsed .preview-panel-toggle { margin: 0; color: var(--text-primary); }
+.is-collapsed .preview-panel-toggle svg:last-child { transform: rotate(90deg); }
 .preview-tabs {
   display: flex;
   gap: 4px;
@@ -1059,12 +1076,12 @@ button:hover {
   .header-right {
     gap: 10px;
   }
-  .source-button {
+  .source-button, .model-guide-button {
     font-size: 0;
     gap: 0;
     padding: 8px;
   }
-  .source-button svg {
+  .source-button svg, .model-guide-button svg {
     width: 20px;
     height: 20px;
   }
@@ -1114,6 +1131,8 @@ button:hover {
     padding: 11px 12px;
   }
   .fixture-label { font-size: 9px; padding: 3px 5px; }
+  .preview-panel-toggle { min-height: 44px; }
+  .layout-preview.is-collapsed { width: 145px; padding: 0 12px; }
   .color-choice-row { margin-top: 7px; }
   .color-swatches button { min-height: 44px; }
   .layout-preview .balcony-preview-summary {

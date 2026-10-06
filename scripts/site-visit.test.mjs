@@ -72,6 +72,7 @@ test("视频采用可渐进播放的 MP4，章节不超出视频范围", () => {
 });
 
 test("平面、实拍和三维链接保留房间，刷新与返回可恢复", () => {
+  assert.deepEqual(readRoute(""), { view: "model", tab: "rooms", room: null });
   const initial = readRoute("?tab=visit&room=master");
   assert.deepEqual(initial, { view: "guide", tab: "visit", room: "master" });
   for (const view of ["guide", "model", "cad"]) {
@@ -84,12 +85,20 @@ test("平面、实拍和三维链接保留房间，刷新与返回可恢复", ()
     "https://home.willmindgg.cn/?view=model&tab=visit&room=master",
     { view: "guide", tab: "rooms", room: null },
   );
-  assert.equal(reset.search, "");
+  assert.equal(reset.search, "?view=guide");
+  assert.deepEqual(readRoute(reset.search), { view: "guide", tab: "rooms", room: null });
+  for (const view of ["guide", "model", "cad"]) {
+    const route = { view, tab: "rooms", room: null };
+    assert.deepEqual(readRoute(routeUrl(reset.href, route).search), route);
+  }
+  for (const tab of ["rooms", "visit", "reading", "sources"]) {
+    assert.equal(readRoute(`?tab=${tab}`).view, "guide");
+  }
 });
 
 test("无效导航参数回退，不引用不存在的房间资料", () => {
   assert.deepEqual(readRoute("?view=unknown&tab=unknown&room=missing"), {
-    view: "guide",
+    view: "model",
     tab: "rooms",
     room: null,
   });

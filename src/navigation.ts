@@ -12,9 +12,12 @@ export function readRoute(search: string): RouteState {
   const view = query.get("view");
   const tab = query.get("tab");
   const room = query.get("room");
+  const validTab = guideTabs.includes(tab as GuideTab);
   return {
-    view: view === "cad" || view === "model" ? view : "guide",
-    tab: guideTabs.includes(tab as GuideTab) ? (tab as GuideTab) : "rooms",
+    // Keep existing photo/drawing deep links working while the bare URL opens 3D.
+    view: view === "cad" || view === "model" || view === "guide"
+      ? view : validTab ? "guide" : "model",
+    tab: validTab ? (tab as GuideTab) : "rooms",
     room: rooms.some((item) => item.id === room) ? room : null,
   };
 }
@@ -23,7 +26,6 @@ export function routeUrl(href: string, route: RouteState): URL {
   for (const [key, value] of Object.entries(route)) {
     if (
       value === null ||
-      (key === "view" && value === "guide") ||
       (key === "tab" && value === "rooms")
     )
       url.searchParams.delete(key);
