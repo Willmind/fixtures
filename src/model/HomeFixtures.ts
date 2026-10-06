@@ -27,7 +27,9 @@ import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWal
 import type { BoxPart, TelevisionMount } from "./furniture";
 import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains";
 import { applySurfaceUVs, createTileSurface } from "./finishes";
-import { DoorMotion, entryCorridor, homeDoors } from "./doors";
+import { entryCorridor, homeDoors } from "./doors";
+import { OpenCloseMotion } from "./OpenCloseMotion";
+import { storageBed } from "./beds";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -52,8 +54,10 @@ export class HomeFixtures {
   private entranceWall?: THREE.Mesh;
   private doors: {
     body: THREE.Group; height: number; header: THREE.Mesh;
-    handles: THREE.Group[]; motion: DoorMotion; apply: (value: number) => void;
+    handles: THREE.Group[]; motion: OpenCloseMotion; apply: (value: number) => void;
   }[] = [];
+  private bedDrawers: { group: THREE.Group; closedX: number; side: number;
+    travel: number; motion: OpenCloseMotion }[] = [];
   private hoodChimney?: THREE.Mesh;
   private curtains: {
     group: THREE.Group;
@@ -202,7 +206,7 @@ export class HomeFixtures {
         }
         apply = (value) => { pivot.rotation.y = placement.swing * Math.PI / 2 * value; };
       }
-      const motion = new DoorMotion();
+      const motion = new OpenCloseMotion();
       apply(motion.value);
       const index = this.doors.length;
       body.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.homeDoorIndex = index; });
@@ -473,7 +477,7 @@ export class HomeFixtures {
     for (const bed of bedroomBeds) {
       const group = this.at(this.furnishings, bed.center, bed.rotation);
       group.name = `${bed.roomId}-bed`;
-      this.buildBed(group, bed.width);
+      this.buildBed(group, bed.width, bed.roomId);
       this.tagRoom(group, bed.roomId);
     }
     for (const fitting of bathroomFittings) {
@@ -501,18 +505,81 @@ export class HomeFixtures {
     this.buildAirConditioners();
   }
 
-  private buildBed(group: THREE.Group, width: number) {
-    // Recessed plinth touches the floor; mattress and textiles rest on the frame.
-    this.box(group, [width - 0.14, 0.15, 1.85], [0, 0.075, 0.02], this.supportMaterial, 0.025);
-    this.box(group, [width + 0.1, 0.2, 2.1], [0, 0.24, 0], this.woodMaterial, 0.04);
-    this.box(group, [width, 0.22, 2], [0, 0.44, 0], this.beddingMaterial, 0.07);
-    this.box(group, [width + 0.12, 0.96, 0.12], [0, 0.48, -1.06], this.woodMaterial, 0.045);
-    this.box(group, [width + 0.015, 0.045, 1.26], [0, 0.567, 0.35], this.blanketMaterial, 0.02);
+  private buildBed(group: THREE.Group, width: number, roomId: string) {
+    const bed = storageBed(width, roomId);
+    // A hollow base, supported at floor level; no solid block inside the drawers.
+    this.box(group, [width - 0.10, 0.04, 1.95], [0, 0.02, 0], this.supportMaterial, 0.008);
+    this.box(group, [bed.frameWidth, 0.02, bed.length], [0, 0.038, 0], this.woodMaterial);
+    this.box(group, [bed.frameWidth, 0.03, bed.length], [0, 0.325, 0], this.woodMaterial, 0.006);
+    for (const z of [-bed.length / 2 + 0.0125, 0, bed.length / 2 - 0.0125]) {
+      this.box(group, [bed.frameWidth, 0.28, 0.025], [0, 0.17, z], this.woodMaterial);
+    }
+    if (bed.sides.length === 2) {
+      this.box(group, [0.035, 0.28, bed.length - 0.05], [0, 0.17, 0], this.woodMaterial);
+    } else {
+      this.box(group, [0.025, 0.28, bed.length], [-bed.frameWidth / 2 + 0.0125, 0.17, 0], this.woodMaterial);
+    }
+    const drawerIds: number[] = [];
+    for (const placement of bed.drawers) {
+      const drawer = new THREE.Group();
+      drawer.name = `${roomId}-bed-drawer-${placement.side}-${placement.z}`;
+      drawer.position.set(placement.closedX, 0, placement.z);
+      drawer.rotation.y = placement.side * Math.PI / 2;
+      group.add(drawer);
+      const w = bed.drawerWidth, d = bed.drawerDepth;
+      this.box(drawer, [w - 0.028, 0.018, d - 0.03], [0, 0.061, 0], this.woodMaterial);
+      for (const x of [-w / 2 + 0.008, w / 2 - 0.008]) {
+        this.box(drawer, [0.016, 0.22, d - 0.032], [x, 0.175, 0], this.woodMaterial);
+      }
+      this.box(drawer, [w, 0.22, 0.016], [0, 0.175, -d / 2 + 0.008], this.woodMaterial);
+      this.box(drawer, [w + 0.016, 0.246, 0.022], [0, 0.178, d / 2 - 0.011], this.woodMaterial, 0.004);
+      this.box(drawer, [0.20, 0.018, 0.006], [0, 0.257, d / 2 + 0.001], this.supportMaterial, 0.004);
+      const runners = new THREE.Group();
+      runners.position.copy(drawer.position);
+      runners.rotation.copy(drawer.rotation);
+      group.add(runners);
+      for (const side of [-1, 1]) {
+        this.box(runners, [0.008, 0.03, d - 0.05], [side * (w / 2 + 0.006), 0.13, 0], this.steelMaterial);
+        this.box(drawer, [0.006, 0.018, d - 0.06], [side * (w / 2 + 0.001), 0.14, 0], this.steelMaterial);
+      }
+      const index = this.bedDrawers.length;
+      drawer.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.bedDrawerIndex = index; });
+      this.bedDrawers.push({ group: drawer, closedX: placement.closedX, side: placement.side,
+        travel: bed.travel, motion: new OpenCloseMotion(false) });
+      drawerIds.push(index);
+    }
+    const mattress = this.box(group, [width, 0.22, 2], [0, 0.44, 0], this.beddingMaterial, 0.07);
+    mattress.userData.bedDrawerIds = drawerIds;
+    const blanket = this.box(group, [width + 0.015, 0.045, 1.26], [0, 0.567, 0.35], this.blanketMaterial, 0.02);
+    blanket.userData.bedDrawerIds = drawerIds;
     const pillowWidth = width >= 1.5 ? width / 2 - 0.12 : 0.64;
     const pillows = width >= 1.5 ? [-width / 4, width / 4] : [0];
     for (const x of pillows) {
-      this.box(group, [pillowWidth, 0.12, 0.38], [x, 0.60, -0.66], this.beddingMaterial, 0.055);
+      const pillow = this.box(group, [pillowWidth, 0.12, 0.38], [x, 0.60, -0.66], this.beddingMaterial, 0.055);
+      pillow.userData.bedDrawerIds = drawerIds;
     }
+  }
+
+  toggleBedDrawer(object: THREE.Object3D, now: number, reducedMotion = false) {
+    const index = object.userData.bedDrawerIndex;
+    const ids: number[] | undefined = typeof index === "number" ? [index] : object.userData.bedDrawerIds;
+    if (!ids?.length) return false;
+    const drawers = ids.map((id) => this.bedDrawers[id]).filter((drawer) => !!drawer);
+    const open = !drawers.every((drawer) => drawer.motion.open);
+    for (const drawer of drawers) {
+      drawer.motion.setOpen(open, now, reducedMotion);
+      drawer.group.position.x = drawer.closedX + drawer.side * drawer.travel * drawer.motion.value;
+    }
+    return drawers.length > 0;
+  }
+
+  animateBedDrawers(now: number) {
+    let moving = false;
+    for (const drawer of this.bedDrawers) {
+      moving = drawer.motion.advance(now) || moving;
+      drawer.group.position.x = drawer.closedX + drawer.side * drawer.travel * drawer.motion.value;
+    }
+    return moving;
   }
 
   private buildToilet(group: THREE.Group) {

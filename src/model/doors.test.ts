@@ -1,11 +1,12 @@
 import test from "node:test";
+import { OpenCloseMotion } from "./OpenCloseMotion.ts";
 import assert from "node:assert/strict";
-import { DoorMotion, entryCorridor, homeDoors } from "./doors.ts";
+import { entryCorridor, homeDoors } from "./doors.ts";
 import { defaults, rooms } from "./plan.ts";
 import type { Point } from "./plan.ts";
 
 test("每扇门独立平滑开合，连续点击从当前位置反向，静止后停止重绘", () => {
-  const front = new DoorMotion(), bedroom = new DoorMotion();
+  const front = new OpenCloseMotion(), bedroom = new OpenCloseMotion();
   front.toggle(100);
   assert.equal(front.advance(250), true);
   const halfway = front.value;

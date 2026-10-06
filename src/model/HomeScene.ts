@@ -497,7 +497,7 @@ export class HomeScene {
     this.controls.touches.ONE = plan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     this.renderer.domElement.setAttribute(
       "aria-label",
-      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击门或窗帘切换开合`,
+      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击门、窗帘或床底抽屉切换开合，也可点击床垫开合整床抽屉`,
     );
     this.camera.lookAt(-0.9, 0, 0);
     this.camera.updateProjectionMatrix();
@@ -542,9 +542,10 @@ export class HomeScene {
     this.controls.update();
     const curtainsMoving = this.fixtures.animateCurtains(now);
     const doorsMoving = this.fixtures.animateDoors(now);
+    const drawersMoving = this.fixtures.animateBedDrawers(now);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
-    if (curtainsMoving || doorsMoving) this.requestRender();
+    if (curtainsMoving || doorsMoving || drawersMoving) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -591,6 +592,7 @@ export class HomeScene {
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (first && (this.fixtures.toggleDoor(first.object, now, reducedMotion)
+      || this.fixtures.toggleBedDrawer(first.object, now, reducedMotion)
       || this.fixtures.toggleCurtain(first.object, now, reducedMotion))) {
       this.requestRender();
       return;

@@ -28,27 +28,3 @@ export const entryCorridor = {
   shoeCabinet: { center: [-0.28, 5.7] as const, rotation: -Math.PI / 2,
     width: 1, depth: 0.32, height: 1.1 },
 };
-
-export class DoorMotion {
-  value = 1;
-  open = true;
-  private from = 1;
-  private startedAt = 0;
-  private duration = 0;
-
-  toggle(now: number, reducedMotion = false) {
-    this.advance(now);
-    this.open = !this.open;
-    this.from = this.value;
-    this.startedAt = now;
-    this.duration = reducedMotion ? 0 : 420 * Math.abs(Number(this.open) - this.from);
-    this.advance(now);
-  }
-
-  advance(now: number) {
-    const fraction = this.duration ? Math.min(1, Math.max(0, (now - this.startedAt) / this.duration)) : 1;
-    const eased = fraction * fraction * (3 - 2 * fraction);
-    this.value = this.from + (Number(this.open) - this.from) * eased;
-    return fraction < 1;
-  }
-}
