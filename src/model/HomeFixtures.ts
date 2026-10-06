@@ -27,6 +27,7 @@ import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWal
 import type { BoxPart, TelevisionMount } from "./furniture";
 import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains";
 import { applySurfaceUVs, createTileSurface } from "./finishes";
+import { DoorMotion, entryCorridor, homeDoors } from "./doors";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -47,6 +48,12 @@ export class HomeFixtures {
   private roofs = new THREE.Group();
   private equipment = new THREE.Group();
   private furnishings = new THREE.Group();
+  private entrances = new THREE.Group();
+  private entranceWall?: THREE.Mesh;
+  private doors: {
+    body: THREE.Group; height: number; header: THREE.Mesh;
+    handles: THREE.Group[]; motion: DoorMotion; apply: (value: number) => void;
+  }[] = [];
   private hoodChimney?: THREE.Mesh;
   private curtains: {
     group: THREE.Group;
@@ -98,10 +105,14 @@ export class HomeFixtures {
     color: "#c5dde0", roughness: 0.14, transparent: true, opacity: 0.2,
     depthWrite: false, side: THREE.DoubleSide,
   });
+  private doorGlassMaterial = this.material({
+    color: "#b9ced0", roughness: 0.35, transparent: true, opacity: 0.55,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
 
   constructor() {
     this.group.name = "balcony-roofs-and-layout-previews";
-    this.group.add(this.roofs, this.equipment, this.furnishings);
+    this.group.add(this.roofs, this.equipment, this.furnishings, this.entrances);
     this.buildRoofs();
     this.buildEnclosures();
     for (const layout of livingLayouts) {
@@ -120,6 +131,125 @@ export class HomeFixtures {
     }
     this.buildEquipment();
     this.buildRoomFurnishings();
+    this.buildDoors();
+    this.buildEntranceCorridor();
+  }
+
+  private buildDoors() {
+    for (const placement of homeDoors) {
+      const { wall, opening, frame, gap, kind } = placement;
+      const body = this.at(this.entrances, wall.from, placement.rotation);
+      body.name = `${wall.id}-operable-door`;
+      const width = opening.end - opening.start, height = opening.top;
+      const thickness = wall.thickness ?? defaults.wallThickness;
+      const material = kind === "entry" ? this.cabinetMaterial
+        : kind === "bathroom" ? this.whiteMaterial : this.woodMaterial;
+      const frameMaterial = kind === "sliding" ? this.windowFrameMaterial : material;
+      for (const x of [opening.start + frame / 2, opening.end - frame / 2]) {
+        this.box(body, [frame, height, thickness + 0.025], [x, height / 2, 0], frameMaterial);
+      }
+      const header = this.box(body, [width, frame, thickness + 0.025],
+        [(opening.start + opening.end) / 2, height - frame / 2, 0], frameMaterial);
+      const handles: THREE.Group[] = [];
+      const addHandle = (parent: THREE.Group, x: number, z: number, direction: number) => {
+        const handle = new THREE.Group();
+        handle.position.set(x, 1, z);
+        parent.add(handle);
+        this.box(handle, [0.04, kind === "entry" ? 0.19 : 0.11, 0.016],
+          [0, 0, 0], kind === "entry" ? this.darkMaterial : this.steelMaterial, 0.008);
+        this.box(handle, [0.105, 0.018, 0.025], [-direction * 0.035, 0, Math.sign(z) * 0.018],
+          this.steelMaterial, 0.008);
+        handles.push(handle);
+      };
+      let apply: (value: number) => void;
+      if (kind === "sliding") {
+        const clearWidth = width - frame * 2 - gap * 2;
+        const left = opening.start + frame + gap;
+        const panel = new THREE.Group();
+        // Park the open panel along the kitchen-side wall, leaving the whole
+        // doorway clear instead of reducing a 1.2 m opening to half its width.
+        panel.position.set(left, 0, thickness / 2 + 0.055);
+        body.add(panel);
+        for (const x of [0.012, clearWidth - 0.012]) {
+          this.box(panel, [0.024, height - frame - 0.025, 0.03],
+            [x, (height - frame + 0.025) / 2, 0], frameMaterial);
+        }
+        for (const y of [0.04, height - frame - 0.015]) {
+          this.box(panel, [clearWidth, 0.03, 0.03], [clearWidth / 2, y, 0], frameMaterial);
+        }
+        this.box(panel, [clearWidth - 0.048, height - frame - 0.085, 0.006],
+          [clearWidth / 2, (height - frame + 0.025) / 2, 0], this.doorGlassMaterial);
+        for (const side of [-1, 1]) addHandle(panel, clearWidth - 0.075, side * 0.032, 1);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(clearWidth * 2 + 0.05, 0.04, 0.06), frameMaterial);
+        rail.position.set(-clearWidth / 2, 0.065, thickness / 2 + 0.055);
+        header.add(rail);
+        apply = (value) => { panel.position.x = left - (clearWidth + gap) * value; };
+      } else {
+        const direction = placement.hinge === "start" ? 1 : -1;
+        const leafWidth = width - frame * 2 - gap * 2;
+        const pivot = new THREE.Group();
+        pivot.position.x = direction === 1 ? opening.start + frame + gap : opening.end - frame - gap;
+        // Put the hinge at the room-facing edge so the open leaf clears the jamb.
+        pivot.position.z = -placement.swing * direction * (thickness / 2 + 0.03);
+        body.add(pivot);
+        this.box(pivot, [leafWidth, height - frame - 0.025, 0.045],
+          [direction * leafWidth / 2, (height - frame + 0.025) / 2, 0], material, 0.004);
+        for (const side of [-1, 1]) addHandle(pivot, direction * (leafWidth - 0.085), side * 0.032, direction);
+        for (const y of [0.25, height - 0.3]) {
+          const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.09, 12), this.steelMaterial);
+          hinge.position.set(0, y, 0);
+          pivot.add(hinge);
+        }
+        apply = (value) => { pivot.rotation.y = placement.swing * Math.PI / 2 * value; };
+      }
+      const motion = new DoorMotion();
+      apply(motion.value);
+      const index = this.doors.length;
+      body.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.homeDoorIndex = index; });
+      this.doors.push({ body, height, header, handles, motion, apply });
+    }
+  }
+
+  private buildEntranceCorridor() {
+    const { from, to, shoeCabinet: cabinet } = entryCorridor;
+    const width = to[0] - from[0], depth = to[1] - from[1];
+    const corridor = this.at(this.entrances, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]);
+    corridor.name = "exterior-entry-corridor-preview";
+    this.box(corridor, [width, 0.16, depth], [0, -0.08, 0], this.wetFloorMaterial);
+    this.entranceWall = this.box(corridor, [0.12, 1, depth], [-width / 2, 0.5, 0], this.backdropMaterial);
+    this.label(corridor, "门外走廊 · 示意", 0.05, "corridor");
+    const cabinetGroup = this.at(this.furnishings, cabinet.center, cabinet.rotation);
+    cabinetGroup.name = "entry-shoe-cabinet";
+    this.box(cabinetGroup, [cabinet.width - 0.08, 0.1, cabinet.depth - 0.06],
+      [0, 0.05, 0], this.supportMaterial, 0.01);
+    this.box(cabinetGroup, [cabinet.width, cabinet.height - 0.1, cabinet.depth],
+      [0, (cabinet.height + 0.1) / 2, 0], this.woodMaterial, 0.015);
+    for (const side of [-1, 1]) {
+      this.box(cabinetGroup, [cabinet.width / 2 - 0.012, cabinet.height - 0.15, 0.022],
+        [side * cabinet.width / 4, (cabinet.height + 0.1) / 2, cabinet.depth / 2 + 0.002], this.woodMaterial, 0.008);
+      this.box(cabinetGroup, [0.015, 0.15, 0.025],
+        [side * 0.035, 0.83, cabinet.depth / 2 + 0.025], this.steelMaterial, 0.005);
+    }
+    this.label(cabinetGroup, "鞋柜", cabinet.height + 0.12, "shoe-cabinet");
+  }
+
+  toggleDoor(object: THREE.Object3D, now: number, reducedMotion = false) {
+    const index = object.userData.homeDoorIndex;
+    if (typeof index !== "number") return false;
+    const door = this.doors[index];
+    if (!door) return false;
+    door.motion.toggle(now, reducedMotion);
+    door.apply(door.motion.value);
+    return true;
+  }
+
+  animateDoors(now: number) {
+    let moving = false;
+    for (const door of this.doors) {
+      moving = door.motion.advance(now) || moving;
+      door.apply(door.motion.value);
+    }
+    return moving;
   }
 
   private material(options: THREE.MeshStandardMaterialParameters) {
@@ -862,6 +992,20 @@ export class HomeFixtures {
   }
 
   update(options: FixtureOptions) {
+    const visibleHeight = options.cutaway ? defaults.cutHeight : options.wallHeight;
+    for (const door of this.doors) {
+      const height = Math.min(visibleHeight, door.height), scale = height / door.height;
+      door.body.scale.y = scale;
+      door.header.visible = visibleHeight >= door.height;
+      for (const handle of door.handles) {
+        handle.position.y = Math.min(1, height - 0.12) / scale;
+        handle.scale.y = 1 / scale;
+      }
+    }
+    if (this.entranceWall) {
+      this.entranceWall.scale.y = visibleHeight;
+      this.entranceWall.position.y = visibleHeight / 2;
+    }
     const curtainColor = curtainColors.find((item) => item.id === options.curtainColor) ?? curtainColors[0];
     this.curtainMaterial.color.set(curtainColor.color);
     this.curtainMaterial.sheenColor.set(curtainColor.sheen);

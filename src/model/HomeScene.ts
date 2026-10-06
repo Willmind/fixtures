@@ -485,10 +485,10 @@ export class HomeScene {
     this.controls.enableDamping = false;
     this.controls.update();
     this.controls.enableDamping = true;
-    this.controls.target.set(0, 0, 0);
+    this.controls.target.set(-0.9, 0, 0);
     this.camera.zoom = 1;
     const plan = this.options.view === "plan";
-    this.camera.position.set(plan ? 0 : 11, plan ? 26 : 19, plan ? 0.001 : 21);
+    this.camera.position.set(plan ? -0.9 : 10.1, plan ? 26 : 19, plan ? 0.001 : 21);
     this.controls.minPolarAngle = plan ? 0 : 0.03;
     this.controls.enableRotate = !plan;
     this.controls.mouseButtons.LEFT = plan
@@ -497,9 +497,9 @@ export class HomeScene {
     this.controls.touches.ONE = plan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     this.renderer.domElement.setAttribute(
       "aria-label",
-      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击窗帘切换开合`,
+      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击门或窗帘切换开合`,
     );
-    this.camera.lookAt(0, 0, 0);
+    this.camera.lookAt(-0.9, 0, 0);
     this.camera.updateProjectionMatrix();
     this.controls.update();
     this.requestRender();
@@ -541,9 +541,10 @@ export class HomeScene {
     if (this.disposed) return;
     this.controls.update();
     const curtainsMoving = this.fixtures.animateCurtains(now);
+    const doorsMoving = this.fixtures.animateDoors(now);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
-    if (curtainsMoving) this.requestRender();
+    if (curtainsMoving || doorsMoving) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -587,8 +588,10 @@ export class HomeScene {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       return materials.some((material) => !material.transparent || material.opacity >= 0.5 || material.depthWrite);
     });
-    if (first && this.fixtures.toggleCurtain(first.object, performance.now(),
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+    const now = performance.now();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (first && (this.fixtures.toggleDoor(first.object, now, reducedMotion)
+      || this.fixtures.toggleCurtain(first.object, now, reducedMotion))) {
       this.requestRender();
       return;
     }
