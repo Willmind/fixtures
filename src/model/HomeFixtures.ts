@@ -26,6 +26,7 @@ import {
 import type { BalconyId, BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./arrangements";
 import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
 import type { BoxPart, TelevisionMount } from "./furniture";
+import { createCurtainPanel, createCurtainWeave } from "./curtains";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -74,7 +75,8 @@ export class HomeFixtures {
   private ceramicMaterial = this.material({ color: "#f5f5f0", roughness: 0.25 });
   private steelMaterial = this.material({ color: "#7c8385", roughness: 0.35, metalness: 0.7 });
   private mirrorMaterial = this.material({ color: "#b8cdd3", roughness: 0.08, metalness: 0.45 });
-  private curtainMaterial = this.material({ color: "#e5dac4", roughness: 1, side: THREE.DoubleSide });
+  private curtainWeave = createCurtainWeave();
+  private curtainMaterial = this.makeCurtainMaterial();
   private backdropMaterial = this.material({ color: previewPalette.wall, roughness: 0.96 });
   private windowFrameMaterial = this.material({ color: "#46565b", roughness: 0.6, metalness: 0.25 });
   private windowGlassMaterial = this.material({
@@ -107,6 +109,16 @@ export class HomeFixtures {
 
   private material(options: THREE.MeshStandardMaterialParameters) {
     const material = new THREE.MeshStandardMaterial(options);
+    this.materials.add(material);
+    return material;
+  }
+
+  private makeCurtainMaterial() {
+    const material = new THREE.MeshPhysicalMaterial({
+      color: "#e5dac4", roughness: 0.96, metalness: 0,
+      sheen: 0.65, sheenColor: "#f5ecda", sheenRoughness: 0.9,
+      bumpMap: this.curtainWeave, bumpScale: 0.0006, vertexColors: true,
+    });
     this.materials.add(material);
     return material;
   }
@@ -363,21 +375,24 @@ export class HomeFixtures {
       const group = this.at(this.furnishings, placement.center);
       group.name = `${placement.roomId}-curtains`;
       this.curtains.push(group);
-      this.box(group, [placement.width + 0.08, 0.014, 0.055], [0, 1.01, 0], this.stoneMaterial);
-      const panelWidth = Math.min(0.55, placement.width * 0.23);
+      this.box(group, [placement.width + 0.1, 0.014, 0.07], [0, 1.017, 0], this.whiteMaterial, 0.005);
+      const panelWidth = Math.min(0.64, placement.width * 0.25);
       for (const side of [-1, 1]) {
-        const geometry = new THREE.PlaneGeometry(panelWidth, 0.98, 36, 1);
-        const positions = geometry.attributes.position;
-        for (let index = 0; index < positions.count; index++) {
-          const x = positions.getX(index);
-          positions.setZ(index, Math.cos((x / panelWidth + 0.5) * Math.PI * 12) * 0.025);
-        }
-        geometry.computeVertexNormals();
+        const geometry = createCurtainPanel(panelWidth, side);
         const curtain = new THREE.Mesh(geometry, this.curtainMaterial);
-        curtain.position.set(side * (placement.width - panelWidth) / 2, 0.51, 0);
+        const centerX = side * (placement.width - panelWidth) / 2;
+        curtain.position.x = centerX;
         curtain.castShadow = true;
         curtain.receiveShadow = true;
         group.add(curtain);
+        const hooks = Math.max(4, Math.round(panelWidth / 0.105));
+        for (let index = 0; index <= hooks; index++) {
+          const hook = new THREE.Mesh(new THREE.TorusGeometry(0.011, 0.0025, 5, 12), this.whiteMaterial);
+          hook.rotation.y = Math.PI / 2;
+          hook.position.set(centerX + (index / hooks - 0.5) * panelWidth * 0.84 + side * panelWidth * 0.08,
+            1.004, 0.017);
+          group.add(hook);
+        }
       }
       this.tagRoom(group, placement.roomId);
     }
@@ -404,8 +419,6 @@ export class HomeFixtures {
     this.box(group, [0.065, 0.018, 0.025], [0.028, 0.9, -0.205], this.steelMaterial);
     this.box(group, [0.68, 0.82, 0.045], [0, 1.53, -0.235], this.woodMaterial, 0.04);
     this.box(group, [0.61, 0.75, 0.008], [0, 1.53, -0.208], this.mirrorMaterial, 0.025);
-    const highlight = this.box(group, [0.012, 0.43, 0.003], [-0.15, 1.59, -0.202], this.beddingMaterial);
-    highlight.rotation.z = -0.24;
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
       [0.78, 2.0 - defaults.cutHeight, defaults.wallThickness],
@@ -624,5 +637,6 @@ export class HomeFixtures {
   dispose() {
     // HomeScene owns geometry and CSS label disposal through its scene traversal.
     for (const material of this.materials) material.dispose();
+    this.curtainWeave.dispose();
   }
 }
