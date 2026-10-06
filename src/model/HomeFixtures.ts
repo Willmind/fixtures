@@ -32,6 +32,7 @@ import { applySurfaceUVs, createTileSurface } from "./finishes";
 import { entryCorridor, homeDoors } from "./doors";
 import { OpenCloseMotion } from "./OpenCloseMotion";
 import { storageBed } from "./beds";
+import { createPottedTree } from "./plants";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -880,59 +881,20 @@ export class HomeFixtures {
   }
 
   private buildBalconyFurniture() {
-    const { chairs, plants, chairLength, chairWidth } = balconyFurniture;
-    const lounge = new THREE.Group();
-    lounge.name = "balcony-recliners-and-plants";
-    this.furnishings.add(lounge);
-    for (const center of chairs) {
-      const chair = this.at(lounge, center, Math.PI / 2);
-      chair.name = "compact-balcony-recliner";
-      // A compact raised back and extended leg rest, oriented along the balcony.
-      for (const x of [-chairWidth / 2 + 0.045, chairWidth / 2 - 0.045]) {
-        for (const z of [-0.31, 0.43]) {
-          this.box(chair, [0.045, 0.29, 0.045], [x, 0.145, z], this.woodMaterial, 0.008);
-        }
-        this.box(chair, [0.045, 0.07, chairLength], [x, 0.31, 0], this.woodMaterial, 0.012);
-        this.box(chair, [0.045, 0.20, 0.04], [x, 0.43, -0.12], this.woodMaterial, 0.006);
-        this.box(chair, [0.075, 0.04, 0.49], [x, 0.54, -0.12], this.woodMaterial, 0.012);
-      }
-      this.box(chair, [chairWidth - 0.1, 0.07, 0.92], [0, 0.365, 0.205], this.beddingMaterial, 0.025);
-      const back = new THREE.Group();
-      back.position.set(0, 0.37, -0.25);
-      back.rotation.x = -0.53;
-      chair.add(back);
-      this.box(back, [chairWidth - 0.09, 0.55, 0.045], [0, 0.26, 0], this.woodMaterial, 0.012);
-      this.box(back, [chairWidth - 0.12, 0.53, 0.075], [0, 0.26, 0.042], this.beddingMaterial, 0.025);
-      this.box(back, [0.32, 0.13, 0.07], [0, 0.44, 0.10], this.beddingMaterial, 0.025);
+    const plants = new THREE.Group();
+    plants.name = "balcony-terracotta-potted-trees";
+    this.furnishings.add(plants);
+    const materials = {
+      bark: this.material({ color: "#796049", roughness: 1 }),
+      foliage: this.material({ color: "#ffffff", vertexColors: true, roughness: 0.86, side: THREE.DoubleSide }),
+      pot: this.material({ color: "#b97551", roughness: 0.92 }),
+      soil: this.material({ color: "#42382b", roughness: 1 }),
+    };
+    for (const placement of balconyFurniture.plants) {
+      const group = this.at(plants, placement.center);
+      group.add(createPottedTree(placement, materials));
     }
-    const leafMaterial = this.material({ color: "#5f7950", roughness: 0.95 });
-    const soilMaterial = this.material({ color: "#5b493a", roughness: 1 });
-    for (const [index, center] of plants.entries()) {
-      const plant = this.at(lounge, center);
-      plant.name = "balcony-potted-plant";
-      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.10, 0.24, 24), this.stoneMaterial);
-      pot.position.y = 0.12;
-      pot.castShadow = pot.receiveShadow = true;
-      plant.add(pot);
-      const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.117, 0.117, 0.007, 24), soilMaterial);
-      soil.position.y = 0.237;
-      plant.add(soil);
-      for (let i = 0; i < 7; i++) {
-        const angle = i * 2.4 + index;
-        const height = 0.43 + (i % 3) * 0.13;
-        const x = Math.cos(angle) * 0.1, z = Math.sin(angle) * 0.1;
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, height - 0.24, 6), leafMaterial);
-        stem.position.set(x / 2, (height + 0.24) / 2, z / 2);
-        plant.add(stem);
-        const leaf = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), leafMaterial);
-        leaf.scale.set(0.065, 0.018, 0.15);
-        leaf.rotation.set(0.35, angle, 0.12);
-        leaf.position.set(x, height, z);
-        leaf.castShadow = true;
-        plant.add(leaf);
-      }
-    }
-    this.tagRoom(lounge, "balcony");
+    this.tagRoom(plants, "balcony");
   }
 
   private buildKitchen() {

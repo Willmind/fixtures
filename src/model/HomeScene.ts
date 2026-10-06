@@ -262,6 +262,7 @@ export class HomeScene {
 
   private clearGeometry(group: THREE.Group) {
     group.traverse((object) => {
+      if (object instanceof THREE.InstancedMesh) object.dispose();
       if (object instanceof THREE.Mesh || object instanceof THREE.Line)
         object.geometry.dispose();
     });

@@ -1,4 +1,6 @@
 import test from "node:test";
+import * as THREE from "three";
+import { createPottedTree } from "./plants.ts";
 import assert from "node:assert/strict";
 import { balconyFurniture, balconyEntryDoor, balconyRoofs, balconyWindowRuns, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
 import { rooms, walls } from "./plan.ts";
@@ -57,29 +59,30 @@ test("两块顶板覆盖对应阳台，厨房侧保留实墙和餐厅入口", ()
 });
 
 
-test("主阳台躺椅留在净空间内，中间保留至少八十厘米入口通道", () => {
+test("主阳台盆栽的树冠留在净空间内，避开玻璃门与中间入口", () => {
   const balcony = rooms.find(({ id }) => id === "balcony")!;
   const xs = balcony.polygon.map(([x]) => x), zs = balcony.polygon.map(([, z]) => z);
   const west = Math.min(...xs) + 0.1, east = Math.max(...xs) - 0.1;
   const north = Math.min(...zs) + 0.1, south = Math.max(...zs) - 0.1;
-  const { chairs, plants, chairLength, chairWidth } = balconyFurniture;
-  for (const [x, z] of chairs) {
-    assert.ok(x - chairLength / 2 > west && x + chairLength / 2 < east);
-    assert.ok(z - chairWidth / 2 > north && z + chairWidth / 2 < south);
-  }
-  const aisleLeft = chairs[0][0] + chairLength / 2;
-  const aisleRight = chairs[1][0] - chairLength / 2;
-  assert.ok(aisleRight - aisleLeft >= 0.8);
-  // The open four-panel door leaves the centre accessible between the recliners.
-  const openHalfWidth = balconyEntryDoor.width / 4 - 0.035;
-  assert.ok(aisleLeft > balconyEntryDoor.center[0] - openHalfWidth);
-  assert.ok(aisleRight < balconyEntryDoor.center[0] + openHalfWidth);
-  for (const [x, z] of plants) {
-    assert.ok(x - 0.13 >= west && x + 0.13 <= east);
-    assert.ok(z - 0.13 >= north && z + 0.13 <= south);
-    for (const [chairX, chairZ] of chairs) {
-      assert.ok(Math.abs(x - chairX) >= chairLength / 2 + 0.13
-        || Math.abs(z - chairZ) >= chairWidth / 2 + 0.13);
-    }
+  const clearLeft = balconyEntryDoor.center[0] - 0.5;
+  const clearRight = balconyEntryDoor.center[0] + 0.5;
+  for (const { center: [x, z], canopyRadius: radius, potRadius, height } of balconyFurniture.plants) {
+    assert.ok(x - radius > west && x + radius < east);
+    assert.ok(z - radius > north && z + radius < south);
+    assert.ok(x + radius < clearLeft || x - radius > clearRight);
+    assert.ok(potRadius * 1.15 < radius);
+    assert.ok(height < 2.8);
+    const material = new THREE.MeshStandardMaterial();
+    const tree = createPottedTree({ ...balconyFurniture.plants.find((plant) => plant.center[0] === x)! },
+      { bark: material, foliage: material, pot: material, soil: material });
+    const bounds = new THREE.Box3().setFromObject(tree);
+    assert.ok(bounds.min.x >= -radius && bounds.max.x <= radius, "实际叶片不得越过侧墙");
+    assert.ok(bounds.min.z >= -radius && bounds.max.z <= radius, "实际树冠不得穿入玻璃门或外侧封窗");
+    assert.ok(bounds.min.y >= 0 && bounds.max.y <= height);
+    tree.traverse((object) => {
+      if (object instanceof THREE.InstancedMesh) object.dispose();
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
+    material.dispose();
   }
 });

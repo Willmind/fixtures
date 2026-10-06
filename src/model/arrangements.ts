@@ -162,11 +162,12 @@ export const diningFurniture = {
   ],
 };
 
-// Compact recliners run along the shallow balcony, with a central entry aisle.
+// Tall and short feather-leaf trees, kept at the sides of the balcony entrance.
 export const balconyFurniture = {
-  chairLength: 1.35, chairWidth: 0.62,
-  chairs: [[3.6, 9.38], [5.8, 9.38]] as readonly Point[],
-  plants: [[2.87, 8.93], [6.53, 8.93]] as readonly Point[],
+  plants: [
+    { center: [6.22, 9.25] as Point, height: 1.95, canopyRadius: 0.43, potRadius: 0.21, potHeight: 0.38, seed: 42 },
+    { center: [3.1, 9.25] as Point, height: 1.25, canopyRadius: 0.30, potRadius: 0.16, potHeight: 0.29, seed: 76 },
+  ],
 };
 export const balconyEntryDoor = { center: [4.7, 8.65] as Point, width: 4, height: 2.35 };
 
