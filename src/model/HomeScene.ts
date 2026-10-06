@@ -54,6 +54,8 @@ export class HomeScene {
   private disposed = false;
   private options: ViewOptions;
   private raycaster = new THREE.Raycaster();
+  private hoverFrame = 0;
+  private hoverPoint?: { clientX: number; clientY: number };
   private selectionGesture = new SelectionGesture();
   private labels: Map<string, HTMLElement> = new Map();
   private wallMaterial: THREE.MeshStandardMaterial;
@@ -550,15 +552,37 @@ export class HomeScene {
 
   private pointerDown = (event: PointerEvent) => {
     this.selectionGesture.start(event);
+    cancelAnimationFrame(this.hoverFrame);
+    this.hoverFrame = 0;
+    this.renderer.domElement.style.cursor = "grabbing";
+  };
+  private updateHover = () => {
+    this.hoverFrame = 0;
+    const hit = this.hoverPoint && this.pickFirst(this.hoverPoint);
+    this.renderer.domElement.style.cursor = hit && this.fixtures.isOperable(hit.object) ? "pointer" : "";
   };
   private pointerMove = (event: PointerEvent) => {
     this.selectionGesture.move(event);
+    if (event.pointerType === "touch") return;
+    if (this.hoverFrame) cancelAnimationFrame(this.hoverFrame);
+    this.hoverFrame = 0;
+    if (event.buttons) {
+      this.hoverPoint = undefined;
+      return;
+    }
+    if (event.target !== this.renderer.domElement) {
+      this.hoverPoint = undefined;
+      this.renderer.domElement.style.cursor = "";
+      return;
+    }
+    this.hoverPoint = { clientX: event.clientX, clientY: event.clientY };
+    this.hoverFrame = requestAnimationFrame(this.updateHover);
   };
   private pointerCancel = (event: PointerEvent) => {
     this.selectionGesture.cancel(event.pointerId);
+    this.renderer.domElement.style.cursor = "";
   };
-  private pointerUp = (event: PointerEvent) => {
-    if (!this.selectionGesture.end(event)) return;
+  private pickFirst(event: { clientX: number; clientY: number }) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     if (
       event.clientX < rect.left ||
@@ -582,13 +606,23 @@ export class HomeScene {
       [...this.floors, ...architecture, ...this.fixtures.selectable],
       false,
     );
-    // Transparent glazing must not intercept a tap on the curtain visible behind
-    // it. Solid walls, window frames and furniture still block the hit normally.
-    const first = hits.find(({ object }) => {
+    // Operable glass is a hit target; fixed translucent glazing lets taps through
+    // to curtains. Solid walls and furniture continue to block objects behind.
+    return hits.find(({ object }) => {
       if (!(object instanceof THREE.Mesh)) return false;
+      if (this.fixtures.isOperable(object)) return true;
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       return materials.some((material) => !material.transparent || material.opacity >= 0.5 || material.depthWrite);
     });
+  }
+  private pointerUp = (event: PointerEvent) => {
+    const selected = this.selectionGesture.end(event);
+    this.renderer.domElement.style.cursor = "";
+    if (!selected) return;
+    const first = this.pickFirst(event);
+    if (first && this.fixtures.isOperable(first.object) && event.pointerType !== "touch") {
+      this.renderer.domElement.style.cursor = "pointer";
+    }
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (first && (this.fixtures.toggleDoor(first.object, now, reducedMotion)
@@ -608,6 +642,7 @@ export class HomeScene {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.frame);
+    cancelAnimationFrame(this.hoverFrame);
     this.resizeObserver.disconnect();
     this.controls.removeEventListener("change", this.requestRender);
     this.controls.dispose();

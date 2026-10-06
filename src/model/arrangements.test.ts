@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { balconyRoofs, balconyWindowRuns, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
+import { balconyFurniture, balconyEntryDoor, balconyRoofs, balconyWindowRuns, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
 import { rooms, walls } from "./plan.ts";
 
 test("两种方案交换电视和沙发的墙侧，并保持相向且不堵阳台通道", () => {
@@ -53,5 +53,33 @@ test("两块顶板覆盖对应阳台，厨房侧保留实墙和餐厅入口", ()
   for (const appliance of [utilityEquipment.washer, utilityEquipment.heater]) {
     assert.ok(appliance.center[0] > 2.7 && appliance.center[0] < 3.5);
     assert.ok(appliance.center[1] > 0 && appliance.center[1] < 1.2);
+  }
+});
+
+
+test("主阳台躺椅留在净空间内，中间保留至少八十厘米入口通道", () => {
+  const balcony = rooms.find(({ id }) => id === "balcony")!;
+  const xs = balcony.polygon.map(([x]) => x), zs = balcony.polygon.map(([, z]) => z);
+  const west = Math.min(...xs) + 0.1, east = Math.max(...xs) - 0.1;
+  const north = Math.min(...zs) + 0.1, south = Math.max(...zs) - 0.1;
+  const { chairs, plants, chairLength, chairWidth } = balconyFurniture;
+  for (const [x, z] of chairs) {
+    assert.ok(x - chairLength / 2 > west && x + chairLength / 2 < east);
+    assert.ok(z - chairWidth / 2 > north && z + chairWidth / 2 < south);
+  }
+  const aisleLeft = chairs[0][0] + chairLength / 2;
+  const aisleRight = chairs[1][0] - chairLength / 2;
+  assert.ok(aisleRight - aisleLeft >= 0.8);
+  // The open four-panel door leaves the centre accessible between the recliners.
+  const openHalfWidth = balconyEntryDoor.width / 4 - 0.035;
+  assert.ok(aisleLeft > balconyEntryDoor.center[0] - openHalfWidth);
+  assert.ok(aisleRight < balconyEntryDoor.center[0] + openHalfWidth);
+  for (const [x, z] of plants) {
+    assert.ok(x - 0.13 >= west && x + 0.13 <= east);
+    assert.ok(z - 0.13 >= north && z + 0.13 <= south);
+    for (const [chairX, chairZ] of chairs) {
+      assert.ok(Math.abs(x - chairX) >= chairLength / 2 + 0.13
+        || Math.abs(z - chairZ) >= chairWidth / 2 + 0.13);
+    }
   }
 });

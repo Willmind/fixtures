@@ -5,6 +5,8 @@ import { defaults, modelCenter } from "./plan";
 import type { Point } from "./plan";
 import {
   balconyRoofs,
+  balconyFurniture,
+  balconyEntryDoor,
   balconyChoices,
   balconyWindowRuns,
   bathroomFittings,
@@ -56,6 +58,7 @@ export class HomeFixtures {
     body: THREE.Group; height: number; header: THREE.Mesh;
     handles: THREE.Group[]; motion: OpenCloseMotion; apply: (value: number) => void;
   }[] = [];
+  private glazingDoors: { motion: OpenCloseMotion; apply: (value: number) => void }[] = [];
   private bedDrawers: { group: THREE.Group; closedX: number; side: number;
     travel: number; motion: OpenCloseMotion }[] = [];
   private hoodChimney?: THREE.Mesh;
@@ -136,6 +139,7 @@ export class HomeFixtures {
     this.buildEquipment();
     this.buildRoomFurnishings();
     this.buildDoors();
+    this.buildBalconyEntryDoor();
     this.buildEntranceCorridor();
   }
 
@@ -237,7 +241,70 @@ export class HomeFixtures {
     this.label(cabinetGroup, "鞋柜", cabinet.height + 0.12, "shoe-cabinet");
   }
 
+  private registerGlazingDoor(parts: THREE.Group[], apply: (value: number) => void, initialOpen = false) {
+    const index = this.glazingDoors.length;
+    const motion = new OpenCloseMotion(initialOpen);
+    for (const part of parts) part.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.userData.glazingDoorIndex = index;
+    });
+    this.glazingDoors.push({ motion, apply });
+    apply(motion.value);
+  }
+
+  isOperable(object: THREE.Object3D) {
+    return ["homeDoorIndex", "glazingDoorIndex", "bedDrawerIndex", "curtainIndex"].some(
+      (key) => typeof object.userData[key] === "number",
+    ) || Array.isArray(object.userData.bedDrawerIds);
+  }
+
+  private buildBalconyEntryDoor() {
+    const { center, width, height } = balconyEntryDoor;
+    const group = this.at(this.entrances, center);
+    group.name = "main-balcony-sliding-glass-door";
+    for (const x of [-width / 2, width / 2]) {
+      this.box(group, [0.035, height, 0.1], [x, height / 2, 0], this.windowFrameMaterial);
+    }
+    for (const y of [0.02, height - 0.02]) {
+      this.box(group, [width, 0.04, 0.1], [0, y, 0], this.windowFrameMaterial);
+    }
+    const panelWidth = width / 4;
+    const panels: THREE.Group[] = [];
+    for (let i = 0; i < 4; i++) {
+      const panel = new THREE.Group();
+      panel.position.set(-width / 2 + panelWidth * (i + 0.5), 0, i === 1 || i === 2 ? -0.045 : 0.015);
+      group.add(panel);
+      this.box(panel, [panelWidth - 0.045, height - 0.1, 0.008],
+        [0, height / 2, 0], this.windowGlassMaterial);
+      for (const x of [-panelWidth / 2 + 0.012, panelWidth / 2 - 0.012]) {
+        this.box(panel, [0.024, height - 0.08, 0.028], [x, height / 2, 0], this.windowFrameMaterial);
+      }
+      for (const y of [0.045, height - 0.045]) {
+        this.box(panel, [panelWidth, 0.024, 0.028], [0, y, 0], this.windowFrameMaterial);
+      }
+      if (i === 1 || i === 2) {
+        const x = (i === 1 ? 1 : -1) * (panelWidth / 2 - 0.085);
+        for (const z of [-0.035, 0.035]) {
+          this.box(panel, [0.02, 0.22, 0.025], [x, 1.05, z], this.steelMaterial, 0.006);
+        }
+        panels.push(panel);
+      }
+    }
+    this.registerGlazingDoor(panels, (value) => {
+      panels[0].position.x = -panelWidth / 2 - (panelWidth - 0.035) * value;
+      panels[1].position.x = panelWidth / 2 + (panelWidth - 0.035) * value;
+    }, true);
+    this.tagRoom(group, "balcony");
+  }
+
   toggleDoor(object: THREE.Object3D, now: number, reducedMotion = false) {
+    const glazingIndex = object.userData.glazingDoorIndex;
+    if (typeof glazingIndex === "number") {
+      const door = this.glazingDoors[glazingIndex];
+      if (!door) return false;
+      door.motion.toggle(now, reducedMotion);
+      door.apply(door.motion.value);
+      return true;
+    }
     const index = object.userData.homeDoorIndex;
     if (typeof index !== "number") return false;
     const door = this.doors[index];
@@ -249,7 +316,7 @@ export class HomeFixtures {
 
   animateDoors(now: number) {
     let moving = false;
-    for (const door of this.doors) {
+    for (const door of [...this.doors, ...this.glazingDoors]) {
       moving = door.motion.advance(now) || moving;
       door.apply(door.motion.value);
     }
@@ -501,6 +568,7 @@ export class HomeFixtures {
     this.buildKitchen();
     this.buildHomeOffice();
     this.buildDining();
+    this.buildBalconyFurniture();
     this.buildCurtains();
     this.buildAirConditioners();
   }
@@ -765,10 +833,14 @@ export class HomeFixtures {
   ) {
     // The floor and drain make the wet area readable even in the top view.
     this.box(group, [width, 0.012, depth], [0, 0.006, -depth / 2], this.wetFloorMaterial);
-    this.box(group, [0.13, 0.008, 0.13], [width / 2 - 0.22, 0.016, -depth + 0.22], this.steelMaterial);
-    for (let index = 0; index < 4; index++) {
-      this.box(group, [0.085, 0.002, 0.006],
-        [width / 2 - 0.22, 0.021, -depth + 0.19 + index * 0.02], this.darkMaterial);
+    const drain = new THREE.Group();
+    drain.name = "shower-floor-drain";
+    drain.position.set(width / 2 - 0.23, 0.015, -depth + 0.23);
+    group.add(drain);
+    this.box(drain, [0.16, 0.004, 0.16], [0, 0, 0], this.steelMaterial);
+    this.box(drain, [0.135, 0.002, 0.135], [0, 0.003, 0], this.darkMaterial);
+    for (let index = 0; index < 8; index++) {
+      this.box(drain, [0.12, 0.002, 0.006], [0, 0.005, -0.056 + index * 0.016], this.steelMaterial);
     }
 
     const frame = 0.018;
@@ -803,6 +875,64 @@ export class HomeFixtures {
     for (const z of [-0.033, 0.033]) {
       this.box(door, [0.022, 0.20, 0.022], [-doorWidth + 0.1, 1.05, z], this.steelMaterial, 0.008);
     }
+    // Hinge on the right, opening into the wet area rather than the toilet aisle.
+    this.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI / 2 * value; });
+  }
+
+  private buildBalconyFurniture() {
+    const { chairs, plants, chairLength, chairWidth } = balconyFurniture;
+    const lounge = new THREE.Group();
+    lounge.name = "balcony-recliners-and-plants";
+    this.furnishings.add(lounge);
+    for (const center of chairs) {
+      const chair = this.at(lounge, center, Math.PI / 2);
+      chair.name = "compact-balcony-recliner";
+      // A compact raised back and extended leg rest, oriented along the balcony.
+      for (const x of [-chairWidth / 2 + 0.045, chairWidth / 2 - 0.045]) {
+        for (const z of [-0.31, 0.43]) {
+          this.box(chair, [0.045, 0.29, 0.045], [x, 0.145, z], this.woodMaterial, 0.008);
+        }
+        this.box(chair, [0.045, 0.07, chairLength], [x, 0.31, 0], this.woodMaterial, 0.012);
+        this.box(chair, [0.045, 0.20, 0.04], [x, 0.43, -0.12], this.woodMaterial, 0.006);
+        this.box(chair, [0.075, 0.04, 0.49], [x, 0.54, -0.12], this.woodMaterial, 0.012);
+      }
+      this.box(chair, [chairWidth - 0.1, 0.07, 0.92], [0, 0.365, 0.205], this.beddingMaterial, 0.025);
+      const back = new THREE.Group();
+      back.position.set(0, 0.37, -0.25);
+      back.rotation.x = -0.53;
+      chair.add(back);
+      this.box(back, [chairWidth - 0.09, 0.55, 0.045], [0, 0.26, 0], this.woodMaterial, 0.012);
+      this.box(back, [chairWidth - 0.12, 0.53, 0.075], [0, 0.26, 0.042], this.beddingMaterial, 0.025);
+      this.box(back, [0.32, 0.13, 0.07], [0, 0.44, 0.10], this.beddingMaterial, 0.025);
+    }
+    const leafMaterial = this.material({ color: "#5f7950", roughness: 0.95 });
+    const soilMaterial = this.material({ color: "#5b493a", roughness: 1 });
+    for (const [index, center] of plants.entries()) {
+      const plant = this.at(lounge, center);
+      plant.name = "balcony-potted-plant";
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.10, 0.24, 24), this.stoneMaterial);
+      pot.position.y = 0.12;
+      pot.castShadow = pot.receiveShadow = true;
+      plant.add(pot);
+      const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.117, 0.117, 0.007, 24), soilMaterial);
+      soil.position.y = 0.237;
+      plant.add(soil);
+      for (let i = 0; i < 7; i++) {
+        const angle = i * 2.4 + index;
+        const height = 0.43 + (i % 3) * 0.13;
+        const x = Math.cos(angle) * 0.1, z = Math.sin(angle) * 0.1;
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, height - 0.24, 6), leafMaterial);
+        stem.position.set(x / 2, (height + 0.24) / 2, z / 2);
+        plant.add(stem);
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), leafMaterial);
+        leaf.scale.set(0.065, 0.018, 0.15);
+        leaf.rotation.set(0.35, angle, 0.12);
+        leaf.position.set(x, height, z);
+        leaf.castShadow = true;
+        plant.add(leaf);
+      }
+    }
+    this.tagRoom(lounge, "balcony");
   }
 
   private buildKitchen() {

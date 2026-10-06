@@ -162,6 +162,14 @@ export const diningFurniture = {
   ],
 };
 
+// Compact recliners run along the shallow balcony, with a central entry aisle.
+export const balconyFurniture = {
+  chairLength: 1.35, chairWidth: 0.62,
+  chairs: [[3.6, 9.38], [5.8, 9.38]] as readonly Point[],
+  plants: [[2.87, 8.93], [6.53, 8.93]] as readonly Point[],
+};
+export const balconyEntryDoor = { center: [4.7, 8.65] as Point, width: 4, height: 2.35 };
+
 export const roomCurtains = [
   { roomId: "guest", center: [1.3, 8.46] as Point, width: 2.15 },
   { roomId: "master", center: [11.9, 8.46] as Point, width: 2.15 },
