@@ -2,10 +2,10 @@ import * as THREE from "three";
 import { defaults, rooms } from "./plan.ts";
 import type { Room, Wall } from "./plan.ts";
 
-type Finish = "wood" | "soft" | "white";
+type Finish = "wood" | "white";
 
 export function floorFinish(room: Pick<Room, "kind">): Finish {
-  return room.kind === "bathroom" ? "white" : room.kind === "bedroom" ? "soft" : "wood";
+  return room.kind === "bathroom" ? "white" : "wood";
 }
 
 /** Shared walls get tile only on the kitchen/bathroom side. */
@@ -49,10 +49,10 @@ export function applySurfaceUVs(geometry: THREE.BufferGeometry, transform = new 
 export function createTileSurface(finish: Finish, wall = false) {
   const wood = finish === "wood";
   const width = wood ? 1024 : 256, height = wood ? 512 : 256;
-  const repeatWidth = wood ? 2.4 : finish === "soft" ? 0.8 : 0.6;
+  const repeatWidth = wood ? 2.4 : 0.6;
   const repeatHeight = wood ? 0.8 : wall ? 0.3 : repeatWidth;
   const colors = new Uint8Array(width * height * 4), bumps = new Uint8Array(colors.length);
-  const base = wood ? [193, 162, 125] : finish === "soft" ? [221, 216, 206] : [240, 240, 236];
+  const base = wood ? [193, 162, 125] : [240, 240, 236];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const u = (x + 0.5) / width, v = (y + 0.5) / height;
@@ -91,5 +91,5 @@ export function createTileSurface(finish: Finish, wall = false) {
     return texture;
   };
   return { map: make(colors, true), bumpMap: make(bumps, false), bumpScale: 0.0015,
-    roughness: wall ? 0.48 : finish === "soft" ? 0.55 : finish === "white" ? 0.7 : 0.8 };
+    roughness: wall ? 0.48 : finish === "white" ? 0.7 : 0.8 };
 }

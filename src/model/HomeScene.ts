@@ -225,7 +225,7 @@ export class HomeScene {
   }
 
   private buildFloors() {
-    const surfaces = { wood: createTileSurface("wood"), soft: createTileSurface("soft"), white: createTileSurface("white") };
+    const surfaces = { wood: createTileSurface("wood"), white: createTileSurface("white") };
     for (const surface of Object.values(surfaces)) this.textures.add(surface.map).add(surface.bumpMap);
     for (const room of rooms) {
       const shape = new THREE.Shape();
