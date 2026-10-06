@@ -1116,13 +1116,32 @@ export class HomeFixtures {
       this.box(display, [width - 0.06, 0.02, depth - 0.025], [0, y, 0.005], this.woodMaterial);
     }
     const doorWidth = (width - 0.065) / 2;
+    const doorHeight = height - 0.12, doorCentreY = (height + 0.06) / 2;
     for (const side of [-1, 1]) {
-      const glass = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, height - 0.135), this.windowGlassMaterial);
-      glass.position.set(side * (doorWidth + 0.005) / 2, (height + 0.065) / 2, depth / 2 + 0.002);
-      display.add(glass);
-      this.box(display, [0.013, height - 0.12, 0.018],
-        [side * 0.009, (height + 0.06) / 2, depth / 2 + 0.005], this.woodMaterial);
-      this.box(display, [0.016, 0.14, 0.03], [side * 0.042, 0.98, depth / 2 + 0.022], this.steelMaterial, 0.005);
+      const direction = -side;
+      const door = new THREE.Group();
+      door.name = `study-display-cabinet-${side === -1 ? "left" : "right"}-door`;
+      // Hinges at the outer jambs; the leaves open out into the room.
+      door.position.set(side * (width / 2 - 0.029), 0, depth / 2 + 0.025);
+      display.add(door);
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth - 0.026, doorHeight - 0.03), this.windowGlassMaterial);
+      glass.position.set(direction * doorWidth / 2, doorCentreY, 0);
+      door.add(glass);
+      for (const x of [direction * 0.0065, direction * (doorWidth - 0.0065)]) {
+        this.box(door, [0.013, doorHeight, 0.018], [x, doorCentreY, 0], this.woodMaterial);
+      }
+      for (const y of [doorCentreY - doorHeight / 2 + 0.0075, doorCentreY + doorHeight / 2 - 0.0075]) {
+        this.box(door, [doorWidth, 0.015, 0.018], [direction * doorWidth / 2, y, 0], this.woodMaterial);
+      }
+      this.box(door, [0.016, 0.14, 0.03],
+        [direction * (doorWidth - 0.038), 0.98, 0.022], this.steelMaterial, 0.005);
+      for (const y of [0.28, height - 0.27]) {
+        const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.06, 12), this.steelMaterial);
+        hinge.position.set(0, y, 0);
+        door.add(hinge);
+      }
+      // Reuse glass-door picking, cursor feedback and reversible motion.
+      this.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
     }
     this.tagRoom(display, roomId);
     const chair = this.at(this.furnishings, homeOfficeFurniture.chair.center, homeOfficeFurniture.chair.rotation);
