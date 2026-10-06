@@ -2,7 +2,7 @@ import test from "node:test";
 import * as THREE from "three";
 import { createPottedTree } from "./plants.ts";
 import assert from "node:assert/strict";
-import { balconyFurniture, balconyEntryDoor, balconyRoofs, balconyWindowRuns, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
+import { bathroomFittings, bathroomVanitySize, balconyFurniture, balconyEntryDoor, balconyRoofs, balconyWindowRuns, furnitureSize, livingLayouts, livingPlacement, utilityEquipment } from "./arrangements.ts";
 import { rooms, walls } from "./plan.ts";
 
 test("两种方案交换电视和沙发的墙侧，并保持相向且不堵阳台通道", () => {
@@ -84,5 +84,28 @@ test("主阳台盆栽的树冠留在净空间内，避开玻璃门与中间入�
       if (object instanceof THREE.Mesh) object.geometry.dispose();
     });
     material.dispose();
+  }
+});
+
+
+test("两个洗手台的背面和左侧同时贴墙，前沿避开卫生间门洞", () => {
+  const { width, depth, sideInset, backInset } = bathroomVanitySize;
+  for (const fitting of bathroomFittings) {
+    const room = rooms.find(({ id }) => id === fitting.roomId)!;
+    const west = Math.min(...room.polygon.map(([x]) => x)) + 0.1;
+    const south = Math.max(...room.polygon.map(([, z]) => z)) - 0.1;
+    const [x, z] = fitting.vanity.center;
+    const rotation = fitting.vanity.rotation;
+    const world = (localX: number, localZ: number) => [
+      x + Math.cos(rotation) * (localX - sideInset) + Math.sin(rotation) * (localZ - backInset),
+      z - Math.sin(rotation) * (localX - sideInset) + Math.cos(rotation) * (localZ - backInset),
+    ];
+    const back = world(0, -depth / 2), left = world(-width / 2, 0);
+    assert.ok(Math.abs(back[0] - west + backInset) < 1e-9);
+    assert.ok(Math.abs(left[1] - south - sideInset) < 1e-9, "左侧不能保留原来的十三厘米空位");
+    const doorWall = walls.find(({ id }) => id === `${fitting.roomId}-south`)!;
+    const opening = doorWall.openings!.find(({ kind }) => kind === "door")!;
+    assert.ok(world(0, depth / 2)[0] < doorWall.from[0] + opening.start,
+      "贴侧墙后仍要完整保留门洞");
   }
 });

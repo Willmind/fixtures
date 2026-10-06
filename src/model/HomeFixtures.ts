@@ -10,6 +10,7 @@ import {
   balconyChoices,
   balconyWindowRuns,
   bathroomFittings,
+  bathroomVanitySize,
   bedroomBeds,
   bedroomAirConditioners,
   curtainColors,
@@ -100,6 +101,7 @@ export class HomeFixtures {
   private wetWallMaterial = this.makeTileMaterial(true);
   private ceramicMaterial = this.material({ color: "#f5f5f0", roughness: 0.25 });
   private steelMaterial = this.material({ color: "#7c8385", roughness: 0.35, metalness: 0.7 });
+  private faucetMaterial = this.material({ color: "#b9bec0", roughness: 0.32, metalness: 0.35 });
   private mirrorMaterial = this.material({ color: "#b8cdd3", roughness: 0.08, metalness: 0.45 });
   private curtainWeave = createCurtainWeave();
   private curtainMaterial = this.makeCurtainMaterial();
@@ -768,30 +770,33 @@ export class HomeFixtures {
   }
 
   private buildVanity(group: THREE.Group) {
-    const wallZ = -0.24;
+    const { width, depth, sideInset, backInset } = bathroomVanitySize;
+    const wallZ = -depth / 2;
     const fixture = new THREE.Group();
     // Seat the flat backs slightly into the tile face to avoid daylight seams
     // from rounded rear edges, floating-point precision and shadow bias.
-    fixture.position.z = -0.004;
+    fixture.position.set(-sideInset, 0, -backInset);
     group.add(fixture);
     // Wall-hung cabinet: keep the basin height and leave 0.30 m clear below.
-    this.box(fixture, [0.64, 0.40, 0.44], [0, 0.50, wallZ + 0.22], this.woodMaterial);
+    // The left cabinet side follows the basin edge; only the free right side overhangs.
+    this.box(fixture, [width - 0.02, 0.40, 0.44], [-0.01, 0.50, wallZ + 0.22], this.woodMaterial);
     this.box(fixture, [0.006, 0.36, 0.006], [0, 0.50, 0.202], this.supportMaterial);
     for (const x of [-0.1, 0.1]) {
       this.box(fixture, [0.12, 0.012, 0.025], [x, 0.625, 0.21], this.steelMaterial);
     }
-    this.box(fixture, [0.68, 0.04, 0.48], [0, 0.72, 0], this.ceramicMaterial);
-    for (const x of [-0.32, 0.32]) {
-      this.box(fixture, [0.04, 0.10, 0.48], [x, 0.79, 0], this.ceramicMaterial, 0.015);
+    this.box(fixture, [width, 0.04, depth], [0, 0.72, 0], this.ceramicMaterial);
+    for (const side of [-1, 1]) {
+      this.box(fixture, [0.04, 0.10, depth], [side * (width / 2 - 0.02), 0.79, 0],
+        this.ceramicMaterial, side === -1 ? 0 : 0.015);
     }
-    this.box(fixture, [0.68, 0.10, 0.04], [0, 0.79, -0.22], this.ceramicMaterial);
+    // A wider rear deck supports the faucet base instead of leaving it over the bowl.
+    this.box(fixture, [width, 0.10, 0.08], [0, 0.79, wallZ + 0.04], this.ceramicMaterial);
     this.box(fixture, [0.64, 0.10, 0.04], [0, 0.79, 0.22], this.ceramicMaterial, 0.015);
     const drain = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.004, 16), this.steelMaterial);
     drain.position.set(0, 0.741, 0.03);
     fixture.add(drain);
-    this.pipe(fixture, [[0, 0.83, -0.205], [0, 1.03, -0.205], [0, 1.06, -0.12], [0, 1.02, 0.02]], 0.014);
-    this.box(fixture, [0.065, 0.018, 0.025], [0.028, 0.9, -0.205], this.steelMaterial);
-    this.box(fixture, [0.68, 0.82, 0.045], [0, 1.53, wallZ + 0.0225], this.woodMaterial);
+    this.buildBasinFaucet(fixture);
+    this.box(fixture, [width, 0.82, 0.045], [0, 1.53, wallZ + 0.0225], this.woodMaterial);
     this.box(fixture, [0.61, 0.75, 0.008], [0, 1.53, wallZ + 0.049], this.mirrorMaterial, 0.025);
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
@@ -799,6 +804,39 @@ export class HomeFixtures {
       [0, (2.0 + defaults.cutHeight) / 2, wallZ - defaults.wallThickness / 2],
       [this.backdropMaterial, this.backdropMaterial, this.backdropMaterial, this.backdropMaterial,
         this.wetWallMaterial, this.backdropMaterial]));
+  }
+
+  private buildBasinFaucet(parent: THREE.Group) {
+    const faucet = new THREE.Group();
+    faucet.name = "basin-rounded-elbow-faucet";
+    parent.add(faucet);
+    const cylinder = (radius: number, height: number, y: number, z: number) => {
+      const part = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 20), this.faucetMaterial);
+      part.position.set(0, y, z);
+      part.castShadow = part.receiveShadow = true;
+      faucet.add(part);
+    };
+    cylinder(0.024, 0.012, 0.846, -0.20);
+    cylinder(0.019, 0.122, 0.913, -0.20);
+    // Explicit lines and circular-looking elbows prevent spline overshoot and
+    // give the spout a horizontal reach followed by a downward outlet.
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    path.add(new THREE.LineCurve3(new THREE.Vector3(0, 0.965, -0.20), new THREE.Vector3(0, 0.98, -0.20)));
+    path.add(new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.98, -0.20),
+      new THREE.Vector3(0, 1.01, -0.20), new THREE.Vector3(0, 1.01, -0.17)));
+    path.add(new THREE.LineCurve3(new THREE.Vector3(0, 1.01, -0.17), new THREE.Vector3(0, 1.01, -0.05)));
+    path.add(new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 1.01, -0.05),
+      new THREE.Vector3(0, 1.01, -0.03), new THREE.Vector3(0, 0.99, -0.03)));
+    const spout = new THREE.Mesh(new THREE.TubeGeometry(path, 32, 0.012, 12, false), this.faucetMaterial);
+    spout.castShadow = spout.receiveShadow = true;
+    faucet.add(spout);
+    cylinder(0.014, 0.022, 0.985, -0.03);
+    const outlet = new THREE.Mesh(new THREE.CircleGeometry(0.009, 16), this.darkMaterial);
+    outlet.rotation.x = Math.PI / 2;
+    outlet.position.set(0, 0.9735, -0.03);
+    faucet.add(outlet);
+    cylinder(0.017, 0.009, 0.9785, -0.20);
+    this.box(faucet, [0.018, 0.013, 0.06], [0, 0.99, -0.185], this.faucetMaterial, 0.006);
   }
 
   private pipe(parent: THREE.Group, points: [number, number, number][], radius: number) {

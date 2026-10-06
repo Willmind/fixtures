@@ -120,6 +120,8 @@ export const homeOfficeFurniture = {
   cabinet: { center: [0.31, 5.98] as Point, rotation: Math.PI / 2, width: 0.9, depth: 0.38, height: 1.85 },
 };
 
+export const bathroomVanitySize = { width: 0.68, depth: 0.48, sideInset: 0.003, backInset: 0.004 };
+
 // Both bathrooms enter from the south. Keep the existing door openings clear:
 // basin and toilet along the west wall, then a glazed shower at the far end.
 export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom").map((room) => {
@@ -129,8 +131,10 @@ export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom")
   const showerDepth = 0.9, partitionZ = north + showerDepth;
   return {
     roomId: room.id,
-    // The 0.48 m basin's back edge sits flush with the left wall's inner face.
-    vanity: { center: [west + 0.24, south - 0.47] as Point, rotation: Math.PI / 2 },
+    // Mount the back on the west wall, and the basin's left edge against the
+    // perpendicular south return wall visible to the left when facing the mirror.
+    vanity: { center: [west + bathroomVanitySize.depth / 2, south - bathroomVanitySize.width / 2] as Point,
+      rotation: Math.PI / 2 },
     toilet: { center: [west + 0.34, partitionZ + 0.55] as Point, rotation: Math.PI / 2 },
     shower: { center: [west + 0.015, north + 0.42] as Point, rotation: Math.PI / 2 },
     enclosure: {
