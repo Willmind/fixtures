@@ -113,16 +113,24 @@ export const bedroomBeds = [
   { roomId: "study", center: [8.42, 2.63] as Point, rotation: 0, width: 1.2 },
 ] as const;
 
-export const bathroomToilets = [
-  { roomId: "bath", center: [6.7, 1.75] as Point },
-  { roomId: "ensuite", center: [11.1, 1.75] as Point },
-] as const;
-
-export const bathroomFittings = bathroomToilets.map(({ roomId, center: [x] }) => ({
-  roomId,
-  vanity: { center: [x - 0.54, 2.8] as Point, rotation: Math.PI / 2 },
-  shower: { center: [x + 0.78, 2.8] as Point, rotation: -Math.PI / 2 },
-}));
+// Both bathrooms enter from the south. Keep the existing door openings clear:
+// basin and toilet along the west wall, then a glazed shower at the far end.
+export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom").map((room) => {
+  const xs = room.polygon.map(([x]) => x), zs = room.polygon.map(([, z]) => z);
+  const west = Math.min(...xs) + 0.1, east = Math.max(...xs) - 0.1;
+  const north = Math.min(...zs) + 0.1, south = Math.max(...zs) - 0.1;
+  const showerDepth = 0.9, partitionZ = north + showerDepth;
+  return {
+    roomId: room.id,
+    vanity: { center: [west + 0.26, south - 0.47] as Point, rotation: Math.PI / 2 },
+    toilet: { center: [west + 0.34, partitionZ + 0.55] as Point, rotation: Math.PI / 2 },
+    shower: { center: [west + 0.015, north + 0.42] as Point, rotation: Math.PI / 2 },
+    enclosure: {
+      center: [(west + east) / 2, partitionZ] as Point,
+      width: east - west, depth: showerDepth, height: 2.1, doorWidth: 0.76,
+    },
+  };
+});
 
 export const kitchenFurniture = {
   hood: { center: [0.97, 0.95] as Point, rotation: Math.PI / 2 },

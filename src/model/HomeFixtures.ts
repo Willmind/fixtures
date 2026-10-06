@@ -7,7 +7,6 @@ import {
   balconyRoofs,
   balconyChoices,
   balconyWindowRuns,
-  bathroomToilets,
   bathroomFittings,
   bedroomBeds,
   bedroomAirConditioners,
@@ -81,6 +80,10 @@ export class HomeFixtures {
   private windowFrameMaterial = this.material({ color: "#46565b", roughness: 0.6, metalness: 0.25 });
   private windowGlassMaterial = this.material({
     color: "#a8c5cf", roughness: 0.2, transparent: true, opacity: 0.24,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  private showerGlassMaterial = this.material({
+    color: "#c5dde0", roughness: 0.14, transparent: true, opacity: 0.2,
     depthWrite: false, side: THREE.DoubleSide,
   });
 
@@ -275,21 +278,23 @@ export class HomeFixtures {
       this.buildBed(group, bed.width);
       this.tagRoom(group, bed.roomId);
     }
-    for (const toilet of bathroomToilets) {
-      const group = this.at(this.furnishings, toilet.center);
-      group.name = `${toilet.roomId}-toilet`;
-      this.buildToilet(group);
-      this.tagRoom(group, toilet.roomId);
-    }
     for (const fitting of bathroomFittings) {
       const vanity = this.at(this.furnishings, fitting.vanity.center, fitting.vanity.rotation);
       vanity.name = `${fitting.roomId}-basin-and-mirror`;
       this.buildVanity(vanity);
       this.tagRoom(vanity, fitting.roomId);
+      const toilet = this.at(this.furnishings, fitting.toilet.center, fitting.toilet.rotation);
+      toilet.name = `${fitting.roomId}-toilet`;
+      this.buildToilet(toilet);
+      this.tagRoom(toilet, fitting.roomId);
       const shower = this.at(this.furnishings, fitting.shower.center, fitting.shower.rotation);
       shower.name = `${fitting.roomId}-shower`;
       this.buildShower(shower);
       this.tagRoom(shower, fitting.roomId);
+      const enclosure = this.at(this.furnishings, fitting.enclosure.center);
+      enclosure.name = `${fitting.roomId}-wet-area-and-glass-door`;
+      this.buildShowerEnclosure(enclosure, fitting.enclosure);
+      this.tagRoom(enclosure, fitting.roomId);
     }
     this.buildKitchen();
     this.buildDining();
@@ -450,6 +455,52 @@ export class HomeFixtures {
     this.pipe(group, [[-0.065, 0.88, 0.10], [-0.13, 0.55, 0.12], [-0.24, 0.7, 0.11], [-0.18, 1.37, 0.09]], 0.008);
     this.box(group, [0.035, 0.19, 0.03], [-0.18, 1.39, 0.09], this.steelMaterial, 0.012);
     this.box(group, [0.07, 0.1, 0.025], [-0.18, 1.5, 0.09], this.steelMaterial, 0.025);
+  }
+
+  private buildShowerEnclosure(
+    group: THREE.Group,
+    { width, depth, height, doorWidth }: { width: number; depth: number; height: number; doorWidth: number },
+  ) {
+    // The floor and drain make the wet area readable even in the top view.
+    this.box(group, [width, 0.012, depth], [0, 0.006, -depth / 2], this.stoneMaterial);
+    this.box(group, [0.13, 0.008, 0.13], [width / 2 - 0.22, 0.016, -depth + 0.22], this.steelMaterial);
+    for (let index = 0; index < 4; index++) {
+      this.box(group, [0.085, 0.002, 0.006],
+        [width / 2 - 0.22, 0.021, -depth + 0.19 + index * 0.02], this.darkMaterial);
+    }
+
+    const frame = 0.018;
+    for (const x of [-width / 2 + frame / 2, width / 2 - frame / 2]) {
+      this.box(group, [frame, height, 0.025], [x, height / 2, 0], this.steelMaterial);
+    }
+    this.box(group, [width, frame, 0.03], [0, height - frame / 2, 0], this.steelMaterial);
+    this.box(group, [width, 0.025, 0.04], [0, 0.0125, 0], this.stoneMaterial);
+
+    const fixedWidth = width - doorWidth - frame * 2 - 0.006;
+    const fixedX = -width / 2 + frame + fixedWidth / 2;
+    const fixed = new THREE.Mesh(new THREE.PlaneGeometry(fixedWidth, height - 0.045), this.showerGlassMaterial);
+    fixed.position.set(fixedX, height / 2, 0);
+    group.add(fixed);
+    const seamX = fixedX + fixedWidth / 2;
+    this.box(group, [0.01, height - 0.03, 0.016], [seamX, height / 2, 0], this.steelMaterial);
+
+    // A separate glazed door on the clear passage side, with hinges and a handle.
+    const door = new THREE.Group();
+    door.name = "shower-glass-door";
+    door.position.x = width / 2 - frame;
+    group.add(door);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, height - 0.045), this.showerGlassMaterial);
+    glass.position.set(-doorWidth / 2, height / 2, 0);
+    door.add(glass);
+    for (const y of [0.35, height - 0.35]) {
+      this.box(door, [0.065, 0.065, 0.022], [-0.024, y, 0], this.steelMaterial, 0.004);
+    }
+    for (const y of [0.98, 1.12]) {
+      this.box(door, [0.022, 0.022, 0.065], [-doorWidth + 0.1, y, 0], this.steelMaterial);
+    }
+    for (const z of [-0.033, 0.033]) {
+      this.box(door, [0.022, 0.20, 0.022], [-doorWidth + 0.1, 1.05, z], this.steelMaterial, 0.008);
+    }
   }
 
   private buildKitchen() {

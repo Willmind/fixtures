@@ -122,7 +122,7 @@ export const rooms: Room[] = [
     kind: "bathroom",
     polygon: rect(5.8, 1.2, 1.8, 3.05),
     label: [6.7, 2.8],
-    description: "由公共过道进入，暂放马桶、洗手池、镜子和花洒。摆放仅为示意，给排水点位待现场核实。",
+    description: "由公共过道进入，沿一侧依次为洗手台与镜子、马桶，玻璃门后是最里面的淋浴区。按期望布局预览，尺寸和给排水点位待现场核实。",
   },
   {
     id: "ensuite",
@@ -130,7 +130,7 @@ export const rooms: Room[] = [
     kind: "bathroom",
     polygon: rect(10.2, 1.2, 1.8, 3.05),
     label: [11.1, 2.8],
-    description: "主卧内的独立卫生间，暂放马桶、洗手池、镜子和花洒；给排水点位待核实，未加入淋浴隔断。",
+    description: "主卧内的独立卫生间，进门依次为洗手台与镜子、马桶，再经玻璃门进入淋浴区。按期望布局预览，尺寸和给排水点位待现场核实。",
   },
   {
     id: "balcony",
