@@ -832,8 +832,32 @@ export class HomeFixtures {
     this.box(back, [0.045, 0.20, 0.04], [0, 0.32, -0.015], this.supportMaterial, 0.015);
     this.box(back, [0.28, 0.14, 0.085], [0, 0.42, 0], this.darkMaterial, 0.04);
     for (const x of [-0.25, 0.25]) {
-      this.box(group, [0.028, 0.15, 0.04], [x, 0.57, 0.015], this.supportMaterial, 0.008);
-      this.box(group, [0.065, 0.04, 0.28], [x, 0.65, 0.06], this.darkMaterial, 0.019);
+      // One continuous profile joins the arm pad to its support. The foot
+      // extends into the rounded seat edge instead of only touching its top.
+      const profile = new THREE.Shape();
+      profile.moveTo(-0.006, 0.435);
+      profile.lineTo(0.036, 0.435);
+      profile.lineTo(0.036, 0.602);
+      profile.quadraticCurveTo(0.036, 0.632, 0.066, 0.632);
+      profile.lineTo(0.182, 0.632);
+      profile.quadraticCurveTo(0.2, 0.632, 0.2, 0.65);
+      profile.quadraticCurveTo(0.2, 0.668, 0.182, 0.668);
+      profile.lineTo(-0.062, 0.668);
+      profile.quadraticCurveTo(-0.08, 0.668, -0.08, 0.65);
+      profile.quadraticCurveTo(-0.08, 0.632, -0.062, 0.632);
+      profile.lineTo(-0.036, 0.632);
+      profile.quadraticCurveTo(-0.006, 0.632, -0.006, 0.602);
+      profile.closePath();
+      const geometry = new THREE.ExtrudeGeometry(profile, {
+        depth: 0.052, steps: 1, curveSegments: 6,
+        bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 3,
+      });
+      geometry.translate(0, 0, -0.026);
+      geometry.rotateY(-Math.PI / 2);
+      const armrest = new THREE.Mesh(geometry, this.darkMaterial);
+      armrest.position.x = x;
+      armrest.castShadow = armrest.receiveShadow = true;
+      group.add(armrest);
     }
   }
 
