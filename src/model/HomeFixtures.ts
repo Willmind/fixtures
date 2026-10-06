@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-import { defaults, modelCenter } from "./plan";
+import { defaults, modelCenter, walls } from "./plan";
 import type { Point } from "./plan";
 import {
   balconyRoofs,
@@ -22,8 +22,10 @@ import {
   livingAirConditioner,
   livingPlacement,
   previewPalette,
+  televisionSideDecor,
   roomCurtains,
   utilityEquipment,
+  utilityDryingRack,
 } from "./arrangements";
 import type { BalconyId, BalconyModes, CurtainColor, LayoutPreview } from "./arrangements";
 import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
@@ -34,6 +36,13 @@ import { entryCorridor, homeDoors } from "./doors";
 import { OpenCloseMotion } from "./OpenCloseMotion";
 import { storageBed } from "./beds";
 import { createPottedTree } from "./plants";
+import { createSlidingWindow } from "./windows";
+import { createSquatPan } from "./squatToilet";
+import { createGasFlameMaterial, createGasFlames, GasBurner } from "./gasBurner";
+import { WaterTap } from "./waterTap";
+import { RobotRoute } from "./robotRoute";
+import { createBathroomMirror } from "./mirrors";
+import { ExhaustFan } from "./exhaustFans";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -61,9 +70,15 @@ export class HomeFixtures {
     handles: THREE.Group[]; motion: OpenCloseMotion; apply: (value: number) => void;
   }[] = [];
   private glazingDoors: { motion: OpenCloseMotion; apply: (value: number) => void }[] = [];
+  private windows: ReturnType<typeof createSlidingWindow>[] = [];
   private bedDrawers: { group: THREE.Group; closedX: number; side: number;
     travel: number; motion: OpenCloseMotion }[] = [];
+  private gasBurners: GasBurner[] = [];
+  private taps: WaterTap[] = [];
+  private robot?: { group: THREE.Group; route: RobotRoute; label: CSS2DObject };
   private hoodChimney?: THREE.Mesh;
+  private exhaustFans: { group: THREE.Group; backdrop: THREE.Mesh; windowTop: number; motion: ExhaustFan }[] = [];
+  private dryingRack?: THREE.Group;
   private curtains: {
     group: THREE.Group;
     panels: THREE.Mesh[];
@@ -76,6 +91,7 @@ export class HomeFixtures {
   private televisions: { mount: TelevisionMount; group: THREE.Group }[] = [];
   private televisionBackdrops: THREE.Mesh[] = [];
   private mirrorBackdrops: THREE.Mesh[] = [];
+  private mirrors: ReturnType<typeof createBathroomMirror>[] = [];
   private televisionLabels: CSS2DObject[] = [];
   private labels: CSS2DObject[] = [];
   private equipmentLabels: CSS2DObject[] = [];
@@ -95,14 +111,15 @@ export class HomeFixtures {
   private chairMeshMaterial = this.makeChairMeshMaterial();
   private woodMaterial = this.material({ color: previewPalette.lightWalnut, roughness: 0.85 });
   private beddingMaterial = this.material({ color: "#f1ede4", roughness: 1 });
-  private blanketMaterial = this.material({ color: "#a7b2ae", roughness: 1 });
+  private blanketMaterial = this.material({ color: "#eee7db", roughness: 1 });
   private stoneMaterial = this.material({ color: "#dedbd4", roughness: 0.75 });
   private wetFloorMaterial = this.makeTileMaterial(false);
   private wetWallMaterial = this.makeTileMaterial(true);
   private ceramicMaterial = this.material({ color: "#f5f5f0", roughness: 0.25 });
   private steelMaterial = this.material({ color: "#7c8385", roughness: 0.35, metalness: 0.7 });
   private faucetMaterial = this.material({ color: "#b9bec0", roughness: 0.32, metalness: 0.35 });
-  private mirrorMaterial = this.material({ color: "#b8cdd3", roughness: 0.08, metalness: 0.45 });
+  private mirrorMaterial = this.material({ color: "#dce8eb", roughness: 0.06, metalness: 0.15,
+    emissive: "#c8d9de", emissiveIntensity: 0.12 });
   private curtainWeave = createCurtainWeave();
   private curtainMaterial = this.makeCurtainMaterial();
   private backdropMaterial = this.material({ color: previewPalette.wall, roughness: 0.96 });
@@ -116,7 +133,7 @@ export class HomeFixtures {
     depthWrite: false, side: THREE.DoubleSide,
   });
   private doorGlassMaterial = this.material({
-    color: "#b9ced0", roughness: 0.35, transparent: true, opacity: 0.55,
+    color: "#e7f0f2", roughness: 0.1, transparent: true, opacity: 0.15,
     depthWrite: false, side: THREE.DoubleSide,
   });
 
@@ -133,15 +150,21 @@ export class HomeFixtures {
       const placement = livingPlacement(layout.id);
       const tv = this.at(group, placement.tv.center, placement.tv.rotation);
       const sofa = this.at(group, placement.sofa.center, placement.sofa.rotation);
+      const coffeeTable = this.at(group, placement.coffeeTable.center, placement.coffeeTable.rotation);
       this.buildTelevision(tv);
+      this.buildTelevisionSideDecor(tv);
       this.buildSofa(sofa);
+      this.buildCoffeeTable(coffeeTable);
       this.televisionLabels.push(this.label(tv, "电视 / 电视柜", 1.55, "tv"));
       this.label(sofa, "沙发", 1.0, "sofa");
+      this.label(coffeeTable, "茶几", furnitureSize.coffeeTable.height + 0.12, "coffee-table");
       this.tagRoom(group, "living");
     }
     this.buildEquipment();
     this.buildRoomFurnishings();
+    this.buildUtilityDryingRack();
     this.buildDoors();
+    this.buildWindows();
     this.buildBalconyEntryDoor();
     this.buildEntranceCorridor();
   }
@@ -221,25 +244,65 @@ export class HomeFixtures {
     }
   }
 
+  private buildWindows() {
+    for (const wall of walls) {
+      const rotation = -Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0]);
+      const windows = (wall.openings ?? []).filter(({ kind }) => kind === "window");
+      if (!windows.length) continue;
+      const wallGroup = this.at(this.entrances, wall.from, rotation);
+      wallGroup.name = `${wall.id}-operable-windows`;
+      for (const opening of windows) {
+        const window = createSlidingWindow(opening, {
+          frame: this.windowFrameMaterial, glass: this.windowGlassMaterial, handle: this.steelMaterial,
+        });
+        wallGroup.add(window.group);
+        this.windows.push(window);
+        this.registerGlazingDoor([window.group], window.apply);
+      }
+    }
+  }
+
   private buildEntranceCorridor() {
     const { from, to, shoeCabinet: cabinet } = entryCorridor;
     const width = to[0] - from[0], depth = to[1] - from[1];
     const corridor = this.at(this.entrances, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]);
     corridor.name = "exterior-entry-corridor-preview";
     this.box(corridor, [width, 0.16, depth], [0, -0.08, 0], this.wetFloorMaterial);
-    this.entranceWall = this.box(corridor, [0.12, 1, depth], [-width / 2, 0.5, 0], this.backdropMaterial);
+    this.entranceWall = this.box(corridor, [width, 1, 0.12], [0, 0.5, depth / 2], this.backdropMaterial);
     this.label(corridor, "门外走廊 · 示意", 0.05, "corridor");
     const cabinetGroup = this.at(this.furnishings, cabinet.center, cabinet.rotation);
     cabinetGroup.name = "entry-shoe-cabinet";
     this.box(cabinetGroup, [cabinet.width - 0.08, 0.1, cabinet.depth - 0.06],
       [0, 0.05, 0], this.supportMaterial, 0.01);
-    this.box(cabinetGroup, [cabinet.width, cabinet.height - 0.1, cabinet.depth],
-      [0, (cabinet.height + 0.1) / 2, 0], this.woodMaterial, 0.015);
+    const panel = 0.03;
+    const bodyHeight = cabinet.height - 0.1;
+    const bodyCenterY = (cabinet.height + 0.1) / 2;
+    this.box(cabinetGroup, [cabinet.width, bodyHeight, panel],
+      [0, bodyCenterY, -(cabinet.depth - panel) / 2], this.woodMaterial);
     for (const side of [-1, 1]) {
-      this.box(cabinetGroup, [cabinet.width / 2 - 0.012, cabinet.height - 0.15, 0.022],
-        [side * cabinet.width / 4, (cabinet.height + 0.1) / 2, cabinet.depth / 2 + 0.002], this.woodMaterial, 0.008);
-      this.box(cabinetGroup, [0.015, 0.15, 0.025],
-        [side * 0.035, 0.83, cabinet.depth / 2 + 0.025], this.steelMaterial, 0.005);
+      this.box(cabinetGroup, [panel, bodyHeight, cabinet.depth],
+        [side * (cabinet.width - panel) / 2, bodyCenterY, 0], this.woodMaterial);
+    }
+    for (const y of [0.1 + panel / 2, cabinet.height - panel / 2]) {
+      this.box(cabinetGroup, [cabinet.width - panel * 2, panel, cabinet.depth],
+        [0, y, 0], this.woodMaterial);
+    }
+    for (const y of [0.34, 0.58, 0.82]) {
+      this.box(cabinetGroup, [cabinet.width - panel * 2, 0.022, cabinet.depth - 0.06],
+        [0, y, -0.005], this.woodMaterial);
+    }
+    const hingeX = (cabinet.width - panel) / 2;
+    const doorWidth = hingeX - 0.006;
+    for (const side of [-1, 1]) {
+      const door = new THREE.Group();
+      door.name = `shoe-cabinet-door-${side < 0 ? "left" : "right"}`;
+      door.position.set(side * hingeX, 0, cabinet.depth / 2 + 0.014);
+      cabinetGroup.add(door);
+      this.box(door, [doorWidth, cabinet.height - 0.15, 0.022],
+        [-side * doorWidth / 2, bodyCenterY, 0], this.woodMaterial, 0.008);
+      this.box(door, [0.015, 0.15, 0.025],
+        [-side * (doorWidth - 0.03), 0.83, 0.023], this.steelMaterial, 0.005);
+      this.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
     }
     this.label(cabinetGroup, "鞋柜", cabinet.height + 0.12, "shoe-cabinet");
   }
@@ -255,9 +318,9 @@ export class HomeFixtures {
   }
 
   isOperable(object: THREE.Object3D) {
-    return ["homeDoorIndex", "glazingDoorIndex", "bedDrawerIndex", "curtainIndex"].some(
+    return ["homeDoorIndex", "glazingDoorIndex", "bedDrawerIndex", "curtainIndex", "gasBurnerIndex", "waterTapIndex", "exhaustFanIndex"].some(
       (key) => typeof object.userData[key] === "number",
-    ) || Array.isArray(object.userData.bedDrawerIds);
+    ) || Array.isArray(object.userData.bedDrawerIds) || object.userData.robotVacuum === true;
   }
 
   private buildBalconyEntryDoor() {
@@ -334,9 +397,11 @@ export class HomeFixtures {
 
   private makeCurtainMaterial() {
     const material = new THREE.MeshPhysicalMaterial({
-      color: curtainColors[0].color, roughness: 0.96, metalness: 0,
-      sheen: 0.65, sheenColor: curtainColors[0].sheen, sheenRoughness: 0.9,
-      bumpMap: this.curtainWeave, bumpScale: 0.0006, vertexColors: true,
+      color: curtainColors[0].color, roughness: 0.98, metalness: 0,
+      sheen: 0.25, sheenColor: curtainColors[0].sheen, sheenRoughness: 0.95,
+      transparent: true, opacity: 0.70, depthWrite: false,
+      alphaMap: this.curtainWeave,
+      bumpMap: this.curtainWeave, bumpScale: 0.00025, vertexColors: true,
     });
     this.materials.add(material);
     return material;
@@ -491,14 +556,52 @@ export class HomeFixtures {
     }
   }
 
+  private buildCoffeeTable(group: THREE.Group) {
+    const { width, depth, height } = furnitureSize.coffeeTable;
+    group.name = "living-light-walnut-coffee-table";
+    const topThickness = 0.035;
+    this.box(group, [width, topThickness, depth], [0, height - topThickness / 2, 0], this.woodMaterial, 0.016);
+    const legHeight = height - topThickness;
+    for (const x of [-width / 2 + 0.10, width / 2 - 0.10]) {
+      for (const z of [-depth / 2 + 0.10, depth / 2 - 0.10]) {
+        this.box(group, [0.055, legHeight, 0.055], [x, legHeight / 2, z], this.woodMaterial, 0.006);
+      }
+    }
+    this.box(group, [width - 0.15, 0.022, depth - 0.16], [0, 0.12, 0], this.woodMaterial, 0.009);
+  }
+
   private buildEquipment() {
     const { washer: washerPosition, heater: heaterPosition } = utilityEquipment;
     const washer = this.at(this.equipment, washerPosition.center, washerPosition.rotation);
-    this.box(washer, [0.6, 0.85, 0.62], [0, 0.425, 0], this.whiteMaterial, 0.025);
-    const door = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.025, 24), this.darkMaterial);
-    door.rotation.x = Math.PI / 2;
-    door.position.set(0, 0.41, 0.32);
-    washer.add(door);
+    for (const x of [-0.2875, 0.2875]) {
+      this.box(washer, [0.025, 0.85, 0.62], [x, 0.425, 0], this.whiteMaterial, 0.01);
+    }
+    for (const y of [0.0175, 0.8325]) {
+      this.box(washer, [0.6, 0.035, 0.62], [0, y, 0], this.whiteMaterial, 0.012);
+    }
+    this.box(washer, [0.55, 0.80, 0.025], [0, 0.425, -0.2975], this.whiteMaterial);
+    const front = new THREE.Shape();
+    front.moveTo(-0.275, 0); front.lineTo(0.275, 0); front.quadraticCurveTo(0.3, 0, 0.3, 0.025);
+    front.lineTo(0.3, 0.825); front.quadraticCurveTo(0.3, 0.85, 0.275, 0.85);
+    front.lineTo(-0.275, 0.85); front.quadraticCurveTo(-0.3, 0.85, -0.3, 0.825);
+    front.lineTo(-0.3, 0.025); front.quadraticCurveTo(-0.3, 0, -0.275, 0);
+    const opening = new THREE.Path(); opening.absarc(0, 0.41, 0.17, 0, Math.PI * 2, true);
+    front.holes.push(opening);
+    const face = new THREE.Mesh(new THREE.ExtrudeGeometry(front, { depth: 0.022, bevelEnabled: false }), this.whiteMaterial);
+    face.position.z = 0.29; washer.add(face);
+    const drumMaterial = this.material({ color: "#8e989b", roughness: 0.5, side: THREE.DoubleSide });
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.165, 0.45, 32, 1, true), drumMaterial);
+    drum.rotation.x = Math.PI / 2; drum.position.set(0, 0.41, 0.045); washer.add(drum);
+    const drumBack = new THREE.Mesh(new THREE.CircleGeometry(0.165, 32), this.darkMaterial);
+    drumBack.position.set(0, 0.41, -0.18); washer.add(drumBack);
+    const door = new THREE.Group(); door.name = "washer-operable-door";
+    door.position.set(-0.205, 0.41, 0.333); washer.add(door);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.184, 0.022, 10, 40), this.whiteMaterial);
+    rim.position.x = 0.205; door.add(rim);
+    const glass = new THREE.Mesh(new THREE.CircleGeometry(0.166, 32), this.windowGlassMaterial);
+    glass.position.set(0.205, 0, 0.003); door.add(glass);
+    this.box(door, [0.035, 0.105, 0.04], [0.385, 0, 0.018], this.whiteMaterial, 0.012);
+    this.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI * 0.55 * value; });
     this.box(washer, [0.44, 0.055, 0.02], [0, 0.75, 0.315], this.darkMaterial);
     this.equipmentLabels.push(this.label(washer, "洗衣机", 1.0, "equipment"));
     this.equipmentPlanLabel = this.label(washer, "洗衣机 / 热水器", 1.0, "equipment");
@@ -517,7 +620,7 @@ export class HomeFixtures {
   private buildRobotVacuum() {
     const { center, rotation, radius } = utilityEquipment.robot;
     const robot = this.at(this.equipment, center, rotation);
-    robot.name = "utility-robot-vacuum-and-dock";
+    robot.name = "utility-robot-vacuum";
     for (const [r, height, y, material] of [
       [radius, 0.075, 0.05, this.whiteMaterial],
       [radius + 0.002, 0.017, 0.031, this.darkMaterial],
@@ -537,9 +640,53 @@ export class HomeFixtures {
       robot.add(wheel);
     }
     this.box(robot, [0.04, 0.004, 0.018], [0, 0.096, 0.09], this.darkMaterial, 0.006);
-    this.box(robot, [0.3, 0.12, 0.1], [0, 0.06, -0.23], this.whiteMaterial, 0.02);
-    this.box(robot, [0.22, 0.052, 0.008], [0, 0.055, -0.178], this.darkMaterial, 0.012);
-    this.equipmentLabels.push(this.label(robot, "扫地机器人", 0.29, "equipment"));
+    const dock = this.at(this.equipment, center, rotation);
+    dock.name = "robot-fixed-charging-dock";
+    this.box(dock, [0.3, 0.12, 0.1], [0, 0.06, -0.23], this.whiteMaterial, 0.02);
+    this.box(dock, [0.22, 0.052, 0.008], [0, 0.055, -0.178], this.darkMaterial, 0.012);
+    robot.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.robotVacuum = true; });
+    const label = this.label(robot, "扫地机器人 · 点击运行", 0.29, "equipment");
+    this.equipmentLabels.push(label);
+    this.robot = { group: robot, route: new RobotRoute(), label };
+  }
+
+  private buildUtilityDryingRack() {
+    const { center, width, depth, drop } = utilityDryingRack;
+    const rack = this.at(this.furnishings, center);
+    rack.name = "utility-ceiling-drying-rack";
+    this.dryingRack = rack;
+    // Local y=0 touches the underside of the balcony roof.
+    this.box(rack, [1.28, 0.08, 0.20], [0, -0.04, 0], this.whiteMaterial, 0.02);
+    this.box(rack, [0.64, 0.006, 0.07], [0, -0.083, 0], this.stoneMaterial, 0.003);
+    const wireLength = drop - 0.14;
+    const wireGeometry = new THREE.CylinderGeometry(0.0025, 0.0025, wireLength, 8);
+    for (const x of [-0.55, 0.55]) {
+      this.box(rack, [0.12, 0.06, depth + 0.06], [x, -0.11, 0], this.whiteMaterial, 0.015);
+      for (const z of [-depth / 2, depth / 2]) {
+        const wire = new THREE.Mesh(wireGeometry, this.steelMaterial);
+        wire.position.set(x, -(0.14 + drop) / 2, z);
+        rack.add(wire);
+      }
+    }
+    const railGeometry = new THREE.CylinderGeometry(0.011, 0.011, width, 12);
+    const loopGeometry = new THREE.TorusGeometry(0.013, 0.002, 6, 12);
+    for (const z of [-depth / 2, depth / 2]) {
+      const rail = new THREE.Mesh(railGeometry, this.steelMaterial);
+      rail.rotation.z = Math.PI / 2;
+      rail.position.set(0, -drop, z);
+      rail.castShadow = true;
+      rack.add(rail);
+      for (let i = 0; i < 9; i++) {
+        const loop = new THREE.Mesh(loopGeometry, this.steelMaterial);
+        loop.position.set((i - 4) * 0.16, -drop - 0.018, z);
+        rack.add(loop);
+      }
+    }
+    for (const x of [-width / 2 + 0.035, width / 2 - 0.035]) {
+      this.box(rack, [0.06, 0.045, depth + 0.055], [x, -drop, 0], this.whiteMaterial, 0.012);
+    }
+    this.label(rack, "晾衣架", -drop - 0.16, "equipment");
+    this.tagRoom(rack, utilityEquipment.roomId);
   }
 
   private buildRoomFurnishings() {
@@ -556,8 +703,13 @@ export class HomeFixtures {
       this.buildVanity(vanity);
       this.tagRoom(vanity, fitting.roomId);
       const toilet = this.at(this.furnishings, fitting.toilet.center, fitting.toilet.rotation);
-      toilet.name = `${fitting.roomId}-toilet`;
-      this.buildToilet(toilet);
+      toilet.name = `${fitting.roomId}-${fitting.toilet.kind}-toilet`;
+      if (fitting.toilet.kind === "squat") {
+        toilet.add(createSquatPan(this.ceramicMaterial));
+        this.box(toilet, [0.36, 0.40, 0.11], [0, 1.02, -0.285], this.ceramicMaterial, 0.025);
+        this.box(toilet, [0.065, 0.008, 0.035], [0, 1.224, -0.285], this.faucetMaterial, 0.005);
+        this.pipe(toilet, [[0, 0.825, -0.235], [0, 0.12, -0.235], [0, 0.06, -0.28]], 0.014);
+      } else this.buildToilet(toilet);
       this.tagRoom(toilet, fitting.roomId);
       const shower = this.at(this.furnishings, fitting.shower.center, fitting.shower.rotation);
       shower.name = `${fitting.roomId}-shower`;
@@ -663,7 +815,7 @@ export class HomeFixtures {
     bowl.castShadow = true;
     bowl.receiveShadow = true;
     group.add(bowl);
-    const opening = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), this.darkMaterial);
+    const opening = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), this.ceramicMaterial);
     opening.rotation.x = -Math.PI / 2;
     opening.scale.y = 1.35;
     opening.position.set(0, 0.463, 0.07);
@@ -727,7 +879,7 @@ export class HomeFixtures {
         const geometry = createSlidingCurtainPanel(placement.width, side);
         const curtain = new THREE.Mesh(geometry, this.curtainMaterial);
         const centerX = side * (placement.width - panelWidth) / 2;
-        curtain.castShadow = true;
+        curtain.castShadow = false;
         curtain.receiveShadow = true;
         group.add(curtain);
         state.panels.push(curtain);
@@ -796,8 +948,12 @@ export class HomeFixtures {
     drain.position.set(0, 0.741, 0.03);
     fixture.add(drain);
     this.buildBasinFaucet(fixture);
-    this.box(fixture, [width, 0.82, 0.045], [0, 1.53, wallZ + 0.0225], this.woodMaterial);
-    this.box(fixture, [0.61, 0.75, 0.008], [0, 1.53, wallZ + 0.049], this.mirrorMaterial, 0.025);
+    // A thin backing, with a real reflection plane just in front of the tiled wall.
+    this.box(fixture, [width, 0.82, 0.006], [0, 1.53, wallZ + 0.003], this.ceramicMaterial, 0.002);
+    const mirror = createBathroomMirror(width, 0.82, this.mirrors);
+    mirror.position.set(0, 1.53, wallZ + 0.0065);
+    fixture.add(mirror);
+    this.mirrors.push(mirror);
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
       [0.78, 2.0 - defaults.cutHeight, defaults.wallThickness],
@@ -836,7 +992,42 @@ export class HomeFixtures {
     outlet.position.set(0, 0.9735, -0.03);
     faucet.add(outlet);
     cylinder(0.017, 0.009, 0.9785, -0.20);
-    this.box(faucet, [0.018, 0.013, 0.06], [0, 0.99, -0.185], this.faucetMaterial, 0.006);
+    const handle = new THREE.Group(); handle.position.set(0, 0.9785, -0.20); faucet.add(handle);
+    this.box(handle, [0.018, 0.013, 0.06], [0, 0.0115, 0.015], this.faucetMaterial, 0.006);
+    this.registerWaterTap(faucet, new THREE.Vector3(0, 0.9735, -0.03), 0.744, handle);
+  }
+
+  private buildKitchenFaucet(group: THREE.Group) {
+    group.name = "kitchen-high-arc-faucet";
+    const cylinder = (radius: number, height: number, y: number, z = 0) => {
+      const part = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 24), this.faucetMaterial);
+      part.position.set(0, y, z);
+      part.castShadow = part.receiveShadow = true;
+      group.add(part);
+    };
+    // Base sits on the rear countertop, with the outlet above the sink centre.
+    cylinder(0.027, 0.012, 0.006);
+    cylinder(0.022, 0.15, 0.083);
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    path.add(new THREE.LineCurve3(new THREE.Vector3(0, 0.15, 0), new THREE.Vector3(0, 0.205, 0)));
+    path.add(new THREE.CubicBezierCurve3(new THREE.Vector3(0, 0.205, 0),
+      new THREE.Vector3(0, 0.405, 0), new THREE.Vector3(0, 0.405, 0.245),
+      new THREE.Vector3(0, 0.25, 0.245)));
+    path.add(new THREE.LineCurve3(new THREE.Vector3(0, 0.25, 0.245), new THREE.Vector3(0, 0.225, 0.245)));
+    const neck = new THREE.Mesh(new THREE.TubeGeometry(path, 40, 0.015, 16, false), this.faucetMaterial);
+    neck.castShadow = neck.receiveShadow = true;
+    group.add(neck);
+    cylinder(0.017, 0.026, 0.226, 0.245);
+    const outlet = new THREE.Mesh(new THREE.CircleGeometry(0.012, 20), this.darkMaterial);
+    outlet.rotation.x = Math.PI / 2;
+    outlet.position.set(0, 0.2125, 0.245);
+    group.add(outlet);
+    // A side lever joins the body rather than hovering beside the curved neck.
+    this.box(group, [0.041, 0.028, 0.028], [0.023, 0.087, 0], this.faucetMaterial, 0.009);
+    const handle = new THREE.Group(); handle.position.set(0.041, 0.087, 0); group.add(handle);
+    this.box(handle, [0.018, 0.051, 0.022], [0, 0.023, 0], this.faucetMaterial, 0.006);
+    this.box(handle, [0.019, 0.014, 0.075], [0, 0.052, 0.026], this.faucetMaterial, 0.006);
+    this.registerWaterTap(group, new THREE.Vector3(0, 0.2125, 0.245), -0.165, handle);
   }
 
   private pipe(parent: THREE.Group, points: [number, number, number][], radius: number) {
@@ -936,6 +1127,7 @@ export class HomeFixtures {
   }
 
   private buildKitchen() {
+    this.buildExhaustFans();
     const { hood: placement, counter: size, cooktopOffset, sinkOffset } = kitchenFurniture;
     const hood = this.at(this.furnishings, placement.center, placement.rotation);
     hood.name = "kitchen-range-hood";
@@ -992,31 +1184,183 @@ export class HomeFixtures {
     const drain = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.005, 16), this.darkMaterial);
     drain.position.set(0, 0.722, 0);
     sink.add(drain);
-    const faucet = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-      new THREE.Vector3(sinkOffset, 0.89, -0.25),
-      new THREE.Vector3(sinkOffset, 1.14, -0.25),
-      new THREE.Vector3(sinkOffset, 1.19, -0.14),
-      new THREE.Vector3(sinkOffset, 1.13, 0.01),
-    ]), 20, 0.015, 8, false), this.steelMaterial);
-    faucet.castShadow = true;
+    const faucet = new THREE.Group();
+    faucet.position.set(sinkOffset, 0.89, -0.24);
     counter.add(faucet);
-    this.box(counter, [0.075, 0.025, 0.03], [sinkOffset + 0.035, 0.96, -0.25], this.steelMaterial);
+    this.buildKitchenFaucet(faucet);
 
     this.box(counter, [0.74, 0.04, 0.44], [cooktopOffset, 0.91, -0.03], this.darkMaterial, 0.018);
-    for (const x of [cooktopOffset - 0.21, cooktopOffset + 0.21]) {
-      const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.018, 24), this.steelMaterial);
-      burner.position.set(x, 0.938, -0.055);
+    for (const side of [-1, 1]) {
+      const outerFlame = createGasFlameMaterial(false, side * 1.7);
+      const innerFlame = createGasFlameMaterial(true, side * 1.7 + 0.4);
+      this.materials.add(outerFlame).add(innerFlame);
+      const burner = new THREE.Group();
+      burner.name = `kitchen-${side === -1 ? "left" : "right"}-gas-burner`;
+      burner.position.set(cooktopOffset + side * 0.21, 0.938, -0.055);
       counter.add(burner);
-      this.box(counter, [0.27, 0.014, 0.025], [x, 0.95, -0.055], this.supportMaterial);
-      this.box(counter, [0.025, 0.014, 0.27], [x, 0.95, -0.055], this.supportMaterial);
-    }
-    for (const x of [cooktopOffset - 0.065, cooktopOffset + 0.065]) {
-      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.018, 16), this.steelMaterial);
-      knob.position.set(x, 0.938, 0.14);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.018, 24), this.steelMaterial);
+      burner.add(cap);
+      this.box(burner, [0.27, 0.014, 0.025], [0, 0.012, 0], this.supportMaterial);
+      this.box(burner, [0.025, 0.014, 0.27], [0, 0.012, 0], this.supportMaterial);
+      const flames = createGasFlames(outerFlame, innerFlame);
+      flames.position.y = 0.012;
+      burner.add(flames);
+      const knob = new THREE.Group();
+      knob.name = `${burner.name}-control`;
+      knob.position.set(cooktopOffset + side * 0.065, 0.938, 0.14);
       counter.add(knob);
+      knob.add(new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.018, 16), this.steelMaterial));
+      this.box(knob, [0.008, 0.004, 0.022], [0, 0.011, 0.005], this.whiteMaterial, 0.002);
+      const index = this.gasBurners.length;
+      for (const part of [burner, knob]) part.traverse((object) => {
+        if (object instanceof THREE.Mesh) object.userData.gasBurnerIndex = index;
+      });
+      this.gasBurners.push(new GasBurner(flames, knob));
     }
     this.tagRoom(counter, "kitchen");
     this.buildFridge();
+  }
+
+  toggleGasBurner(object: THREE.Object3D, now: number, reducedMotion = false) {
+    const index = object.userData.gasBurnerIndex;
+    if (typeof index !== "number" || !this.gasBurners[index]) return false;
+    this.gasBurners[index].toggle(now, reducedMotion);
+    return true;
+  }
+
+  animateGasBurners(now: number) {
+    if (!this.furnishings.visible) return false;
+    let moving = false;
+    for (const burner of this.gasBurners) moving = burner.advance(now) || moving;
+    return moving;
+  }
+
+  private registerWaterTap(group: THREE.Group, outlet: THREE.Vector3, bottomY: number, handle: THREE.Group) {
+    const water = new THREE.MeshBasicMaterial({ color: "#a1dbea", transparent: true, opacity: 0.48,
+      depthWrite: false, toneMapped: false });
+    this.materials.add(water);
+    const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 1, 10), water);
+    stream.position.set(outlet.x, outlet.y, outlet.z); group.add(stream);
+    const splash = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.002, 5, 20), water);
+    splash.rotation.x = -Math.PI / 2; splash.position.set(outlet.x, bottomY + 0.002, outlet.z); group.add(splash);
+    const index = this.taps.length;
+    group.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.waterTapIndex = index; });
+    this.taps.push(new WaterTap(stream, splash, handle, outlet.y, bottomY));
+  }
+
+  toggleWaterTap(object: THREE.Object3D, now: number, reducedMotion = false) {
+    const index = object.userData.waterTapIndex;
+    if (typeof index !== "number" || !this.taps[index]) return false;
+    this.taps[index].toggle(now, reducedMotion); return true;
+  }
+
+  toggleRobot(object: THREE.Object3D, now: number) {
+    if (!object.userData.robotVacuum || !this.robot) return false;
+    this.robot.route.toggle(now); this.updateRobot(); return true;
+  }
+
+  private updateRobot() {
+    if (!this.robot) return;
+    const { group, route, label } = this.robot;
+    group.position.set(route.position[0] - modelCenter[0], 0, route.position[1] - modelCenter[1]);
+    group.rotation.y = route.heading;
+    label.element.textContent = route.status === "running" ? "清扫中 · 点击暂停"
+      : route.status === "paused" ? "已暂停 · 点击继续" : "扫地机器人 · 点击运行";
+  }
+
+  animateAppliances(now: number) {
+    let moving = false;
+    if (this.furnishings.visible) {
+      for (const fan of this.exhaustFans) moving = fan.motion.advance(now) || moving;
+    }
+    for (const tap of this.taps) moving = tap.advance(now) || moving;
+    if (this.robot) {
+      if (!this.equipment.visible) this.robot.route.pause(now);
+      moving = this.robot.route.advance(now) || moving;
+      this.updateRobot();
+    }
+    return moving;
+  }
+
+  private buildTelevisionSideDecor(group: THREE.Group) {
+    const { cabinet, plant } = televisionSideDecor;
+    const sideCabinet = new THREE.Group(); sideCabinet.position.set(cabinet.center[0], 0, cabinet.center[1]);
+    sideCabinet.name = "tv-left-storage-cabinet"; group.add(sideCabinet);
+    this.box(sideCabinet, [cabinet.width - 0.05, 0.08, cabinet.depth - 0.04], [0, 0.04, 0], this.supportMaterial, 0.008);
+    this.box(sideCabinet, [cabinet.width, cabinet.height - 0.08, cabinet.depth],
+      [0, (cabinet.height + 0.08) / 2, 0], this.woodMaterial, 0.012);
+    for (const side of [-1, 1]) {
+      this.box(sideCabinet, [cabinet.width / 2 - 0.012, cabinet.height - 0.12, 0.015],
+        [side * cabinet.width / 4, (cabinet.height + 0.08) / 2, cabinet.depth / 2 + 0.002], this.woodMaterial, 0.008);
+      this.box(sideCabinet, [0.012, 0.12, 0.022], [side * 0.026, 0.68, cabinet.depth / 2 + 0.016], this.steelMaterial, 0.004);
+    }
+    const tree = createPottedTree(plant, {
+      bark: this.material({ color: "#796049", roughness: 1 }),
+      foliage: this.material({ color: "#ffffff", vertexColors: true, roughness: 0.86, side: THREE.DoubleSide }),
+      pot: this.stoneMaterial, soil: this.material({ color: "#42382b", roughness: 1 }),
+    });
+    tree.position.set(plant.center[0], 0, plant.center[1]); tree.name = "tv-right-potted-tree"; group.add(tree);
+  }
+
+  toggleExhaustFan(object: THREE.Object3D, now: number, reducedMotion = false) {
+    const index = object.userData.exhaustFanIndex;
+    if (typeof index !== "number" || !this.exhaustFans[index]) return false;
+    this.exhaustFans[index].motion.toggle(now, reducedMotion);
+    return true;
+  }
+
+  private buildExhaustFans() {
+    for (const roomId of ["kitchen", "bath", "ensuite"]) {
+      const wall = walls.find(({ id }) => id === `${roomId}-north`)!;
+      const opening = wall.openings!.find(({ kind }) => kind === "window")!;
+      const group = this.at(this.furnishings,
+        [wall.from[0] + (opening.start + opening.end) / 2, wall.from[1] + 0.14]);
+      group.name = `${roomId}-window-exhaust-fan`;
+      this.box(group, [0.32, 0.32, 0.08], [0, 0, 0], this.whiteMaterial, 0.018);
+      const recess = new THREE.Mesh(new THREE.CircleGeometry(0.126, 32), this.darkMaterial);
+      recess.position.z = 0.041;
+      group.add(recess);
+      const bladeShape = new THREE.Shape();
+      bladeShape.moveTo(0.025, 0);
+      bladeShape.quadraticCurveTo(0.075, -0.055, 0.113, -0.018);
+      bladeShape.quadraticCurveTo(0.117, 0.005, 0.096, 0.024);
+      bladeShape.quadraticCurveTo(0.066, 0.046, 0.021, 0.022);
+      bladeShape.closePath();
+      const bladeGeometry = new THREE.ExtrudeGeometry(bladeShape, { depth: 0.004, bevelEnabled: false });
+      const rotor = new THREE.Group();
+      rotor.name = `${roomId}-exhaust-fan-rotor`;
+      group.add(rotor);
+      for (let i = 0; i < 5; i++) {
+        const blade = new THREE.Mesh(bladeGeometry, this.faucetMaterial);
+        blade.rotation.z = i / 5 * Math.PI * 2;
+        blade.position.z = 0.047;
+        rotor.add(blade);
+      }
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.004, 6, 40), this.whiteMaterial);
+      ring.position.z = 0.06;
+      group.add(ring);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.015, 20), this.whiteMaterial);
+      hub.rotation.x = Math.PI / 2;
+      hub.position.z = 0.057;
+      group.add(hub);
+      for (const y of [-0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10]) {
+        this.box(group, [2 * Math.sqrt(0.12 ** 2 - y ** 2), 0.005, 0.005],
+          [0, y, 0.07], this.whiteMaterial);
+      }
+      const indicatorMaterial = new THREE.MeshBasicMaterial({ color: "#819190", toneMapped: false });
+      this.materials.add(indicatorMaterial);
+      const indicator = new THREE.Mesh(new THREE.CircleGeometry(0.006, 12), indicatorMaterial);
+      indicator.position.set(0.125, -0.125, 0.041);
+      group.add(indicator);
+      const index = this.exhaustFans.length;
+      group.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.exhaustFanIndex = index; });
+      // A lintel patch makes the wall mounting readable when the room walls are cut away.
+      const backdrop = this.box(group, [0.40, 0.44, defaults.wallThickness], [0, 0, -0.14],
+        [this.backdropMaterial, this.backdropMaterial, this.backdropMaterial, this.backdropMaterial,
+          this.wetWallMaterial, this.backdropMaterial]);
+      this.exhaustFans.push({ group, backdrop, windowTop: opening.top, motion: new ExhaustFan(rotor, indicatorMaterial) });
+      this.tagRoom(group, roomId);
+    }
   }
 
   private buildFridge() {
@@ -1026,18 +1370,51 @@ export class HomeFixtures {
     const front = depth / 2;
     // Recessed base supports the cabinet; doors and handles stay in its footprint.
     this.box(group, [width - 0.08, 0.055, depth - 0.09], [0, 0.0275, -0.025], this.supportMaterial, 0.012);
-    this.box(group, [width, height - 0.055, depth - 0.05],
-      [0, (height + 0.055) / 2, -0.025], this.whiteMaterial, 0.025);
-    this.box(group, [width - 0.025, height - 0.08, 0.012],
-      [0, (height + 0.04) / 2, front - 0.05], this.supportMaterial, 0.018);
+    // Hollow shell, so opening the doors reveals the compartments and shelves.
+    for (const x of [-width / 2 + 0.0135, width / 2 - 0.0135]) {
+      this.box(group, [0.027, height - 0.055, depth - 0.05],
+        [x, (height + 0.055) / 2, -0.025], this.whiteMaterial, 0.01);
+    }
+    this.box(group, [width - 0.054, height - 0.055, 0.03],
+      [0, (height + 0.055) / 2, -depth / 2 + 0.015], this.whiteMaterial);
+    for (const y of [0.07, 0.61, height - 0.015]) {
+      this.box(group, [width, 0.03, depth - 0.05], [0, y, -0.025], this.whiteMaterial, 0.008);
+    }
+    for (const y of [0.29, 0.49, 0.82, 1.10, 1.40]) {
+      this.box(group, [width - 0.065, 0.012, depth - 0.21], [0, y, -0.055], this.windowGlassMaterial);
+      this.box(group, [width - 0.065, 0.018, 0.012], [0, y, 0.14], this.whiteMaterial, 0.004);
+    }
     // Upper refrigerator and lower freezer, separated by a slim gasket seam.
     for (const [bottom, top, handleY] of [[0.075, 0.605, 0.55], [0.62, height - 0.02, 0.685]]) {
-      this.box(group, [width - 0.02, top - bottom, 0.038],
-        [0, (bottom + top) / 2, front - 0.04], this.whiteMaterial, 0.018);
-      this.box(group, [0.32, 0.018, 0.022],
-        [0, handleY, front - 0.013], this.steelMaterial, 0.008);
+      const doorWidth = width - 0.02;
+      const door = new THREE.Group();
+      door.name = bottom > 0.6 ? "fridge-operable-refrigerator-door" : "fridge-operable-freezer-door";
+      // Hinge on the wall side; the open leaf stays clear of the kitchen aisle.
+      door.position.set(-doorWidth / 2, 0, front - 0.04);
+      group.add(door);
+      for (const x of [-doorWidth / 2 + 0.006, doorWidth / 2 - 0.006]) {
+        this.box(group, [0.012, top - bottom, 0.009], [x, (bottom + top) / 2, front - 0.062], this.supportMaterial);
+      }
+      for (const y of [bottom + 0.006, top - 0.006]) {
+        this.box(group, [doorWidth, 0.012, 0.009], [0, y, front - 0.062], this.supportMaterial);
+      }
+      this.box(door, [doorWidth, top - bottom, 0.038],
+        [doorWidth / 2, (bottom + top) / 2, 0], this.whiteMaterial, 0.018);
+      this.box(door, [0.32, 0.018, 0.022],
+        [doorWidth / 2, handleY, 0.027], this.steelMaterial, 0.008);
+      // Shallow door bins remain behind the shelf fronts when closed.
+      const bins = bottom > 0.6 ? [0.94, 1.32] : [0.27];
+      for (const y of bins) {
+        this.box(door, [doorWidth - 0.08, 0.012, 0.05],
+          [doorWidth / 2, y, -0.044], this.whiteMaterial, 0.004);
+        this.box(door, [doorWidth - 0.08, 0.075, 0.007],
+          [doorWidth / 2, y + 0.0375, -0.065], this.windowGlassMaterial, 0.003);
+      }
+      if (bottom > 0.6) {
+        this.box(door, [0.09, 0.12, 0.005], [doorWidth / 2 + 0.15, 1.40, 0.021], this.darkMaterial, 0.008);
+      }
+      this.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI / 2 * value; });
     }
-    this.box(group, [0.09, 0.12, 0.005], [0.15, 1.40, front - 0.019], this.darkMaterial, 0.008);
     this.tagRoom(group, "kitchen");
   }
 
@@ -1214,6 +1591,7 @@ export class HomeFixtures {
 
   update(options: FixtureOptions) {
     const visibleHeight = options.cutaway ? defaults.cutHeight : options.wallHeight;
+    for (const window of this.windows) window.setVisibleHeight(visibleHeight);
     for (const door of this.doors) {
       const height = Math.min(visibleHeight, door.height), scale = height / door.height;
       door.body.scale.y = scale;
@@ -1246,12 +1624,20 @@ export class HomeFixtures {
     }
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.furnishings.visible = options.layout !== "empty";
+    if (this.dryingRack) this.dryingRack.position.y = options.wallHeight;
     for (const { group } of this.curtains) group.scale.y = options.wallHeight - 0.12;
     for (const { unit, backdrop } of this.airConditioners) {
       unit.position.y = options.wallHeight - 0.35;
       const top = unit.position.y + 0.24;
       backdrop.scale.y = top - defaults.cutHeight;
       backdrop.position.y = (top + defaults.cutHeight) / 2;
+      backdrop.visible = options.cutaway && options.view !== "plan";
+    }
+    for (const { group, backdrop, windowTop } of this.exhaustFans) {
+      // Keep the entire preview above the window and below the adjustable ceiling.
+      const scale = Math.min(1, Math.max(0.1, (options.wallHeight - windowTop - 0.04) / 0.44));
+      group.scale.set(scale, scale, 1);
+      group.position.y = windowTop + 0.02 + 0.22 * scale;
       backdrop.visible = options.cutaway && options.view !== "plan";
     }
     if (this.hoodChimney) {
@@ -1297,6 +1683,7 @@ export class HomeFixtures {
   dispose() {
     // HomeScene owns geometry and CSS label disposal through its scene traversal.
     for (const material of this.materials) material.dispose();
+    for (const mirror of this.mirrors) mirror.dispose();
     this.curtainWeave.dispose();
     for (const texture of this.textures) texture.dispose();
   }

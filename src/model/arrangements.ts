@@ -4,13 +4,13 @@ import type { Point } from "./plan.ts";
 export const previewPalette = {
   wall: "#f3eddf",
   lightWalnut: "#b18f73",
-  sofa: "#523a2c",
-  sofaCushion: "#72513b",
-  tvCabinet: "#674631",
+  sofa: "#b18f73",
+  sofaCushion: "#c2a58d",
+  tvCabinet: "#b18f73",
 };
 
 export const curtainColors = [
-  { id: "ivory", label: "暖米白", color: "#e5dac4", sheen: "#f5ecda" },
+  { id: "ivory", label: "暖米黄", color: "#ead8ad", sheen: "#fff1d3" },
   { id: "cream", label: "奶油黄", color: "#e4c675", sheen: "#f5e4b0" },
   { id: "apricot", label: "杏色", color: "#dcb18c", sheen: "#f3d7bb" },
   { id: "honey", label: "蜂蜜黄", color: "#c99b42", sheen: "#edce87" },
@@ -64,6 +64,7 @@ export const balconyWindowRuns = railings.map(({ roomId, from, to }) => ({
 export const furnitureSize = {
   tvCabinet: { width: 1.8, depth: 0.4, height: 0.42 },
   sofa: { width: 2.2, depth: 0.9, height: 0.8 },
+  coffeeTable: { width: 1.0, depth: 0.50, height: 0.38 },
 };
 
 export function livingPlacement(layout: LivingLayout) {
@@ -75,6 +76,10 @@ export function livingPlacement(layout: LivingLayout) {
     },
     sofa: {
       center: [tvWest ? 6.2 : 3.2, 6.85] as Point,
+      rotation: tvWest ? -Math.PI / 2 : Math.PI / 2,
+    },
+    coffeeTable: {
+      center: [tvWest ? 5.10 : 4.30, 6.85] as Point,
       rotation: tvWest ? -Math.PI / 2 : Math.PI / 2,
     },
   };
@@ -102,6 +107,11 @@ export const utilityEquipment = {
   washer: { center: [3.05, 0.6] as Point, rotation: Math.PI / 2 },
   heater: { center: [2.89, 0.6] as Point, rotation: Math.PI / 2 },
   robot: { center: [4.02, 0.4] as Point, rotation: 0, radius: 0.18 },
+};
+
+export const utilityDryingRack = {
+  center: [4.65, 0.60] as Point,
+  width: 1.65, depth: 0.50, drop: 0.50,
 };
 
 // Temporary furniture footprints, measured in metres. Positions follow the
@@ -135,7 +145,8 @@ export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom")
     // perpendicular south return wall visible to the left when facing the mirror.
     vanity: { center: [west + bathroomVanitySize.depth / 2, south - bathroomVanitySize.width / 2] as Point,
       rotation: Math.PI / 2 },
-    toilet: { center: [west + 0.34, partitionZ + 0.55] as Point, rotation: Math.PI / 2 },
+    toilet: { center: [west + 0.34, partitionZ + 0.55] as Point, rotation: Math.PI / 2,
+      kind: room.id === "bath" ? "squat" as const : "seated" as const },
     shower: { center: [west + 0.015, north + 0.42] as Point, rotation: Math.PI / 2 },
     enclosure: {
       center: [(west + east) / 2, partitionZ] as Point,
@@ -172,6 +183,11 @@ export const balconyFurniture = {
     { center: [6.22, 9.25] as Point, height: 1.95, canopyRadius: 0.43, potRadius: 0.21, potHeight: 0.38, seed: 42 },
     { center: [3.1, 9.25] as Point, height: 1.25, canopyRadius: 0.30, potRadius: 0.16, potHeight: 0.29, seed: 76 },
   ],
+};
+export const televisionSideDecor = {
+  cabinet: { center: [-1.20, 0] as Point, width: 0.50, depth: 0.40, height: 0.95 },
+  // Same depth line as the TV cabinet; keep a compact crown clear of the tower AC.
+  plant: { center: [1.03, 0] as Point, height: 1.10, canopyRadius: 0.18, potRadius: 0.11, potHeight: 0.23, seed: 140 },
 };
 export const balconyEntryDoor = { center: [4.7, 8.65] as Point, width: 4, height: 2.35 };
 

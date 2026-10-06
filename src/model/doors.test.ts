@@ -60,12 +60,18 @@ test("平开门的整个开启范围落在对应室内，不占门外走廊或�
   }
 });
 
-test("鞋柜位于走廊内、避开入户门洞，走廊地面延伸至入户门轴线", () => {
+test("门外走廊沿进门方向延伸并对准门洞，鞋柜靠侧墙保留直行通道", () => {
   const { from, to, shoeCabinet: cabinet } = entryCorridor;
   const entry = homeDoors.find(({ kind }) => kind === "entry")!;
-  assert.ok(cabinet.center[0] - cabinet.depth / 2 > from[0]);
-  assert.ok(cabinet.center[0] + cabinet.depth / 2 < to[0]);
-  assert.ok(cabinet.center[1] - cabinet.width / 2 > entry.wall.from[1] + entry.opening.end);
-  assert.ok(cabinet.center[1] + cabinet.width / 2 < to[1]);
+  assert.ok(to[0] - from[0] > to[1] - from[1], "走廊长边沿进门方向，不能沿门所在墙横向延伸");
+  const doorStart = entry.wall.from[1] + entry.opening.start;
+  const doorEnd = entry.wall.from[1] + entry.opening.end;
+  assert.ok(Math.abs((from[1] + to[1]) / 2 - (doorStart + doorEnd) / 2) < 1e-9);
+  assert.equal(cabinet.rotation, Math.PI);
+  assert.ok(cabinet.center[0] - cabinet.width / 2 > from[0]);
+  assert.ok(cabinet.center[0] + cabinet.width / 2 < to[0]);
+  assert.ok(cabinet.center[1] - cabinet.depth / 2 > doorEnd, "鞋柜不能占入门洞向外的直行区域");
+  assert.ok(Math.abs(cabinet.center[1] + cabinet.depth / 2 - (to[1] - 0.06)) < 1e-9,
+    "鞋柜背面贴走廊侧墙内表面");
   assert.equal(to[0], entry.wall.from[0]);
 });

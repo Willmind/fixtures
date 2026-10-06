@@ -21,10 +21,13 @@ export const homeDoors = placements.map((placement) => {
   };
 });
 
+const entryDoor = homeDoors.find(({ kind }) => kind === "entry")!;
+const entryCenterZ = entryDoor.wall.from[1] + (entryDoor.opening.start + entryDoor.opening.end) / 2;
+
 export const entryCorridor = {
-  // Only a short, illustrative landing outside the existing front door.
-  from: [-1.9, 3.2] as const,
-  to: [0, 6.35] as const,
-  shoeCabinet: { center: [-0.28, 5.7] as const, rotation: -Math.PI / 2,
+  // Continue straight out from the door, along the x axis; dimensions are illustrative.
+  from: [-3.15, entryCenterZ - 1] as const,
+  to: [0, entryCenterZ + 1] as const,
+  shoeCabinet: { center: [-0.8, entryCenterZ + 1 - 0.06 - 0.16] as const, rotation: Math.PI,
     width: 1, depth: 0.32, height: 1.1 },
 };

@@ -16,17 +16,17 @@ export function createCurtainPanel(width: number, side: number, closed = false, 
         const u = column / columns;
         const phase = u * Math.PI * 2 * folds;
         const drift = Math.sin(drop * Math.PI) * (0.17 * Math.sin(u * 7 + side));
-        const amplitude = (closed ? 0.024 : 0.031) + 0.014 * drop;
+        const amplitude = (closed ? 0.017 : 0.022) + 0.010 * drop;
         const fold = Math.cos(phase + drift) + 0.14 * Math.cos(phase * 2 + 0.4);
         // The outside edge stays by the jamb while the free edge opens out.
         const x = (u - 0.5) * width * spread + side * width * (1 - spread) / 2;
         const y = 1 - drop * 0.982 + Math.pow(drop, 8) * 0.0015 * Math.sin(phase + 0.6);
         const z = amplitude * fold + 0.006 * Math.sin(drop * Math.PI) * Math.sin(u * 9 + side);
-        positions.push(x, y, z + face * 0.0015);
+        positions.push(x, y, z + face * 0.0006);
         // Physical-scale weave shared by every panel, with no image download.
-        uvs.push(u * width * 12, drop * 2.68 * 12);
+        uvs.push(u * width * 20, drop * 2.68 * 20);
         const seam = drop < 0.06 || drop > 0.965 || u < 0.025 || u > 0.975;
-        const shade = seam ? 0.95 : 1;
+        const shade = seam ? 0.97 : 1;
         colors.push(shade, shade, shade);
       }
     }
@@ -40,7 +40,7 @@ export function createCurtainPanel(width: number, side: number, closed = false, 
         b + faceSize, d + faceSize, c + faceSize);
     }
   }
-  // Join the front and lining along all four edges; no paper-thin silhouette.
+  // Join the two thin fabric faces along the sewn edges.
   const rim: number[] = [];
   for (let column = 0; column <= columns; column++) rim.push(column);
   for (let row = 1; row <= rows; row++) rim.push(row * stride + columns);
@@ -106,7 +106,8 @@ export function createCurtainWeave() {
     for (let x = 0; x < size; x++) {
       const warp = Math.cos(x * Math.PI / 2);
       const weft = Math.cos(y * Math.PI / 2);
-      const value = Math.round(128 + warp * 14 + weft * 10);
+      // Shared bump/alpha texture: denser threads with slightly more open gaps.
+      const value = Math.round(232 + warp * 12 + weft * 8);
       const index = (y * size + x) * 4;
       data[index] = data[index + 1] = data[index + 2] = value;
       data[index + 3] = 255;

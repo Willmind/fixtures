@@ -18,7 +18,8 @@ import { SelectionGesture } from "./SelectionGesture";
 import { HomeFixtures } from "./HomeFixtures";
 import type { FixtureOptions } from "./HomeFixtures";
 import type { BalconyId } from "./arrangements";
-import { previewPalette } from "./arrangements";
+import { bathroomFittings, previewPalette } from "./arrangements";
+import { squatFloorHole } from "./squatToilet";
 import { applySurfaceUVs, createTileSurface, floorFinish, wallTileSides } from "./finishes";
 
 export type ViewOptions = FixtureOptions & {
@@ -46,6 +47,7 @@ export class HomeScene {
     THREE.ExtrudeGeometry,
     THREE.MeshStandardMaterial
   >[] = [];
+  private squatFloorCover?: THREE.Mesh;
   private grid: THREE.GridHelper;
   private materials = new Set<THREE.Material>();
   private textures = new Set<THREE.Texture>();
@@ -236,6 +238,9 @@ export class HomeScene {
         else shape.lineTo(x - modelCenter[0], -(z - modelCenter[1]));
       });
       shape.closePath();
+      const squat = bathroomFittings.find((fitting) => fitting.roomId === room.id && fitting.toilet.kind === "squat");
+      const hole = squat && squatFloorHole(squat.toilet.center, squat.toilet.rotation);
+      if (hole) shape.holes.push(hole);
       const geometry = new THREE.ExtrudeGeometry(shape, {
         depth: 0.16,
         bevelEnabled: false,
@@ -250,6 +255,20 @@ export class HomeScene {
       floor.receiveShadow = true;
       this.floors.push(floor);
       this.scene.add(floor);
+      if (hole) {
+        // Restore a continuous tiled floor when furniture is hidden in shell view.
+        const coverGeometry = new THREE.ExtrudeGeometry(new THREE.Shape(hole.getPoints()), {
+          depth: 0.16, bevelEnabled: false,
+        });
+        coverGeometry.rotateX(-Math.PI / 2); coverGeometry.translate(0, -0.16, 0);
+        applySurfaceUVs(coverGeometry);
+        const cover = new THREE.Mesh(coverGeometry, material);
+        cover.userData = { roomId: room.id, baseColor: color };
+        cover.receiveShadow = true;
+        this.floors.push(cover);
+        this.scene.add(cover);
+        this.squatFloorCover = cover;
+      }
       const element = document.createElement("span");
       element.className = "room-label";
       element.textContent = room.name;
@@ -306,62 +325,10 @@ export class HomeScene {
           true,
         );
       }
-      for (const opening of wall.openings ?? []) {
-        if (opening.kind !== "window" || opening.sill >= height) continue;
-        const bottom = opening.sill;
-        const top = Math.min(opening.top, height);
-        const width = opening.end - opening.start;
-        const center = (opening.start + opening.end) / 2;
-        const visibleHeight = top - bottom;
-        this.box(
-          group,
-          width,
-          0.045,
-          0.07,
-          center,
-          bottom + 0.0225,
-          0,
-          this.frameMaterial,
-        );
-        if (opening.top <= height)
-          this.box(
-            group,
-            width,
-            0.045,
-            0.07,
-            center,
-            top - 0.0225,
-            0,
-            this.frameMaterial,
-          );
-        for (const x of [
-          opening.start + 0.025,
-          opening.end - 0.025,
-          ...(width > 1.3 ? [center] : []),
-        ]) {
-          this.box(
-            group,
-            0.045,
-            visibleHeight,
-            0.07,
-            x,
-            (bottom + top) / 2,
-            0,
-            this.frameMaterial,
-          );
-        }
-        this.box(
-          group,
-          width - 0.06,
-          Math.max(0.01, visibleHeight - 0.05),
-          0.01,
-          center,
-          (bottom + top) / 2,
-          0,
-          this.glassMaterial,
-        );
-      }
+      // Operable window frames and panes are owned by HomeFixtures so their
+      // motion survives wall rebuilding when toggling cutaway or wall height.
     }
+
     for (const railing of railings) {
       const group = new THREE.Group();
       this.balconyRailings.push({ roomId: railing.roomId, group });
@@ -450,6 +417,7 @@ export class HomeScene {
 
   private applyVisibility() {
     this.fixtures.update(this.options);
+    if (this.squatFloorCover) this.squatFloorCover.visible = this.options.layout === "empty";
     for (const { roomId, group } of this.balconyRailings) {
       group.visible = this.options.balconyModes[roomId] === "original";
     }
@@ -500,7 +468,7 @@ export class HomeScene {
     this.controls.touches.ONE = plan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     this.renderer.domElement.setAttribute(
       "aria-label",
-      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击门、窗帘或床底抽屉切换开合，也可点击床垫开合整床抽屉`,
+      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击门、窗户、窗帘或床底抽屉切换开合，也可点击床垫开合整床抽屉`,
     );
     this.camera.lookAt(-0.9, 0, 0);
     this.camera.updateProjectionMatrix();
@@ -546,9 +514,11 @@ export class HomeScene {
     const curtainsMoving = this.fixtures.animateCurtains(now);
     const doorsMoving = this.fixtures.animateDoors(now);
     const drawersMoving = this.fixtures.animateBedDrawers(now);
+    const burnersMoving = this.fixtures.animateGasBurners(now);
+    const appliancesMoving = this.fixtures.animateAppliances(now);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
-    if (curtainsMoving || doorsMoving || drawersMoving) this.requestRender();
+    if (curtainsMoving || doorsMoving || drawersMoving || burnersMoving || appliancesMoving) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -604,7 +574,7 @@ export class HomeScene {
       if (object instanceof THREE.Mesh) architecture.push(object);
     });
     const hits = this.raycaster.intersectObjects(
-      [...this.floors, ...architecture, ...this.fixtures.selectable],
+      [...this.floors.filter((floor) => floor.visible), ...architecture, ...this.fixtures.selectable],
       false,
     );
     // Operable glass is a hit target; fixed translucent glazing lets taps through
@@ -626,7 +596,11 @@ export class HomeScene {
     }
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (first && (this.fixtures.toggleDoor(first.object, now, reducedMotion)
+    if (first && (this.fixtures.toggleRobot(first.object, now)
+      || this.fixtures.toggleExhaustFan(first.object, now, reducedMotion)
+      || this.fixtures.toggleWaterTap(first.object, now, reducedMotion)
+      || this.fixtures.toggleGasBurner(first.object, now, reducedMotion)
+      || this.fixtures.toggleDoor(first.object, now, reducedMotion)
       || this.fixtures.toggleBedDrawer(first.object, now, reducedMotion)
       || this.fixtures.toggleCurtain(first.object, now, reducedMotion))) {
       this.requestRender();
@@ -665,6 +639,7 @@ export class HomeScene {
       this.contextLost,
     );
     this.scene.traverse((object) => {
+      if (object instanceof THREE.InstancedMesh) object.dispose();
       if (object instanceof THREE.Mesh || object instanceof THREE.Line)
         object.geometry.dispose();
       if (object instanceof CSS2DObject) object.element.remove();
