@@ -4,41 +4,29 @@ import type { Point } from "./plan.ts";
 export const previewPalette = {
   wall: "#f3eddf",
   lightWalnut: "#b18f73",
+  sofa: "#523a2c",
+  sofaCushion: "#72513b",
+  tvCabinet: "#674631",
 };
 
 export const livingLayouts = [
   {
     id: "tv-guest",
     name: "方案一",
-    description: "电视 / 电视柜靠客房，沙发靠次卧 A",
+    description: "电视 / 电视柜靠书房，沙发靠次卧 A",
     tvSide: "guest",
     sofaSide: "parents",
   },
   {
     id: "tv-bedroom-a",
     name: "方案二",
-    description: "电视 / 电视柜靠次卧 A，沙发靠客房",
+    description: "电视 / 电视柜靠次卧 A，沙发靠书房",
     tvSide: "parents",
     sofaSide: "guest",
   },
 ] as const;
 export type LivingLayout = (typeof livingLayouts)[number]["id"];
 export type LayoutPreview = LivingLayout | "empty";
-
-// Shared by the UI swatches and both layouts. These are color previews, not
-// product swatches or material/wood species specifications.
-export const sofaColors = [
-  { id: "sage", label: "灰绿色", color: "#879b91", cushion: "#a5b4aa" },
-  { id: "brown", label: "棕色", color: "#985e3d", cushion: "#ac7653" },
-  { id: "walnut", label: "胡桃色", color: "#523a2c", cushion: "#72513b" },
-  { id: "black", label: "黑色", color: "#242528", cushion: "#35363a" },
-] as const;
-export type SofaColor = (typeof sofaColors)[number]["id"];
-export const cabinetColors = [
-  { id: "light-wood", label: "浅木色", color: "#c3ae91" },
-  { id: "walnut", label: "胡桃色", color: "#674631" },
-] as const;
-export type CabinetColor = (typeof cabinetColors)[number]["id"];
 
 export const balconyChoices = [
   { id: "balcony", name: "主阳台" },
@@ -113,6 +101,13 @@ export const bedroomBeds = [
   { roomId: "study", center: [8.42, 2.63] as Point, rotation: 0, width: 1.2 },
 ] as const;
 
+// Keep the original room ID so saved notes and photo links still point here.
+export const homeOfficeFurniture = {
+  roomId: "guest",
+  desk: { center: [0.48, 7.45] as Point, rotation: Math.PI / 2, width: 1.5, depth: 0.7, height: 0.75 },
+  cabinet: { center: [0.31, 5.98] as Point, rotation: Math.PI / 2, width: 0.9, depth: 0.38, height: 1.85 },
+};
+
 // Both bathrooms enter from the south. Keep the existing door openings clear:
 // basin and toilet along the west wall, then a glazed shower at the far end.
 export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom").map((room) => {
@@ -135,6 +130,8 @@ export const bathroomFittings = rooms.filter((room) => room.kind === "bathroom")
 export const kitchenFurniture = {
   hood: { center: [0.97, 0.95] as Point, rotation: Math.PI / 2 },
   counter: { center: [1.0, 1.9] as Point, rotation: Math.PI / 2, width: 3.2, depth: 0.6 },
+  // Tuck into the south-east corner, facing the entry aisle rather than the hob.
+  fridge: { center: [2.12, 3.27] as Point, rotation: Math.PI, width: 0.6, depth: 0.6, height: 1.82 },
   cooktopOffset: 0.95,
   sinkOffset: -0.75,
 };

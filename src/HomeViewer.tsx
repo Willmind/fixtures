@@ -5,36 +5,10 @@ import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
-import { balconyChoices, balconyModeLabels, cabinetColors, livingLayouts, sofaColors } from "./model/arrangements";
-import type { BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./model/arrangements";
+import { balconyChoices, balconyModeLabels, livingLayouts } from "./model/arrangements";
+import type { BalconyModes, LayoutPreview } from "./model/arrangements";
 import { televisionMounts } from "./model/furniture";
 import type { TelevisionMount } from "./model/furniture";
-
-function ColorChoices<T extends string>({ label, choices, value, onChange }: {
-  label: string;
-  choices: readonly { id: T; label: string; color: string }[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="color-choice-row">
-      <span>{label}</span>
-      <div className="color-swatches" role="group" aria-label={`${label}颜色`}>
-        {choices.map((item) => (
-          <button
-            key={item.id}
-            aria-label={`${label}：${item.label}`}
-            aria-pressed={value === item.id}
-            onClick={() => onChange(item.id)}
-          >
-            <span className="color-swatch-dot" style={{ backgroundColor: item.color }} aria-hidden="true" />
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Toggle({
   label,
@@ -81,13 +55,11 @@ export default function HomeViewer({
   const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
   const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
-  const [sofaColor, setSofaColor] = useState<SofaColor>(sofaColors[0].id);
-  const [cabinetColor, setCabinetColor] = useState<CabinetColor>(cabinetColors[0].id);
   const [televisionMount, setTelevisionMount] = useState<TelevisionMount>("cabinet");
   const [balconyRoofs, setBalconyRoofs] = useState(true);
   const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "enclosed" });
-  const [previewTab, setPreviewTab] = useState<"living" | "colors" | "balconies">("living");
-  const [previewOpen, setPreviewOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
+  const [previewTab, setPreviewTab] = useState<"living" | "balconies">("living");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
@@ -103,8 +75,6 @@ export default function HomeViewer({
     dimensions,
     grid,
     layout,
-    sofaColor,
-    cabinetColor,
     televisionMount,
     balconyRoofs,
     balconyModes,
@@ -292,7 +262,7 @@ export default function HomeViewer({
               aria-label={previewOpen ? "收起方案面板" : "展开方案面板"}
               onClick={() => setPreviewOpen((open) => !open)}>
               <Icon name="sliders" size={16} />
-              <span>{previewOpen ? "收起方案" : "摆放与配色"}</span>
+              <span>{previewOpen ? "收起方案" : "展开方案"}</span>
               <Icon name="chevron" size={14} />
             </button>
             <div id="model-preview-controls" hidden={!previewOpen}>
@@ -300,9 +270,6 @@ export default function HomeViewer({
               <div className="preview-tabs" role="group" aria-label="选择对比内容">
                 <button aria-pressed={previewTab === "living"} onClick={() => setPreviewTab("living")}>
                   客厅摆放
-                </button>
-                <button aria-pressed={previewTab === "colors"} onClick={() => setPreviewTab("colors")}>
-                  家具配色
                 </button>
                 <button aria-pressed={previewTab === "balconies"} onClick={() => setPreviewTab("balconies")}>
                   阳台封窗
@@ -345,15 +312,6 @@ export default function HomeViewer({
               <p aria-live="polite">
                 {currentLayout?.description ?? "已隐藏室内家具，选择方案恢复预览"}
               </p>
-            </> : previewTab === "colors" ? <>
-              <ColorChoices label="沙发" choices={sofaColors} value={sofaColor} onChange={setSofaColor} />
-              <ColorChoices label="电视柜" choices={cabinetColors} value={cabinetColor} onChange={setCabinetColor} />
-              {layout === "empty" ? (
-                <button className="show-furniture-button" onClick={() => setLayout("tv-guest")}>
-                  显示家具，查看配色
-                </button>
-              ) : null}
-              <p className="color-preview-note">颜色用于搭配比较，实物颜色与质感以样品为准。</p>
             </> : <>
               {balconyChoices.map((item) => (
                 <div className="balcony-option-row" key={item.id}>
@@ -514,7 +472,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。主卧、次卧 A/B 各暂放一张床，客房不放床；厨房沿墙布置橱柜台面，配燃气灶、抽油烟机、水槽和水龙头，两个卫生间进门依次为洗手台与镜子、马桶，玻璃门后是带花洒和地漏的淋浴区，餐厅放一桌四椅。墙面统一暖米白，床架、餐桌和餐椅采用浅胡桃木色。主卧、次卧及主阳台入口有两侧拉开的暖米白窗帘。四个卧室各有壁挂空调，客厅主阳台旁暂放柜机。新增家具跟随「只看毛坯」隐藏，产品、尺寸和点位均未定案。两个阳台各自对比保持原样和落地玻璃，生活阳台默认落地玻璃，主阳台默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，房间命名不代表最终用途。
+              毛坯室内与两个阳台；客厅可切换两种电视、沙发布局，电视可放柜上或挂墙。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。主卧、次卧 A/B 各暂放一张床，原客房改为书房，沿墙放浅胡桃色电脑桌和电脑，旁边放空的玻璃展示柜；厨房沿墙布置橱柜台面，配燃气灶、抽油烟机、水槽和水龙头，入口旁墙角放冰箱，两个卫生间进门依次为洗手台与镜子、马桶，玻璃门后是带花洒和地漏的淋浴区，餐厅放一桌四椅。墙面统一暖米白，床架、餐桌和餐椅采用浅胡桃木色。主卧、次卧及主阳台入口有两侧拉开的暖米白窗帘。三个卧室和书房各有壁挂空调，客厅主阳台旁暂放柜机。新增家具跟随「只看毛坯」隐藏，产品、尺寸和点位均未定案。两个阳台各自对比保持原样和落地玻璃，生活阳台默认落地玻璃，主阳台默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，上下关系和安装高度仅作示意。不含电梯及公共管井，其余房间用途仍可调整。
             </dd>
           </div>
         </dl>

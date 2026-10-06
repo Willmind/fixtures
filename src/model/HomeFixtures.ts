@@ -10,27 +10,24 @@ import {
   bathroomFittings,
   bedroomBeds,
   bedroomAirConditioners,
-  cabinetColors,
   diningFurniture,
   furnitureSize,
+  homeOfficeFurniture,
   kitchenFurniture,
   livingLayouts,
   livingAirConditioner,
   livingPlacement,
   previewPalette,
   roomCurtains,
-  sofaColors,
   utilityEquipment,
 } from "./arrangements";
-import type { BalconyId, BalconyModes, CabinetColor, LayoutPreview, SofaColor } from "./arrangements";
+import type { BalconyId, BalconyModes, LayoutPreview } from "./arrangements";
 import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
 import type { BoxPart, TelevisionMount } from "./furniture";
 import { createCurtainPanel, createCurtainWeave } from "./curtains";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
-  sofaColor: SofaColor;
-  cabinetColor: CabinetColor;
   televisionMount: TelevisionMount;
   balconyRoofs: boolean;
   balconyModes: BalconyModes;
@@ -61,11 +58,14 @@ export class HomeFixtures {
   private equipmentPlanLabel?: CSS2DObject;
   private materials = new Set<THREE.Material>();
   private roofMaterial = this.material({ color: "#d1d0ca", roughness: 0.95 });
-  private cabinetMaterial = this.material({ color: cabinetColors[0].color, roughness: 0.9 });
-  private sofaMaterial = this.material({ color: sofaColors[0].color, roughness: 1 });
-  private cushionMaterial = this.material({ color: sofaColors[0].cushion, roughness: 1 });
+  private cabinetMaterial = this.material({ color: previewPalette.tvCabinet, roughness: 0.9 });
+  private sofaMaterial = this.material({ color: previewPalette.sofa, roughness: 1 });
+  private cushionMaterial = this.material({ color: previewPalette.sofaCushion, roughness: 1 });
   private whiteMaterial = this.material({ color: "#eeeae2", roughness: 0.7 });
   private darkMaterial = this.material({ color: "#38434a", roughness: 0.45 });
+  private computerScreenMaterial = this.material({
+    color: "#435e73", roughness: 0.3, emissive: "#182d40", emissiveIntensity: 0.25,
+  });
   private supportMaterial = this.material({ color: "#343331", roughness: 0.85 });
   private woodMaterial = this.material({ color: previewPalette.lightWalnut, roughness: 0.85 });
   private beddingMaterial = this.material({ color: "#f1ede4", roughness: 1 });
@@ -297,6 +297,7 @@ export class HomeFixtures {
       this.tagRoom(enclosure, fitting.roomId);
     }
     this.buildKitchen();
+    this.buildHomeOffice();
     this.buildDining();
     this.buildCurtains();
     this.buildAirConditioners();
@@ -584,6 +585,29 @@ export class HomeFixtures {
       counter.add(knob);
     }
     this.tagRoom(counter, "kitchen");
+    this.buildFridge();
+  }
+
+  private buildFridge() {
+    const { center, rotation, width, depth, height } = kitchenFurniture.fridge;
+    const group = this.at(this.furnishings, center, rotation);
+    group.name = "kitchen-fridge";
+    const front = depth / 2;
+    // Recessed base supports the cabinet; doors and handles stay in its footprint.
+    this.box(group, [width - 0.08, 0.055, depth - 0.09], [0, 0.0275, -0.025], this.supportMaterial, 0.012);
+    this.box(group, [width, height - 0.055, depth - 0.05],
+      [0, (height + 0.055) / 2, -0.025], this.whiteMaterial, 0.025);
+    this.box(group, [width - 0.025, height - 0.08, 0.012],
+      [0, (height + 0.04) / 2, front - 0.05], this.supportMaterial, 0.018);
+    // Upper refrigerator and lower freezer, separated by a slim gasket seam.
+    for (const [bottom, top, handleY] of [[0.075, 0.605, 0.55], [0.62, height - 0.02, 0.685]]) {
+      this.box(group, [width - 0.02, top - bottom, 0.038],
+        [0, (bottom + top) / 2, front - 0.04], this.whiteMaterial, 0.018);
+      this.box(group, [0.32, 0.018, 0.022],
+        [0, handleY, front - 0.013], this.steelMaterial, 0.008);
+    }
+    this.box(group, [0.09, 0.12, 0.005], [0.15, 1.40, front - 0.019], this.darkMaterial, 0.008);
+    this.tagRoom(group, "kitchen");
   }
 
   private buildDining() {
@@ -615,6 +639,63 @@ export class HomeFixtures {
     this.tagRoom(group, "living");
   }
 
+  private buildHomeOffice() {
+    const { roomId, desk: size, cabinet } = homeOfficeFurniture;
+    const desk = this.at(this.furnishings, size.center, size.rotation);
+    desk.name = "study-desk-and-computer";
+    this.box(desk, [size.width, 0.055, size.depth],
+      [0, size.height - 0.0275, 0], this.woodMaterial, 0.02);
+    for (const x of [-size.width / 2 + 0.09, size.width / 2 - 0.09]) {
+      for (const z of [-size.depth / 2 + 0.08, size.depth / 2 - 0.08]) {
+        this.box(desk, [0.055, size.height - 0.055, 0.055],
+          [x, (size.height - 0.055) / 2, z], this.woodMaterial, 0.012);
+      }
+    }
+    this.box(desk, [size.width - 0.16, 0.10, 0.035],
+      [0, size.height - 0.105, -size.depth / 2 + 0.06], this.woodMaterial);
+    // Monitor base, stem and display remain connected above the tabletop.
+    this.box(desk, [0.26, 0.02, 0.18], [-0.18, size.height + 0.01, -0.16], this.supportMaterial, 0.01);
+    this.box(desk, [0.045, 0.18, 0.045], [-0.18, size.height + 0.10, -0.19], this.supportMaterial, 0.01);
+    this.box(desk, [0.64, 0.38, 0.04], [-0.18, size.height + 0.35, -0.18], this.darkMaterial, 0.016);
+    this.box(desk, [0.605, 0.338, 0.005],
+      [-0.18, size.height + 0.356, -0.158], this.computerScreenMaterial, 0.006);
+    this.box(desk, [0.43, 0.025, 0.14], [-0.18, size.height + 0.0125, 0.16], this.darkMaterial, 0.009);
+    for (let row = 0; row < 3; row++) {
+      for (let key = 0; key < 11; key++) {
+        this.box(desk, [0.028, 0.004, 0.025],
+          [-0.355 + key * 0.035, size.height + 0.027, 0.118 + row * 0.034], this.supportMaterial, 0.002);
+      }
+    }
+    this.box(desk, [0.055, 0.035, 0.10], [0.16, size.height + 0.0175, 0.16], this.darkMaterial, 0.02);
+    this.box(desk, [0.20, 0.39, 0.37], [0.54, size.height + 0.195, -0.1], this.darkMaterial, 0.018);
+    this.box(desk, [0.012, 0.012, 0.005], [0.58, size.height + 0.35, 0.087], this.whiteMaterial);
+    this.tagRoom(desk, roomId);
+
+    const display = this.at(this.furnishings, cabinet.center, cabinet.rotation);
+    display.name = "study-empty-display-cabinet";
+    const { width, height, depth } = cabinet;
+    this.box(display, [width - 0.06, 0.08, depth - 0.04], [0, 0.04, 0], this.woodMaterial, 0.01);
+    this.box(display, [width, 0.035, depth], [0, height - 0.0175, 0], this.woodMaterial, 0.01);
+    this.box(display, [width, height - 0.08, 0.025],
+      [0, (height + 0.08) / 2, -depth / 2 + 0.0125], this.woodMaterial);
+    for (const x of [-width / 2 + 0.015, width / 2 - 0.015]) {
+      this.box(display, [0.03, height - 0.08, depth], [x, (height + 0.08) / 2, 0], this.woodMaterial);
+    }
+    for (const y of [0.085, 0.43, 0.78, 1.13, 1.48]) {
+      this.box(display, [width - 0.06, 0.02, depth - 0.025], [0, y, 0.005], this.woodMaterial);
+    }
+    const doorWidth = (width - 0.065) / 2;
+    for (const side of [-1, 1]) {
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, height - 0.135), this.windowGlassMaterial);
+      glass.position.set(side * (doorWidth + 0.005) / 2, (height + 0.065) / 2, depth / 2 + 0.002);
+      display.add(glass);
+      this.box(display, [0.013, height - 0.12, 0.018],
+        [side * 0.009, (height + 0.06) / 2, depth / 2 + 0.005], this.woodMaterial);
+      this.box(display, [0.016, 0.14, 0.03], [side * 0.042, 0.98, depth / 2 + 0.022], this.steelMaterial, 0.005);
+    }
+    this.tagRoom(display, roomId);
+  }
+
   update(options: FixtureOptions) {
     for (const television of this.televisions) {
       television.group.visible = television.mount === options.televisionMount;
@@ -630,11 +711,6 @@ export class HomeFixtures {
       label.position.y = screen.position[1] + screen.size[1] / 2 + 0.12;
       label.element.textContent = options.televisionMount === "wall" ? "挂墙电视 / 电视柜" : "电视 / 电视柜";
     }
-    const sofa = sofaColors.find((item) => item.id === options.sofaColor) ?? sofaColors[0];
-    const cabinet = cabinetColors.find((item) => item.id === options.cabinetColor) ?? cabinetColors[0];
-    this.sofaMaterial.color.set(sofa.color);
-    this.cushionMaterial.color.set(sofa.cushion);
-    this.cabinetMaterial.color.set(cabinet.color);
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.furnishings.visible = options.layout !== "empty";
     for (const curtain of this.curtains) curtain.scale.y = options.wallHeight - 0.12;

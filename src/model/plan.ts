@@ -98,15 +98,16 @@ export const rooms: Room[] = [
     kind: "bedroom",
     polygon: rect(7.6, 1.2, 2.6, 3.05),
     label: [8.9, 2.8],
-    description: "原图标注「男孩房」。暂放一张 1.2 m 宽的床，仍保留作为书房的候选，模型未修改墙体。",
+    description: "原图标注「男孩房」。当前按卧室预览，暂放一张 1.2 m 宽的床；书房安排在原客房，模型未修改墙体。",
   },
   {
     id: "guest",
-    name: "客房",
+    name: "书房",
+    originalName: "客房",
     kind: "bedroom",
     polygon: rect(0, 5.15, 2.6, 3.5),
     label: [1.3, 6.9],
-    description: "位于入户附近的独立房间。保留原图的门洞与前侧窗洞。",
+    description: "原客房按你的计划用作书房，靠墙摆放电脑桌和电脑，旁边是空的手办展示柜。保留原图门窗，桌柜采用浅胡桃木色。",
   },
   {
     id: "kitchen",
@@ -114,7 +115,7 @@ export const rooms: Room[] = [
     kind: "kitchen",
     polygon: rect(0.6, 0, 2, 3.7),
     label: [1.6, 1.9],
-    description: "厨房从餐厅一侧进入，与生活阳台之间无门。沿墙暂摆橱柜、燃气灶、抽油烟机、水槽和水龙头；尺寸与水电、烟道点位待复测。",
+    description: "厨房从餐厅一侧进入，与生活阳台之间无门。沿墙暂摆橱柜、燃气灶、抽油烟机、水槽和水龙头，入口旁的墙角放冰箱；尺寸与水电、烟道点位待复测。",
   },
   {
     id: "bath",
