@@ -5,8 +5,8 @@ import { Icon } from "./icons";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
-import { balconyChoices, balconyModeLabels, livingLayouts } from "./model/arrangements";
-import type { BalconyModes, LayoutPreview } from "./model/arrangements";
+import { balconyChoices, balconyModeLabels, curtainColors, livingLayouts } from "./model/arrangements";
+import type { BalconyModes, CurtainColor, LayoutPreview } from "./model/arrangements";
 import { televisionMounts } from "./model/furniture";
 import type { TelevisionMount } from "./model/furniture";
 
@@ -55,10 +55,11 @@ export default function HomeViewer({
   const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
   const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
+  const [curtainColor, setCurtainColor] = useState<CurtainColor>(curtainColors[0].id);
   const [televisionMount, setTelevisionMount] = useState<TelevisionMount>("cabinet");
   const [balconyRoofs, setBalconyRoofs] = useState(true);
   const [balconyModes, setBalconyModes] = useState<BalconyModes>({ balcony: "original", utility: "enclosed" });
-  const [previewTab, setPreviewTab] = useState<"living" | "balconies">("living");
+  const [previewTab, setPreviewTab] = useState<"living" | "balconies" | "curtains">("living");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
@@ -75,6 +76,7 @@ export default function HomeViewer({
     dimensions,
     grid,
     layout,
+    curtainColor,
     televisionMount,
     balconyRoofs,
     balconyModes,
@@ -274,6 +276,9 @@ export default function HomeViewer({
                 <button aria-pressed={previewTab === "balconies"} onClick={() => setPreviewTab("balconies")}>
                   阳台封窗
                 </button>
+                <button aria-pressed={previewTab === "curtains"} onClick={() => setPreviewTab("curtains")}>
+                  窗帘颜色
+                </button>
               </div>
               <small>效果预览</small>
             </div>
@@ -312,6 +317,20 @@ export default function HomeViewer({
               <p aria-live="polite">
                 {currentLayout?.description ?? "已隐藏室内家具，选择方案恢复预览"}
               </p>
+            </> : previewTab === "curtains" ? <>
+              <div className="curtain-color-choices" role="group" aria-label="全屋窗帘颜色">
+                {curtainColors.map((item) => (
+                  <button key={item.id} aria-label={`窗帘：${item.label}`}
+                    aria-pressed={curtainColor === item.id} onClick={() => setCurtainColor(item.id)}>
+                    <span className="curtain-color-dot" style={{ backgroundColor: item.color }} aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p aria-live="polite">当前：{curtainColors.find((item) => item.id === curtainColor)?.label} · 应用于全屋窗帘</p>
+              {layout === "empty" ? <button className="curtain-restore-button" onClick={() => setLayout("tv-guest")}>
+                显示窗帘与家具
+              </button> : <p>点击模型里的窗帘，可单独切换开合。</p>}
             </> : <>
               {balconyChoices.map((item) => (
                 <div className="balcony-option-row" key={item.id}>

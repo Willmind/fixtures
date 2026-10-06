@@ -10,6 +10,7 @@ import {
   bathroomFittings,
   bedroomBeds,
   bedroomAirConditioners,
+  curtainColors,
   diningFurniture,
   furnitureSize,
   homeOfficeFurniture,
@@ -21,13 +22,14 @@ import {
   roomCurtains,
   utilityEquipment,
 } from "./arrangements";
-import type { BalconyId, BalconyModes, LayoutPreview } from "./arrangements";
+import type { BalconyId, BalconyModes, CurtainColor, LayoutPreview } from "./arrangements";
 import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
 import type { BoxPart, TelevisionMount } from "./furniture";
 import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
+  curtainColor: CurtainColor;
   televisionMount: TelevisionMount;
   balconyRoofs: boolean;
   balconyModes: BalconyModes;
@@ -123,8 +125,8 @@ export class HomeFixtures {
 
   private makeCurtainMaterial() {
     const material = new THREE.MeshPhysicalMaterial({
-      color: "#e5dac4", roughness: 0.96, metalness: 0,
-      sheen: 0.65, sheenColor: "#f5ecda", sheenRoughness: 0.9,
+      color: curtainColors[0].color, roughness: 0.96, metalness: 0,
+      sheen: 0.65, sheenColor: curtainColors[0].sheen, sheenRoughness: 0.9,
       bumpMap: this.curtainWeave, bumpScale: 0.0006, vertexColors: true,
     });
     this.materials.add(material);
@@ -731,6 +733,9 @@ export class HomeFixtures {
   }
 
   update(options: FixtureOptions) {
+    const curtainColor = curtainColors.find((item) => item.id === options.curtainColor) ?? curtainColors[0];
+    this.curtainMaterial.color.set(curtainColor.color);
+    this.curtainMaterial.sheenColor.set(curtainColor.sheen);
     for (const television of this.televisions) {
       television.group.visible = television.mount === options.televisionMount;
     }

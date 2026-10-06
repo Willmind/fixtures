@@ -9,6 +9,16 @@ export const previewPalette = {
   tvCabinet: "#674631",
 };
 
+export const curtainColors = [
+  { id: "ivory", label: "暖米白", color: "#e5dac4", sheen: "#f5ecda" },
+  { id: "cream", label: "奶油黄", color: "#e4c675", sheen: "#f5e4b0" },
+  { id: "apricot", label: "杏色", color: "#dcb18c", sheen: "#f3d7bb" },
+  { id: "honey", label: "蜂蜜黄", color: "#c99b42", sheen: "#edce87" },
+  { id: "orange", label: "暖橙色", color: "#d18b53", sheen: "#efbd91" },
+  { id: "terracotta", label: "陶土橙", color: "#b86f4d", sheen: "#e3ad8b" },
+] as const;
+export type CurtainColor = (typeof curtainColors)[number]["id"];
+
 export const livingLayouts = [
   {
     id: "tv-guest",
@@ -141,10 +151,11 @@ export const diningFurniture = {
   width: 1.35,
   depth: 0.8,
   chairs: [
-    { x: -0.37, z: -0.74, rotation: 0 },
-    { x: 0.37, z: -0.74, rotation: 0 },
-    { x: -0.37, z: 0.74, rotation: Math.PI },
-    { x: 0.37, z: 0.74, rotation: Math.PI },
+    // Tucked under the long sides, between the table legs.
+    { x: -0.30, z: -0.48, rotation: 0 },
+    { x: 0.30, z: -0.48, rotation: 0 },
+    { x: -0.30, z: 0.48, rotation: Math.PI },
+    { x: 0.30, z: 0.48, rotation: Math.PI },
   ],
 };
 
