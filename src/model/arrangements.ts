@@ -101,6 +101,7 @@ export const utilityEquipment = {
   roomId: "utility",
   washer: { center: [3.05, 0.6] as Point, rotation: Math.PI / 2 },
   heater: { center: [2.89, 0.6] as Point, rotation: Math.PI / 2 },
+  robot: { center: [4.02, 0.4] as Point, rotation: 0, radius: 0.18 },
 };
 
 // Temporary furniture footprints, measured in metres. Positions follow the
@@ -115,6 +116,7 @@ export const bedroomBeds = [
 export const homeOfficeFurniture = {
   roomId: "guest",
   desk: { center: [0.48, 7.45] as Point, rotation: Math.PI / 2, width: 1.5, depth: 0.7, height: 0.75 },
+  chair: { center: [1.23, 7.45] as Point, rotation: -Math.PI / 2, radius: 0.32 },
   cabinet: { center: [0.31, 5.98] as Point, rotation: Math.PI / 2, width: 0.9, depth: 0.38, height: 1.85 },
 };
 

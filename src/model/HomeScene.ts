@@ -19,6 +19,7 @@ import { HomeFixtures } from "./HomeFixtures";
 import type { FixtureOptions } from "./HomeFixtures";
 import type { BalconyId } from "./arrangements";
 import { previewPalette } from "./arrangements";
+import { applySurfaceUVs, createTileSurface, floorFinish, wallTileSides } from "./finishes";
 
 export type ViewOptions = FixtureOptions & {
   view: "perspective" | "plan";
@@ -56,6 +57,7 @@ export class HomeScene {
   private selectionGesture = new SelectionGesture();
   private labels: Map<string, HTMLElement> = new Map();
   private wallMaterial: THREE.MeshStandardMaterial;
+  private wallTileMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial: THREE.LineBasicMaterial;
   private frameMaterial: THREE.MeshStandardMaterial;
   private glassMaterial: THREE.MeshStandardMaterial;
@@ -99,11 +101,13 @@ export class HomeScene {
     this.controls.addEventListener("change", this.requestRender);
     this.controls.listenToKeyEvents(this.renderer.domElement);
 
-    const concrete = this.makeConcreteTexture();
     this.wallMaterial = this.material({
       color: previewPalette.wall,
       roughness: 0.96,
     });
+    const wallTiles = createTileSurface("white", true);
+    this.wallTileMaterial = this.material({ color: "#ffffff", ...wallTiles });
+    this.textures.add(wallTiles.map).add(wallTiles.bumpMap);
     this.frameMaterial = this.material({
       color: "#343b3d",
       roughness: 0.65,
@@ -151,7 +155,7 @@ export class HomeScene {
     this.grid.position.y = -0.18;
     this.scene.add(this.grid);
     this.scene.add(this.architecture, this.labelGroup, this.dimensions, this.fixtures.group);
-    this.buildFloors(concrete);
+    this.buildFloors();
     this.buildDimensions();
     this.buildWalls();
     this.applyVisibility();
@@ -180,25 +184,6 @@ export class HomeScene {
     return material;
   }
 
-  private makeConcreteTexture() {
-    const size = 128;
-    const data = new Uint8Array(size * size * 4);
-    let seed = 87;
-    for (let i = 0; i < data.length; i += 4) {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const value = 225 + Math.floor((seed / 4294967296) * 25);
-      data[i] = data[i + 1] = data[i + 2] = value;
-      data[i + 3] = 255;
-    }
-    const texture = new THREE.DataTexture(data, size, size);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.needsUpdate = true;
-    this.textures.add(texture);
-    return texture;
-  }
-
   private position(point: Point, y = 0) {
     return new THREE.Vector3(
       point[0] - modelCenter[0],
@@ -215,12 +200,17 @@ export class HomeScene {
     x: number,
     y: number,
     z: number,
-    material: THREE.Material,
+    material: THREE.Material | THREE.Material[],
     outlined = false,
   ) {
     const geometry = new THREE.BoxGeometry(width, height, depth);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, y, z);
+    if ((Array.isArray(material) ? material : [material]).includes(this.wallTileMaterial)) {
+      parent.updateWorldMatrix(true, false);
+      mesh.updateMatrix();
+      applySurfaceUVs(geometry, new THREE.Matrix4().multiplyMatrices(parent.matrixWorld, mesh.matrix));
+    }
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
@@ -234,7 +224,9 @@ export class HomeScene {
     return mesh;
   }
 
-  private buildFloors(texture: THREE.Texture) {
+  private buildFloors() {
+    const surfaces = { wood: createTileSurface("wood"), soft: createTileSurface("soft"), white: createTileSurface("white") };
+    for (const surface of Object.values(surfaces)) this.textures.add(surface.map).add(surface.bumpMap);
     for (const room of rooms) {
       const shape = new THREE.Shape();
       room.polygon.forEach(([x, z], i) => {
@@ -248,13 +240,9 @@ export class HomeScene {
       });
       geometry.rotateX(-Math.PI / 2);
       geometry.translate(0, -0.16, 0);
-      const color =
-        room.kind === "bathroom"
-          ? "#b8c0c1"
-          : room.kind === "balcony"
-            ? "#c1c5c0"
-            : "#c5c6c3";
-      const material = this.material({ color, map: texture, roughness: 1 });
+      applySurfaceUVs(geometry);
+      const color = "#ffffff";
+      const material = this.material({ color, ...surfaces[floorFinish(room)] });
       const floor = new THREE.Mesh(geometry, material);
       floor.userData = { roomId: room.id, baseColor: color };
       floor.receiveShadow = true;
@@ -294,6 +282,10 @@ export class HomeScene {
       group.rotation.y = -Math.atan2(dz, dx);
       this.architecture.add(group);
       const thickness = wall.thickness ?? defaults.wallThickness;
+      const tiled = wallTileSides(wall);
+      const wallMaterials = [this.wallMaterial, this.wallMaterial, this.wallMaterial, this.wallMaterial,
+        tiled.positive ? this.wallTileMaterial : this.wallMaterial,
+        tiled.negative ? this.wallTileMaterial : this.wallMaterial];
       for (const piece of splitWall(
         length,
         Math.min(wall.height ?? height, height),
@@ -307,7 +299,7 @@ export class HomeScene {
           (piece.start + piece.end) / 2,
           (piece.top + piece.bottom) / 2,
           0,
-          this.wallMaterial,
+          wallMaterials,
           true,
         );
       }

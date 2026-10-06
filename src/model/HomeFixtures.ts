@@ -26,6 +26,7 @@ import type { BalconyId, BalconyModes, CurtainColor, LayoutPreview } from "./arr
 import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
 import type { BoxPart, TelevisionMount } from "./furniture";
 import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains";
+import { applySurfaceUVs, createTileSurface } from "./finishes";
 
 export type FixtureOptions = {
   layout: LayoutPreview;
@@ -64,6 +65,7 @@ export class HomeFixtures {
   private equipmentLabels: CSS2DObject[] = [];
   private equipmentPlanLabel?: CSS2DObject;
   private materials = new Set<THREE.Material>();
+  private textures = new Set<THREE.Texture>();
   private roofMaterial = this.material({ color: "#d1d0ca", roughness: 0.95 });
   private cabinetMaterial = this.material({ color: previewPalette.tvCabinet, roughness: 0.9 });
   private sofaMaterial = this.material({ color: previewPalette.sofa, roughness: 1 });
@@ -74,10 +76,13 @@ export class HomeFixtures {
     color: "#435e73", roughness: 0.3, emissive: "#182d40", emissiveIntensity: 0.25,
   });
   private supportMaterial = this.material({ color: "#343331", roughness: 0.85 });
+  private chairMeshMaterial = this.makeChairMeshMaterial();
   private woodMaterial = this.material({ color: previewPalette.lightWalnut, roughness: 0.85 });
   private beddingMaterial = this.material({ color: "#f1ede4", roughness: 1 });
   private blanketMaterial = this.material({ color: "#a7b2ae", roughness: 1 });
   private stoneMaterial = this.material({ color: "#dedbd4", roughness: 0.75 });
+  private wetFloorMaterial = this.makeTileMaterial(false);
+  private wetWallMaterial = this.makeTileMaterial(true);
   private ceramicMaterial = this.material({ color: "#f5f5f0", roughness: 0.25 });
   private steelMaterial = this.material({ color: "#7c8385", roughness: 0.35, metalness: 0.7 });
   private mirrorMaterial = this.material({ color: "#b8cdd3", roughness: 0.08, metalness: 0.45 });
@@ -133,6 +138,28 @@ export class HomeFixtures {
     return material;
   }
 
+  private makeChairMeshMaterial() {
+    const data = new Uint8Array(8 * 8 * 4);
+    for (let index = 0; index < 64; index++) {
+      data.set([255, 255, 255, index % 8 < 2 || Math.floor(index / 8) < 2 ? 255 : 0], index * 4);
+    }
+    const texture = new THREE.DataTexture(data, 8, 8);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(64, 72);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.generateMipmaps = true;
+    texture.needsUpdate = true;
+    this.textures.add(texture);
+    return this.material({ color: "#535a5b", map: texture, alphaTest: 0.25, side: THREE.DoubleSide, roughness: 0.95 });
+  }
+
+  private makeTileMaterial(wall: boolean) {
+    const surface = createTileSurface("white", wall);
+    this.textures.add(surface.map).add(surface.bumpMap);
+    return this.material({ color: "#ffffff", ...surface });
+  }
+
   private at(parent: THREE.Group, [x, z]: Point, rotation = 0) {
     const group = new THREE.Group();
     group.position.set(x - modelCenter[0], 0, z - modelCenter[1]);
@@ -143,13 +170,18 @@ export class HomeFixtures {
 
   private box(
     parent: THREE.Group, size: [number, number, number],
-    position: [number, number, number], material: THREE.Material, radius = 0,
+    position: [number, number, number], material: THREE.Material | THREE.Material[], radius = 0,
   ) {
     const geometry = radius
       ? new RoundedBoxGeometry(...size, 2, radius)
       : new THREE.BoxGeometry(...size);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(...position);
+    if ((Array.isArray(material) ? material : [material]).some((item) => item === this.wetWallMaterial || item === this.wetFloorMaterial)) {
+      parent.updateWorldMatrix(true, false);
+      mesh.updateMatrix();
+      applySurfaceUVs(geometry, new THREE.Matrix4().multiplyMatrices(parent.matrixWorld, mesh.matrix));
+    }
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
@@ -274,7 +306,36 @@ export class HomeFixtures {
     this.box(heater, [0.43, 0.65, 0.26], [0, 1.85, 0], this.whiteMaterial, 0.035);
     this.box(heater, [0.16, 0.08, 0.015], [0, 1.68, 0.14], this.darkMaterial);
     this.equipmentLabels.push(this.label(heater, "热水器位置", 2.33, "equipment"));
+    this.buildRobotVacuum();
     this.tagRoom(this.equipment, utilityEquipment.roomId);
+  }
+
+  private buildRobotVacuum() {
+    const { center, rotation, radius } = utilityEquipment.robot;
+    const robot = this.at(this.equipment, center, rotation);
+    robot.name = "utility-robot-vacuum-and-dock";
+    for (const [r, height, y, material] of [
+      [radius, 0.075, 0.05, this.whiteMaterial],
+      [radius + 0.002, 0.017, 0.031, this.darkMaterial],
+      [radius - 0.014, 0.006, 0.09, this.whiteMaterial],
+      [0.043, 0.026, 0.103, this.darkMaterial],
+      [0.039, 0.005, 0.118, this.whiteMaterial],
+    ] as const) {
+      const part = new THREE.Mesh(new THREE.CylinderGeometry(r, r, height, 40), material);
+      part.position.y = y;
+      part.castShadow = part.receiveShadow = true;
+      robot.add(part);
+    }
+    for (const x of [-0.13, 0.13]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.022, 12), this.supportMaterial);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, 0.025, 0);
+      robot.add(wheel);
+    }
+    this.box(robot, [0.04, 0.004, 0.018], [0, 0.096, 0.09], this.darkMaterial, 0.006);
+    this.box(robot, [0.3, 0.12, 0.1], [0, 0.06, -0.23], this.whiteMaterial, 0.02);
+    this.box(robot, [0.22, 0.052, 0.008], [0, 0.055, -0.178], this.darkMaterial, 0.012);
+    this.equipmentLabels.push(this.label(robot, "扫地机器人", 0.29, "equipment"));
   }
 
   private buildRoomFurnishings() {
@@ -464,7 +525,9 @@ export class HomeFixtures {
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
       [0.78, 2.0 - defaults.cutHeight, defaults.wallThickness],
-      [0, (2.0 + defaults.cutHeight) / 2, -0.36], this.backdropMaterial));
+      [0, (2.0 + defaults.cutHeight) / 2, -0.36],
+      [this.backdropMaterial, this.backdropMaterial, this.backdropMaterial, this.backdropMaterial,
+        this.wetWallMaterial, this.backdropMaterial]));
   }
 
   private pipe(parent: THREE.Group, points: [number, number, number][], radius: number) {
@@ -499,7 +562,7 @@ export class HomeFixtures {
     { width, depth, height, doorWidth }: { width: number; depth: number; height: number; doorWidth: number },
   ) {
     // The floor and drain make the wet area readable even in the top view.
-    this.box(group, [width, 0.012, depth], [0, 0.006, -depth / 2], this.stoneMaterial);
+    this.box(group, [width, 0.012, depth], [0, 0.006, -depth / 2], this.wetFloorMaterial);
     this.box(group, [0.13, 0.008, 0.13], [width / 2 - 0.22, 0.016, -depth + 0.22], this.steelMaterial);
     for (let index = 0; index < 4; index++) {
       this.box(group, [0.085, 0.002, 0.006],
@@ -730,6 +793,48 @@ export class HomeFixtures {
       this.box(display, [0.016, 0.14, 0.03], [side * 0.042, 0.98, depth / 2 + 0.022], this.steelMaterial, 0.005);
     }
     this.tagRoom(display, roomId);
+    const chair = this.at(this.furnishings, homeOfficeFurniture.chair.center, homeOfficeFurniture.chair.rotation);
+    chair.name = "study-ergonomic-chair";
+    this.buildOfficeChair(chair);
+    this.tagRoom(chair, roomId);
+  }
+
+  private buildOfficeChair(group: THREE.Group) {
+    for (let index = 0; index < 5; index++) {
+      const spoke = new THREE.Group();
+      spoke.rotation.y = index * Math.PI * 2 / 5;
+      group.add(spoke);
+      this.box(spoke, [0.30, 0.035, 0.045], [0.14, 0.12, 0], this.supportMaterial, 0.012);
+      this.box(spoke, [0.028, 0.08, 0.045], [0.28, 0.08, 0], this.supportMaterial, 0.008);
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.035, 16), this.darkMaterial);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(0.28, 0.04, 0);
+      wheel.castShadow = true;
+      spoke.add(wheel);
+    }
+    const lift = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.032, 0.27, 16), this.steelMaterial);
+    lift.position.y = 0.255;
+    group.add(lift);
+    this.box(group, [0.22, 0.045, 0.22], [0, 0.405, 0], this.supportMaterial, 0.01);
+    this.box(group, [0.48, 0.075, 0.47], [0, 0.4575, 0.015], this.darkMaterial, 0.035);
+    this.pipe(group, [[0, 0.39, -0.1], [0, 0.56, -0.23], [0, 0.77, -0.265]], 0.025);
+    const back = new THREE.Group();
+    back.position.set(0, 0.78, -0.24);
+    back.rotation.x = -0.12;
+    group.add(back);
+    for (const x of [-0.23, 0.23]) this.box(back, [0.035, 0.52, 0.035], [x, 0, 0], this.supportMaterial, 0.016);
+    for (const y of [-0.25, 0.25]) this.box(back, [0.46, 0.035, 0.035], [0, y, 0], this.supportMaterial, 0.016);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.49), this.chairMeshMaterial);
+    mesh.position.z = 0.004;
+    mesh.castShadow = mesh.receiveShadow = true;
+    back.add(mesh);
+    this.box(back, [0.34, 0.075, 0.055], [0, -0.15, 0.035], this.darkMaterial, 0.025);
+    this.box(back, [0.045, 0.20, 0.04], [0, 0.32, -0.015], this.supportMaterial, 0.015);
+    this.box(back, [0.28, 0.14, 0.085], [0, 0.42, 0], this.darkMaterial, 0.04);
+    for (const x of [-0.25, 0.25]) {
+      this.box(group, [0.028, 0.15, 0.04], [x, 0.57, 0.015], this.supportMaterial, 0.008);
+      this.box(group, [0.065, 0.04, 0.28], [x, 0.65, 0.06], this.darkMaterial, 0.019);
+    }
   }
 
   update(options: FixtureOptions) {
@@ -804,5 +909,6 @@ export class HomeFixtures {
     // HomeScene owns geometry and CSS label disposal through its scene traversal.
     for (const material of this.materials) material.dispose();
     this.curtainWeave.dispose();
+    for (const texture of this.textures) texture.dispose();
   }
 }
