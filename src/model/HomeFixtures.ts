@@ -874,7 +874,7 @@ export class HomeFixtures {
     this.box(group, [width, 0.012, depth], [0, 0.006, -depth / 2], this.wetFloorMaterial);
     const drain = new THREE.Group();
     drain.name = "shower-floor-drain";
-    drain.position.set(width / 2 - 0.23, 0.015, -depth + 0.23);
+    drain.position.set(-width / 2 + 0.23, 0.015, -depth + 0.23);
     group.add(drain);
     this.box(drain, [0.16, 0.004, 0.16], [0, 0, 0], this.steelMaterial);
     this.box(drain, [0.135, 0.002, 0.135], [0, 0.003, 0], this.darkMaterial);
