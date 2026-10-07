@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f5f7" />
+    <script>
+      (() => {
+        let preference = "system";
+        try { preference = localStorage.getItem("fixtures.theme.v1") || "system"; } catch {}
+        const dark = preference === "dark" || (preference !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#111113" : "#f5f5f7";
+      })();
+    </script>
     <meta name="robots" content="noindex, nofollow" />
     <meta
       name="description"
@@ -12,9 +21,9 @@
     <link rel="icon" type="image/png" href="/icons/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>D 户型 · 我的家</title>
-    <script type="module" crossorigin src="/assets/index-CVLm-Mh0.js"></script>
+    <script type="module" crossorigin src="/assets/index-CsEpSmQM.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-hePW80VL.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-BuglxGCw.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-BuA7YRn_.css">
   </head>
   <body>
     <div id="root"></div>
