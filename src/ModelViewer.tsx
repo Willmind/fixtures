@@ -56,14 +56,14 @@ export function ModelViewer({ options, onSelect, onLightsChange }: Props) {
         </div>
       ) : null}
       <div className="camera-tools" aria-label="视角与灯光控制">
-        <button
+        <button className="camera-zoom-action"
           title="放大"
           aria-label="放大模型"
           onClick={() => scene.current?.zoom(1.2)}
         >
           <Icon name="plus" />
         </button>
-        <button
+        <button className="camera-zoom-action"
           title="缩小"
           aria-label="缩小模型"
           onClick={() => scene.current?.zoom(1 / 1.2)}

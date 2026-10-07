@@ -1,3 +1,4 @@
+import { openDialogAtTitle } from "../dialogs/openDialog";
 import { useEffect, useRef, useState } from "react";
 import { roomGuides } from "../guide/content";
 import {
@@ -242,7 +243,7 @@ function ImportDialog({
   useEffect(() => {
     const opener = document.activeElement;
     const element = dialog.current!;
-    element.showModal();
+    openDialogAtTitle(element);
     return () => {
       element.close();
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
@@ -256,7 +257,7 @@ function ImportDialog({
       onCancel={onClose}
     >
       <header>
-        <h2 id="import-title">确认导入准备记录</h2>
+        <h2 id="import-title" tabIndex={-1} data-dialog-title="">确认导入准备记录</h2>
         <button onClick={onClose} aria-label="关闭导入预览">
           <Icon name="close" />
         </button>

@@ -1,3 +1,4 @@
+import { openDialogAtTitle } from "../dialogs/openDialog";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
 import { warmImage } from "../guide/imageWarmup";
@@ -171,7 +172,7 @@ function PhotoDialog({
   useEffect(() => {
     const element = dialog.current;
     const opener = document.activeElement;
-    element?.showModal();
+    if (element) openDialogAtTitle(element);
     return () => {
       element?.close();
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
@@ -198,8 +199,8 @@ function PhotoDialog({
     >
       <div className="visit-lightbox-content">
         <header>
-          <h2 id="visit-photo-title">{roomName} · 现场照片</h2>
-          <button autoFocus onClick={onClose} aria-label="关闭照片">
+          <h2 id="visit-photo-title" tabIndex={-1} data-dialog-title="">{roomName} · 现场照片</h2>
+          <button onClick={onClose} aria-label="关闭照片">
             <Icon name="close" />
           </button>
         </header>

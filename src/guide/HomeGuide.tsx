@@ -1,3 +1,4 @@
+import { openDialogAtTitle } from "../dialogs/openDialog";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
@@ -504,7 +505,7 @@ function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
   const sheet = sheets.find((s) => s.page === page)!;
   useEffect(() => {
     const element = dialog.current!;
-    element.showModal();
+    openDialogAtTitle(element);
     return () => element.close();
   }, []);
   return (
@@ -529,7 +530,7 @@ function SheetDialog({ page, onClose }: { page: number; onClose: () => void }) {
           <span>
             住宅 D 户型 · PDF 第 {page} 页 · {sheet.code}
           </span>
-          <h2 id="sheet-dialog-title">{sheet.simple}</h2>
+          <h2 id="sheet-dialog-title" tabIndex={-1} data-dialog-title="">{sheet.simple}</h2>
         </div>
         <button onClick={requestClose} aria-label="关闭原图">
           <Icon name="close" />

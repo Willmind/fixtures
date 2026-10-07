@@ -2,5 +2,6 @@
 @import "./styles/base.css";
 @import "./styles/controls.css";
 @import "./styles/model.css";
+@import "./styles/model-mobile.css";
 @import "./styles/dialogs.css";
 @import "./styles/motion.css";

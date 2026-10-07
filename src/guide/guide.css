@@ -12,7 +12,7 @@
   min-height: 100dvh;
   font-size: 14px;
   line-height: 1.65;
-  animation: page-in 450ms var(--ease-out) both;
+  animation: page-in 450ms var(--ease-out) backwards;
 }
 .guide-header {
   height: 80px;
@@ -21,9 +21,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--glass);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  /* Keep scrolling photographs out of a live backdrop blur pass. */
+  background: var(--surface-raised);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -905,10 +904,10 @@
   transition: transform 380ms var(--ease-out);
 }
 #guide-panel {
-  animation: content-in 380ms var(--ease-out) both;
+  animation: content-in 380ms var(--ease-out) backwards;
 }
 .guide-detail-content {
-  animation: content-in 300ms var(--ease-out) both;
+  animation: content-in 300ms var(--ease-out) backwards;
 }
 .guide-idea {
   background: var(--tint-soft);

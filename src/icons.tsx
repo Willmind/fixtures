@@ -1,4 +1,5 @@
 export type IconName =
+  | "more"
   | "home"
   | "cube"
   | "plan"
@@ -20,6 +21,7 @@ export type IconName =
   | "bulb"
   | "bulb-off";
 const paths: Record<IconName, React.ReactNode> = {
+  more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
   monitor: <><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M12 17v4m-4 0h8" /></>,
   check: <path d="m5 12 4 4L19 6" />,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></>,

@@ -50,7 +50,9 @@ window.__fixturesPerformance.reset()
 
 ## 样式
 
-`src/styles.css` 仅管理加载顺序：基础样式 → 公共控件 → 模型与页面框架 → 说明弹窗 → 动画。颜色仍由 `src/theme/theme.css` 的语义变量覆盖。
+`src/styles.css` 仅管理加载顺序：基础样式 → 公共控件 → 模型与页面框架 → 手机端模型布局 → 说明弹窗 → 动画。颜色仍由 `src/theme/theme.css` 的语义变量覆盖。
+
+`src/styles/model-mobile.css` 集中管理手机端布局、标签触摸范围和详情折叠，避免在桌面样式里反复追加覆盖。
 
 `src/guide/guide.css` 管理资料页，`src/guide/dialog.css` 管理原图弹窗及其移动端和关闭动画。公共控件不要复制到每个页面；页面差异用该页面的类名限定。保留 reduced-motion 设置，不通过滤镜修改实拍与原图颜色。
 

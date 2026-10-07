@@ -1,3 +1,4 @@
+import { openDialogAtTitle } from "./dialogs/openDialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ModelViewer } from "./ModelViewer";
 import { AppIcon } from "./AppIcon";
@@ -5,7 +6,8 @@ import { Icon } from "./icons";
 import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/options";
-import { photosForRoom } from "./visit/content";
+import { ModelRoomDetails } from "./ModelRoomDetails";
+import { ModelMobileActions } from "./ModelMobileActions";
 import { balconyChoices, balconyModeLabels, curtainColors, livingLayouts } from "./model/arrangements";
 import type { BalconyModes, CurtainColor, LayoutPreview } from "./model/arrangements";
 import { televisionMounts } from "./model/furniture";
@@ -114,7 +116,7 @@ export default function HomeViewer({
               <Icon name="lock" size={17} />
             </button>
           ) : null}
-          <button className="text-button" onClick={onOpenCad}>
+          <button className="text-button model-cad-button" onClick={onOpenCad}>
             <Icon name="layers" size={17} /> CAD 图纸
           </button>
           <button className="text-button model-guide-button" onClick={onBack} aria-label="户型资料" title="户型资料与实拍">
@@ -127,13 +129,8 @@ export default function HomeViewer({
             <Icon name="info" size={17} />
             模型说明
           </button>
-          <button
-            className="mobile-settings icon-button"
-            aria-label="打开模型设置"
-            onClick={() => setMobilePanel(true)}
-          >
-            <Icon name="sliders" />
-          </button>
+          <ModelMobileActions onCad={onOpenCad} onSource={() => setShowSource(true)}
+            onSettings={() => setMobilePanel(true)} />
         </div>
       </header>
       <main className="workspace">
@@ -394,33 +391,8 @@ export default function HomeViewer({
             <small>模型坐标</small>
           </div>
           {room ? (
-            <div className="room-detail" aria-live="polite">
-              <div className="room-detail-icon">
-                <Icon name="room" size={23} />
-              </div>
-              <div>
-                <span className="detail-eyebrow">已选择空间</span>
-                <h2>{room.name}</h2>
-                <p>{room.description}</p>
-                {selectedBalcony ? (
-                  <p className="room-option-summary">当前预览：{balconyModeLabels[balconyModes[selectedBalcony.id]]}</p>
-                ) : null}
-                <button
-                  className="model-visit-link"
-                  onClick={() => onVisit(room.id)}
-                >
-                  查看现场 · {photosForRoom(room.id).length} 张照片{" "}
-                  <Icon name="chevron" size={14} />
-                </button>
-              </div>
-              <button
-                className="icon-button"
-                aria-label="取消房间选择"
-                onClick={() => setSelected(null)}
-              >
-                <Icon name="close" size={16} />
-              </button>
-            </div>
+            <ModelRoomDetails key={room.id} room={room} onVisit={onVisit} onClose={() => setSelected(null)}
+              summary={selectedBalcony ? balconyModeLabels[balconyModes[selectedBalcony.id]] : undefined} />
           ) : (
             <div className="view-invitation">
               <span className="hint-line" />
@@ -466,7 +438,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
     const dialog = dialogRef.current;
     if (!dialog) return;
     const opener = document.activeElement;
-    dialog.showModal();
+    openDialogAtTitle(dialog);
     return () => {
       dialog.close();
       // React removes the dialog on close, so explicitly return keyboard focus.
@@ -489,12 +461,11 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dialog-heading">
-          <h2 id="source-title">模型说明</h2>
+          <h2 id="source-title" tabIndex={-1} data-dialog-title="">模型说明</h2>
           <button
             className="icon-button"
             aria-label="关闭模型说明"
             onClick={onClose}
-            autoFocus
           >
             <Icon name="close" />
           </button>

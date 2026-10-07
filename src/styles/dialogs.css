@@ -62,3 +62,8 @@
 .source-dialog[open] {
   animation: sheet-in 360ms var(--ease-out) both;
 }
+
+/* Programmatically focused headings are reading targets, not action buttons. */
+dialog [data-dialog-title]:focus {
+  outline: none;
+}
