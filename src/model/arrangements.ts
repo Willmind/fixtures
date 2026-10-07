@@ -117,9 +117,21 @@ export const utilityDryingRack = {
 // Temporary furniture footprints, measured in metres. Positions follow the
 // simplified room polygons; products, service points and clearances are not final.
 export const bedroomBeds = [
-  { roomId: "master", center: [11.45, 6.85] as Point, rotation: Math.PI / 2, width: 1.8 },
-  { roomId: "parents", center: [8.94, 6.82] as Point, rotation: -Math.PI / 2, width: 1.5 },
-  { roomId: "study", center: [8.42, 2.63] as Point, rotation: 0, width: 1.2 },
+  // Pillow end faces the solid west/east wall; double beds keep both sides clear.
+  { roomId: "master", center: [11.365, 6.90] as Point, rotation: Math.PI / 2, width: 1.8 },
+  { roomId: "parents", center: [9.035, 6.93] as Point, rotation: -Math.PI / 2, width: 1.5 },
+  // Single bed: head against the west wall, long side near the north window.
+  { roomId: "study", center: [8.76, 2.05] as Point, rotation: Math.PI / 2, width: 1.2 },
+] as const;
+
+export const bedroomStorage = [
+  { roomId: "master", bedside: { center: [10.52, 5.72] as Point, rotation: Math.PI / 2 },
+    wardrobe: { center: [13.18, 3.03] as Point, rotation: -Math.PI / 2, width: 1.7, depth: 0.58 } },
+  { roomId: "parents", bedside: { center: [9.88, 5.90] as Point, rotation: -Math.PI / 2 },
+    // Shallow storage candidate, requiring sideways hanging rather than a full-depth rail.
+    wardrobe: { center: [7.11, 7.30] as Point, rotation: Math.PI / 2, width: 1.6, depth: 0.42 } },
+  { roomId: "study", bedside: { center: [7.94, 2.92] as Point, rotation: Math.PI / 2 },
+    wardrobe: { center: [8.40, 3.89] as Point, rotation: Math.PI, width: 1.4, depth: 0.50 } },
 ] as const;
 
 // Keep the original room ID so saved notes and photo links still point here.
@@ -208,3 +220,26 @@ export const bedroomAirConditioners = [
 ] as const;
 
 export const livingAirConditioner = { center: [6.4, 8.23] as Point, rotation: -Math.PI / 2 };
+
+// Lighting previews use room/table positions; these are not surveyed wiring points.
+export const ceilingLighting: readonly {
+  id: string; roomId: string; kind: "round" | "panel" | "pendant" | "downlights";
+  fixtures: readonly Point[]; color: string; power: number;
+}[] = [
+  { id: "master", roomId: "master", kind: "round", fixtures: [[11.8, 6.75]], color: "#ffe0ae", power: 2 },
+  { id: "parents", roomId: "parents", kind: "round", fixtures: [[8.5, 6.9]], color: "#ffe0ae", power: 2 },
+  { id: "study", roomId: "study", kind: "round", fixtures: [[8.9, 2.7]], color: "#ffe0ae", power: 1.6 },
+  { id: "guest", roomId: "guest", kind: "round", fixtures: [[1.3, 6.9]], color: "#fff0d8", power: 1.8 },
+  { id: "kitchen", roomId: "kitchen", kind: "panel", fixtures: [[1.7, 1.85]], color: "#fff0d8", power: 1.8 },
+  { id: "bath", roomId: "bath", kind: "panel", fixtures: [[6.7, 2.8]], color: "#fff0d8", power: 1.6 },
+  { id: "ensuite", roomId: "ensuite", kind: "panel", fixtures: [[11.1, 2.8]], color: "#fff0d8", power: 1.6 },
+  { id: "utility", roomId: "utility", kind: "round", fixtures: [[3.6, 0.6]], color: "#fff0d8", power: 1.3 },
+  { id: "balcony", roomId: "balcony", kind: "round", fixtures: [[4.7, 9.25]], color: "#ffe0ae", power: 1.3 },
+  { id: "dining", roomId: "living", kind: "pendant", fixtures: [[4.25, 2.65]], color: "#ffe0ae", power: 1.8 },
+  { id: "entry", roomId: "living", kind: "round", fixtures: [[1.3, 4.42]], color: "#ffe0ae", power: 1.2 },
+  { id: "hallway", roomId: "living", kind: "downlights", fixtures: [[8.4, 4.7]], color: "#ffe0ae", power: 1.2 },
+  { id: "living-west", roomId: "living", kind: "downlights",
+    fixtures: [[3.25, 5.65], [3.25, 6.75], [3.25, 7.85]], color: "#ffe0ae", power: 2.4 },
+  { id: "living-east", roomId: "living", kind: "downlights",
+    fixtures: [[6.15, 5.65], [6.15, 6.75], [6.15, 7.85]], color: "#ffe0ae", power: 2.4 },
+];

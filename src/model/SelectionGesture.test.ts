@@ -48,3 +48,24 @@ test("取消的手势不选择房间，下一次轻触可正常选择", () => {
   gesture.start(pointer(2));
   assert.equal(gesture.end(pointer(2)), true);
 });
+
+test("名称按钮允许十像素以内的轻微位移，仍只激活一次", () => {
+  const gesture = new SelectionGesture(10);
+  gesture.start(pointer(1));
+  gesture.move(pointer(1, 106, 102));
+  assert.equal(gesture.end(pointer(1, 108, 103)), true);
+  assert.equal(gesture.end(pointer(1, 108, 103)), false);
+});
+
+test("名称按钮的拖动或双指仍取消激活，之后的轻触可正常使用", () => {
+  const gesture = new SelectionGesture(10);
+  gesture.start(pointer(1));
+  gesture.move(pointer(1, 111));
+  assert.equal(gesture.end(pointer(1)), false);
+  gesture.start(pointer(2));
+  gesture.start(pointer(3));
+  assert.equal(gesture.end(pointer(2)), false);
+  assert.equal(gesture.end(pointer(3)), false);
+  gesture.start(pointer(4));
+  assert.equal(gesture.end(pointer(4)), true);
+});

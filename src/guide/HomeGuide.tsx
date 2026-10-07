@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
+import { ThemeSwitch } from "../theme/ThemeSwitch";
 import { firstSteps, glossary, roomGuides, sheets } from "./content";
 import { SheetCard } from "./SheetCard";
 import { guideTabs, type GuideTab } from "../navigation";
@@ -57,6 +58,7 @@ export default function HomeGuide({
           <span>我的家</span>
         </a>
         <nav aria-label="查看方式">
+          <ThemeSwitch />
           {onLock ? (
             <button
               className="guide-lock-button"

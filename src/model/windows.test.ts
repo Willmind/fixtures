@@ -58,3 +58,24 @@ test("半高墙保留窗台位置，高窗隐藏；恢复完整墙后窗扇仍�
     dispose(window);
   }
 });
+
+test("主卧和次卧 A 三格窗全开时活动扇叠到相邻固定扇，不超出原窗洞", () => {
+  const opening = openings.find(({ sill }) => sill === 0.45)!;
+  const window = createSlidingWindow(opening, { frame: material, glass: material, handle: material }, 3);
+  const fixed: THREE.Object3D[] = [];
+  window.group.traverse((object) => { if (object.name === "fixed-window-panel") fixed.push(object); });
+  assert.equal(fixed.length, 2);
+  const moving = window.group.getObjectByName("sliding-window-panel")!;
+  for (const value of [0, 0.25, 0.5, 0.75, 1]) {
+    window.apply(value);
+    window.group.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(moving);
+    assert.ok(bounds.min.x >= opening.start + 0.025 - 1e-6);
+    assert.ok(bounds.max.x <= opening.end - 0.025 + 1e-6);
+  }
+  const opened = new THREE.Box3().setFromObject(moving);
+  const neighbour = new THREE.Box3().setFromObject(fixed[1]);
+  assert.ok(Math.abs(opened.min.x - neighbour.min.x) < 1e-6);
+  assert.ok(Math.abs(opened.max.x - neighbour.max.x) < 1e-6);
+  dispose(window);
+});

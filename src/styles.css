@@ -131,7 +131,7 @@ button:hover {
   text-decoration: none;
 }
 .app-error-actions button {
-  background: var(--tint);
+  background: var(--action-fill);
   color: #fff;
 }
 .app-error-actions a {
@@ -149,7 +149,7 @@ button:hover {
   height: 72px;
   flex-shrink: 0;
   background: var(--glass);
-  border-bottom: 1px solid #0000000a;
+  border-bottom: 1px solid var(--separator);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -165,7 +165,7 @@ button:hover {
   align-items: center;
   gap: 13px;
   text-decoration: none;
-  color: #1d1d1f;
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -187,7 +187,7 @@ button:hover {
 }
 .brand-secondary {
   font-weight: 400;
-  color: #6e6e73;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 .header-right {
@@ -229,7 +229,7 @@ button:hover {
 .sidebar {
   width: 276px;
   flex-shrink: 0;
-  background: #fbfbfd;
+  background: var(--surface-raised);
   overflow-y: auto;
   border-right: 1px solid var(--separator);
   scrollbar-width: thin;
@@ -243,7 +243,7 @@ button:hover {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.17em;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .project-heading h1 {
   font-size: 32px;
@@ -252,7 +252,7 @@ button:hover {
   margin: 9px 0;
 }
 .project-heading p {
-  color: #6e6e73;
+  color: var(--text-secondary);
   font-size: 13px;
   margin: 0;
 }
@@ -262,30 +262,30 @@ button:hover {
   margin-top: 22px;
   margin-bottom: 26px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #f5f5f7;
+  border-bottom: 1px solid var(--separator);
 }
 .stats span {
   font-size: 12px;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .stats b {
   font-size: 20px;
   font-weight: 500;
   margin-right: 4px;
-  color: #1d1d1f;
+  color: var(--text-primary);
 }
 .section-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin: 0 0 12px;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .section-title h2 {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: #424245;
+  color: var(--text-primary);
   margin: 0;
 }
 .section-title > span {
@@ -304,12 +304,12 @@ button:hover {
   border-radius: 10px;
   font-size: 14px;
   padding: 9px 10px;
-  color: #424245;
+  color: var(--text-primary);
   min-height: 36px;
 }
 .room-button .room-index {
   font-size: 11px;
-  color: #86868b;
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
   width: 18px;
   letter-spacing: 0.02em;
@@ -320,7 +320,7 @@ button:hover {
   transition: opacity 0.15s;
 }
 .room-button:hover {
-  background: #f5f5f7;
+  background: var(--surface-muted);
 }
 .room-button:hover svg {
   opacity: 0.6;
@@ -337,7 +337,7 @@ button:hover {
   opacity: 1;
 }
 .settings-section {
-  border-top: 1px solid #f5f5f7;
+  border-top: 1px solid var(--separator);
   padding-top: 21px;
   margin-top: 24px;
 }
@@ -348,7 +348,7 @@ button:hover {
   cursor: pointer;
   min-height: 37px;
   font-size: 13px;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .toggle-row input {
   position: absolute;
@@ -361,7 +361,7 @@ button:hover {
 .toggle-track {
   margin-left: auto;
   display: block;
-  background: #e8e8ed;
+  background: var(--control-background);
   width: 29px;
   height: 17px;
   border-radius: 10px;
@@ -376,7 +376,7 @@ button:hover {
   top: 3px;
   height: 11px;
   width: 11px;
-  background: white;
+  background: var(--surface);
   border-radius: 50%;
   box-shadow: 0 1px 3px #0001;
   transition: transform 0.15s;
@@ -392,7 +392,7 @@ button:hover {
   outline-offset: 4px;
 }
 .height-control {
-  border-top: 1px solid #f5f5f7;
+  border-top: 1px solid var(--separator);
   margin-top: 12px;
   padding-top: 17px;
 }
@@ -400,16 +400,16 @@ button:hover {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .height-control output {
-  color: #1d1d1f;
+  color: var(--text-primary);
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 .height-control output span {
   font-size: 12px;
-  color: #86868b;
+  color: var(--text-tertiary);
 }
 .height-control input {
   width: 100%;
@@ -425,7 +425,7 @@ button:hover {
 .height-control p {
   font-size: 11px;
   line-height: 1.6;
-  color: #86868b;
+  color: var(--text-tertiary);
   margin: 5px 0 0;
 }
 .setting-note {
@@ -435,14 +435,12 @@ button:hover {
   line-height: 1.6;
 }
 .layout-preview {
-  position: absolute;
-  top: 25px;
-  right: 28px;
-  z-index: 2;
+  margin-left: auto;
+  pointer-events: auto;
   width: 320px;
-  max-width: calc(100% - 56px);
+  max-width: 100%;
   padding: 13px 15px;
-  border: 1px solid #ffffffb3;
+  border: 1px solid var(--glass-border);
   border-radius: 18px;
   background: var(--glass);
   box-shadow: var(--card-shadow);
@@ -492,7 +490,7 @@ button:hover {
 }
 .preview-tabs button[aria-pressed="true"] {
   color: var(--text-primary);
-  background: #e8ebef;
+  background: var(--control-background);
   font-weight: 600;
 }
 .curtain-color-choices {
@@ -510,7 +508,7 @@ button:hover {
   padding: 8px 4px;
   border: 1px solid transparent;
   border-radius: 12px;
-  background: #ffffff73;
+  background: var(--glass);
   color: var(--text-secondary);
   font-size: 11px;
 }
@@ -563,7 +561,7 @@ button:hover {
   gap: 3px;
   padding: 3px;
   border-radius: 11px;
-  background: #e8ebef;
+  background: var(--control-background);
 }
 .layout-switch button {
   min-height: 34px;
@@ -574,7 +572,7 @@ button:hover {
 }
 .layout-switch button[aria-pressed="true"] {
   color: var(--tint);
-  background: white;
+  background: var(--surface);
   box-shadow: 0 1px 5px #00000012;
 }
 .layout-preview p {
@@ -585,37 +583,62 @@ button:hover {
 }
 .fixture-label {
   padding: 4px 7px;
-  border: 1px solid #ffffffc9;
+  border: 1px solid var(--glass-border);
   border-radius: 7px;
-  background: #f8f7f2ec;
-  color: #65513b;
+  background: var(--warm-glass);
+  color: var(--warning-text);
   font-size: 10px;
   white-space: nowrap;
   box-shadow: 0 2px 8px #00000008;
 }
-.fixture-label-sofa { color: #3b5b4d; background: #eef6f1ed; }
-.fixture-label-equipment { color: #39647b; background: #edf4f8ed; }
+.fixture-label-sofa { color: var(--success-text); background: var(--success-glass); }
+.fixture-label-equipment { color: var(--tint); background: var(--blue-glass); }
 .sidebar-footer {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: #6e6e73;
+  color: var(--text-secondary);
   font-size: 11px;
-  border-top: 1px solid #f5f5f7;
+  border-top: 1px solid var(--separator);
   padding-top: 19px;
   margin-top: 24px;
   line-height: 1.6;
 }
 .sidebar-footer > span > span {
   display: block;
-  color: #86868b;
+  color: var(--text-tertiary);
 }
 .viewport {
   position: relative;
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  background: radial-gradient(ellipse at 50% 30%, #fff 0, #e8ebf0 100%);
+  background: radial-gradient(ellipse at 50% 30%, var(--surface) 0, var(--surface-muted) 100%);
+}
+.viewport[data-lighting="night"] {
+  background: radial-gradient(ellipse at 50% 30%, #28334b 0, #111827 100%);
+}
+.viewport[data-lighting="night"] .room-label:not(.is-selected),
+.viewport[data-lighting="night"] .dimension-label,
+.viewport[data-lighting="night"] .fixture-label {
+  color: #e5e7ef;
+  background: #242c3ee8;
+  border-color: #ffffff26;
+}
+.viewport[data-lighting="night"] .viewport-bottom,
+.viewport[data-lighting="night"] .view-invitation,
+.viewport[data-lighting="night"] .orientation-marker {
+  color: #c6cddd;
+}
+@media (max-width: 760px) {
+  .viewport-top .view-switch { padding: 3px; border-radius: 13px; }
+  .viewport-top .view-switch button {
+    gap: 4px;
+    padding: 8px;
+    font-size: 11px;
+    min-height: 44px;
+  }
+  .lighting-switch svg { display: none; }
 }
 .model-canvas {
   position: absolute;
@@ -639,19 +662,41 @@ button:hover {
   overflow: hidden;
 }
 .room-label {
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 12px;
+  line-height: 1.4;
+  min-height: 32px;
+  min-width: 60px;
+  touch-action: manipulation;
   letter-spacing: 0.04em;
   color: var(--text-secondary);
-  background: #ffffffe6;
-  border: 1px solid #ffffffb3;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
   padding: 5px 10px;
   border-radius: 9px;
   white-space: nowrap;
   box-shadow: 0 3px 12px #0000000a;
   user-select: none;
 }
+.room-label:active:not(:disabled) {
+  scale: 1;
+}
+.room-label:hover {
+  border-color: var(--tint);
+}
+.room-label:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 3px;
+}
+@media (pointer: coarse) {
+  .room-label {
+    min-height: 44px;
+  }
+}
 .room-label.is-selected {
-  background: var(--tint);
+  background: var(--action-fill);
   color: white;
   border-color: var(--tint);
 }
@@ -660,27 +705,48 @@ button:hover {
     11px -apple-system,
     sans-serif;
   font-variant-numeric: tabular-nums;
-  color: #6e6e73;
-  background: #f5f5f7d9;
+  color: var(--text-secondary);
+  background: var(--glass-muted);
   border-radius: 3px;
   padding: 3px 6px;
   white-space: nowrap;
 }
-.viewport-top {
+.drainage-label {
+  font-size: 10px;
+  color: #005879;
+  background: var(--blue-glass);
+  border: 1px solid var(--tint-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+.viewport[data-lighting="night"] .drainage-label {
+  color: #a7e6ff;
+  background: #163345eb;
+}
+.viewport-controls {
   position: absolute;
   top: 25px;
   left: 28px;
   right: 28px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
   z-index: 2;
   pointer-events: none;
 }
+.viewport-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
 .view-switch {
   display: flex;
+  flex-shrink: 0;
   background: var(--glass);
-  border: 1px solid #ffffff80;
+  border: 1px solid var(--glass-border);
   padding: 4px;
   border-radius: 16px;
   box-shadow: 0 4px 20px #00000008;
@@ -694,13 +760,19 @@ button:hover {
   gap: 8px;
   font-size: 13px;
   background: transparent;
-  color: #6e6e73;
+  color: var(--text-secondary);
   padding: 10px 15px;
   border-radius: 12px;
   min-height: 37px;
+  white-space: nowrap;
+}
+.lighting-switch button {
+  padding-inline: 12px;
+  min-width: 64px;
+  min-height: 44px;
 }
 .view-switch button.active {
-  background: white;
+  background: var(--surface);
   color: var(--text-primary);
   box-shadow: 0 2px 8px #00000012;
 }
@@ -709,7 +781,7 @@ button:hover {
     11px -apple-system,
     sans-serif;
   letter-spacing: 0.18em;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .camera-tools {
   position: absolute;
@@ -719,14 +791,25 @@ button:hover {
   z-index: 2;
   background: var(--glass);
   box-shadow: 0 5px 24px #0000000c;
-  border: 1px solid #ffffffb3;
+  border: 1px solid var(--glass-border);
   border-radius: 18px;
   padding: 5px;
   display: grid;
   gap: 3px;
   backdrop-filter: blur(20px) saturate(150%);
 }
+.camera-tools button.light-action {
+  width: 44px;
+  height: 48px;
+  gap: 2px;
+  align-content: center;
+}
+.camera-tools .light-action small {
+  font-size: 10px;
+  line-height: 1.2;
+}
 .camera-tools button {
+  justify-self: center;
   background: transparent;
   width: 34px;
   height: 36px;
@@ -736,11 +819,11 @@ button:hover {
   color: var(--text-primary);
 }
 .camera-tools button:hover {
-  background: #f5f5f7;
+  background: var(--surface-muted);
 }
 .camera-tools > span {
   height: 1px;
-  background: #e8e8ed;
+  background: var(--control-background);
   margin: 1px 5px;
 }
 .viewport-bottom {
@@ -753,7 +836,7 @@ button:hover {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  color: #6e6e73;
+  color: var(--text-secondary);
   font-size: 11px;
   pointer-events: none;
 }
@@ -764,7 +847,7 @@ button:hover {
 }
 .hint-separator {
   margin: 0 10px;
-  color: #86868b;
+  color: var(--text-tertiary);
 }
 .view-invitation {
   position: absolute;
@@ -772,7 +855,7 @@ button:hover {
   left: 50%;
   transform: translateX(-50%);
   font-size: 12px;
-  color: #6e6e73;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 9px;
@@ -794,7 +877,7 @@ button:hover {
   font:
     10px -apple-system,
     sans-serif;
-  color: #6e6e73;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 .orientation-marker i {
@@ -823,7 +906,7 @@ button:hover {
   position: absolute;
   left: 9px;
   top: 49px;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .orientation-marker small {
   position: absolute;
@@ -831,7 +914,7 @@ button:hover {
   top: 71px;
   white-space: nowrap;
   font-size: 10px;
-  color: #86868b;
+  color: var(--text-tertiary);
 }
 .room-detail {
   position: absolute;
@@ -842,7 +925,7 @@ button:hover {
   align-items: flex-start;
   gap: 14px;
   background: var(--glass);
-  border: 1px solid #ffffffa6;
+  border: 1px solid var(--glass-border);
   border-radius: 22px;
   width: min(460px, calc(100% - 200px));
   padding: 18px;
@@ -864,7 +947,7 @@ button:hover {
 .detail-eyebrow {
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .room-detail h2 {
   font-size: 16px;
@@ -873,7 +956,7 @@ button:hover {
 }
 .room-detail p {
   font-size: 12px;
-  color: #6e6e73;
+  color: var(--text-secondary);
   line-height: 1.7;
   margin: 0;
 }
@@ -889,8 +972,8 @@ button:hover {
   margin-top: 10px;
   padding: 8px 10px;
   border-radius: 9px;
-  color: #0065d1;
-  background: #e8f1ff;
+  color: var(--tint);
+  background: var(--tint-soft);
   font-size: 12px;
 }
 .icon-button {
@@ -900,10 +983,10 @@ button:hover {
   min-width: 32px;
   min-height: 32px;
   border-radius: 50%;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .icon-button:hover {
-  background: #f5f5f7;
+  background: var(--surface-muted);
 }
 .mobile-settings,
 .mobile-panel-close,
@@ -919,7 +1002,7 @@ button:hover {
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 25px;
   font-size: 14px;
@@ -932,13 +1015,13 @@ button:hover {
   border-radius: 5px;
 }
 .source-dialog {
-  border: 1px solid #fff9;
+  border: 1px solid var(--glass-border);
   padding: 0;
   border-radius: 26px;
   max-width: min(530px, calc(100vw - 32px));
   box-shadow: 0 20px 80px #1d1d1f30;
   color: var(--text-primary);
-  background: #fffffff0;
+  background: var(--glass-strong);
   backdrop-filter: blur(24px);
 }
 .source-dialog::backdrop {
@@ -960,7 +1043,7 @@ button:hover {
 .dialog-content p {
   font-size: 14px;
   line-height: 1.9;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .dialog-content dl {
   margin: 25px 0;
@@ -978,16 +1061,16 @@ button:hover {
 }
 .dialog-content dd {
   margin: 0;
-  color: #6e6e73;
+  color: var(--text-secondary);
 }
 .source-note {
-  background: #f5f5f7;
+  background: var(--surface-muted);
   padding: 14px;
   border-radius: 7px;
 }
 .primary-button {
   border-radius: 20px;
-  background: var(--tint);
+  background: var(--action-fill);
   color: white;
   padding: 11px 20px;
 }
@@ -1021,11 +1104,10 @@ button:hover {
     width: 244px;
     padding: 24px 18px;
   }
-  .viewport-top {
+  .viewport-controls {
     left: 20px;
     right: 20px;
   }
-  .layout-preview { right: 20px; top: 86px; }
   .viewport-bottom {
     left: 20px;
     right: 20px;
@@ -1112,17 +1194,15 @@ button:hover {
     background: #1d1d1f66;
     z-index: 11;
   }
-  .viewport-top {
+  .viewport-controls {
     top: 18px;
     left: 16px;
     right: 16px;
   }
   .layout-preview {
-    top: 79px;
-    left: 16px;
-    right: auto;
+    margin-left: 0;
     width: 320px;
-    max-width: calc(100% - 32px);
+    max-width: 100%;
     padding: 11px 12px;
   }
   .fixture-label { font-size: 9px; padding: 3px 5px; }

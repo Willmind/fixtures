@@ -4,6 +4,8 @@ import { DxfViewer } from "dxf-viewer";
 import type { LayerInfo } from "dxf-viewer";
 import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
+import { ThemeSwitch } from "../theme/ThemeSwitch";
+import { useTheme } from "../theme/ThemeProvider";
 import {
   decodeDxf,
   filterLayerNames,
@@ -83,12 +85,17 @@ export default function CadWorkspace({
   const [error, setError] = useState("");
   const [report, setReport] = useState<CadReport | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [dark, setDark] = useState(false);
+  const { resolved, setPreference } = useTheme();
+  const dark = resolved === "dark";
   const darkRef = useRef(dark);
   const [panel, setPanel] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [homeDrawing, setHomeDrawing] = useState(false);
   const [homeView, setHomeView] = useState("all");
+  useEffect(() => {
+    darkRef.current = dark;
+    engine.current?.SetClearColor(dark ? "#172229" : "#fafbf9");
+  }, [dark]);
 
   const load = useCallback(
     async (
@@ -396,6 +403,7 @@ export default function CadWorkspace({
           </span>
         </button>
         <div className="cad-header-actions">
+          <ThemeSwitch />
           {onLock ? (
             <button
               className="icon-button access-lock"
@@ -618,13 +626,10 @@ export default function CadWorkspace({
               </button>
               <button
                 onClick={() => {
-                  const next = !dark;
-                  setDark(next);
-                  darkRef.current = next;
-                  engine.current?.SetClearColor(next ? "#172229" : "#fafbf9");
+                  setPreference(dark ? "light" : "dark");
                 }}
               >
-                {dark ? "浅色背景" : "深色背景"}
+                {dark ? "浅色外观" : "深色外观"}
               </button>
               {loaded ? <button onClick={download}>下载 DXF</button> : null}
             </div>

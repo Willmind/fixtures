@@ -5,7 +5,7 @@ import type { Room, Wall } from "./plan.ts";
 type Finish = "wood" | "white";
 
 export function floorFinish(room: Pick<Room, "kind">): Finish {
-  return room.kind === "bathroom" ? "white" : "wood";
+  return room.kind === "bathroom" || room.kind === "kitchen" ? "white" : "wood";
 }
 
 /** Shared walls get tile only on the kitchen/bathroom side. */

@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --experimental-strip-types --test src/model/*.test.ts src/cad/*.test.ts src/access/*.test.ts scripts/*.test.mjs",
+    "test": "node --experimental-strip-types --test src/model/*.test.ts src/cad/*.test.ts src/access/*.test.ts src/theme/*.test.ts scripts/*.test.mjs",
     "cad:convert": "node scripts/convert-dwg.mjs"
   },
   "dependencies": {

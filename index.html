@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f5f7" />
+    <script>
+      (() => {
+        let preference = "system";
+        try { preference = localStorage.getItem("fixtures.theme.v1") || "system"; } catch {}
+        const dark = preference === "dark" || (preference !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#111113" : "#f5f5f7";
+      })();
+    </script>
     <meta name="robots" content="noindex, nofollow" />
     <meta
       name="description"

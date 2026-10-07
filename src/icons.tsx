@@ -12,8 +12,20 @@ export type IconName =
   | "sliders"
   | "close"
   | "lock"
-  | "mouse";
+  | "mouse"
+  | "sun"
+  | "moon"
+  | "monitor"
+  | "check"
+  | "bulb"
+  | "bulb-off";
 const paths: Record<IconName, React.ReactNode> = {
+  monitor: <><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M12 17v4m-4 0h8" /></>,
+  check: <path d="m5 12 4 4L19 6" />,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></>,
+  moon: <path d="M20.5 13.1A8.6 8.6 0 0 1 10.9 3.5a8.6 8.6 0 1 0 9.6 9.6Z" />,
+  bulb: <><path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z" /><path d="M12 3V1M4 5 3 4m17 1 1-1" /></>,
+  "bulb-off": <><path d="m3 3 18 18M9 18h6m-5 3h4M7 7a6 6 0 0 0 1 7c1 1 1 2 1 2h6M10 4a6 6 0 0 1 7 9" /></>,
   home: (
     <>
       <path d="m3 10 9-7 9 7M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />

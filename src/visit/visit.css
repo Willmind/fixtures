@@ -32,7 +32,7 @@
 }
 .visit-gallery {
   min-width: 0;
-  background: #fff;
+  background: var(--surface);
   border-radius: 24px;
   padding: 12px;
 }
@@ -45,7 +45,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #ececea;
+  background: var(--media-background);
   border-radius: 16px;
 }
 .visit-image img {
@@ -67,12 +67,12 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #64646a;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 .visit-image-status button,
 .visit-video-error button {
-  background: white;
+  background: var(--surface);
   color: var(--tint);
   border-radius: 10px;
   padding: 10px 16px;
@@ -99,9 +99,9 @@
   gap: 5px;
   align-items: center;
   padding: 9px 13px;
-  color: #222;
-  background: #ffffffdf;
-  border: 1px solid #ffffff80;
+  color: var(--text-primary);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
   border-radius: 100px;
   backdrop-filter: blur(12px);
   font-size: 12px;
@@ -181,7 +181,7 @@
 .visit-room-notes ul {
   padding-left: 18px;
   margin: 0;
-  color: #616167;
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.9;
 }
@@ -200,8 +200,8 @@
   align-items: center;
   gap: 6px;
   border-radius: 10px;
-  background: #e8f1ff;
-  color: #0065d1;
+  background: var(--tint-soft);
+  color: var(--tint);
   font-size: 12px;
   padding: 12px;
 }
@@ -224,7 +224,7 @@
   gap: 38px;
   padding: 30px;
   border-radius: 26px;
-  background: white;
+  background: var(--surface);
   align-items: center;
 }
 .visit-video-player {
@@ -289,7 +289,7 @@
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
-  background: #fffffff0;
+  background: var(--glass-strong);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -341,12 +341,12 @@
   align-items: center;
   text-align: left;
   border-radius: 11px;
-  background: #f5f5f7;
+  background: var(--surface-muted);
   padding: 13px;
   font-size: 12px;
 }
 .visit-chapters button:hover {
-  background: #e8f1ff;
+  background: var(--tint-soft);
 }
 .visit-chapters span:first-child {
   color: var(--muted);
@@ -364,7 +364,7 @@
   width: 100%;
   padding: 10px;
   margin: 20px 0;
-  background: #f5f5f7;
+  background: var(--surface-muted);
   border-radius: 14px;
   text-align: left;
 }
@@ -393,7 +393,7 @@
   border: 0;
   padding: 0;
   border-radius: 20px;
-  background: #f6f6f8;
+  background: var(--surface-muted);
   width: min(960px, calc(100% - 32px));
   max-width: none;
   max-height: calc(100dvh - 32px);
@@ -420,7 +420,7 @@
 .visit-lightbox header button {
   display: grid;
   place-items: center;
-  background: #e9e9ed;
+  background: var(--control-background);
   border-radius: 50%;
   width: 36px;
   height: 36px;
@@ -439,7 +439,7 @@
   min-width: 40px;
   min-height: 40px;
   border-radius: 50%;
-  background: white;
+  background: var(--surface);
 }
 .visit-lightbox footer p {
   text-align: center;
@@ -580,8 +580,8 @@
   flex-direction: row;
   padding: 8px 12px;
   border-radius: 10px;
-  background: #ffffffed;
-  color: #404047;
+  background: var(--glass-strong);
+  color: var(--text-primary);
   font-size: 13px;
 }
 .visit-context-bar {
@@ -592,7 +592,7 @@
   gap: 16px;
   margin: 0 0 24px;
   padding: 14px 18px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 18px;
 }
 .visit-room-location {
@@ -619,7 +619,7 @@
   position: absolute;
   width: 12px;
   height: 12px;
-  border: 2px solid white;
+  border: 2px solid var(--surface-border);
   border-radius: 50%;
   background: #0071e3;
   transform: translate(-50%, -50%);
@@ -632,19 +632,19 @@
 .visit-room-location small {
   display: block;
   font-size: 13px;
-  color: #5d6673;
+  color: var(--text-secondary);
   margin-top: 6px;
 }
 .visit-prepare-button {
   min-height: 44px;
   padding: 10px 14px;
   border-radius: 11px;
-  background: #eaf2ff;
-  color: #0065c9;
+  background: var(--tint-soft);
+  color: var(--tint);
   font-size: 14px;
 }
 .visit-next-step p {
-  color: #616167;
+  color: var(--text-secondary);
   font-size: 15px;
 }
 @media (max-width: 760px) {

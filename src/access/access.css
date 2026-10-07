@@ -4,16 +4,16 @@
   display: grid;
   place-items: center;
   background:
-    radial-gradient(ellipse at 12% 18%, #e1eaff 0, transparent 52%),
-    radial-gradient(ellipse at 88% 85%, #ede5fa 0, transparent 48%), #f5f5f7;
+    radial-gradient(ellipse at 12% 18%, var(--ambient-blue) 0, transparent 52%),
+    radial-gradient(ellipse at 88% 85%, var(--ambient-violet) 0, transparent 48%), var(--surface-muted);
   position: relative;
   color: var(--text-primary);
 }
 .access-card {
   width: min(100%, 420px);
   padding: 38px 40px 32px;
-  background: #ffffffb8;
-  border: 1px solid #ffffffd9;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   border-radius: 32px;
   box-shadow:
     0 20px 80px #34345c0b,
@@ -53,18 +53,18 @@
 .access-form > label {
   display: block;
   font-size: 12px;
-  color: #6e6e73;
+  color: var(--text-secondary);
   margin-bottom: 10px;
 }
 .access-input {
   display: flex;
   gap: 12px;
   align-items: center;
-  border: 1px solid #d2d2d7;
+  border: 1px solid var(--border-strong);
   border-radius: 14px;
-  background: #ffffffb3;
+  background: var(--glass);
   padding: 0 14px;
-  color: #86868b;
+  color: var(--text-tertiary);
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
@@ -89,7 +89,7 @@
 }
 .access-input input::placeholder {
   font-size: 13px;
-  color: #86868b;
+  color: var(--text-tertiary);
   letter-spacing: 0;
 }
 .access-input input:focus-visible {
@@ -103,7 +103,7 @@
 .access-feedback p {
   margin: 6px 0;
   font-size: 12px;
-  color: #a46044;
+  color: var(--danger-text);
   line-height: 1.6;
 }
 .access-submit {
@@ -111,7 +111,7 @@
   justify-content: center;
   align-items: center;
   gap: 10px;
-  background: var(--tint);
+  background: var(--action-fill);
   color: #fff;
   width: 100%;
   border-radius: 14px;
@@ -126,13 +126,13 @@
 }
 .access-hint {
   margin: 24px 0 0;
-  color: #86868b;
+  color: var(--text-tertiary);
   font-size: 11px;
   letter-spacing: 0.08em;
 }
 .access-lock {
   flex-shrink: 0;
-  color: #6e6e73;
+  color: var(--text-secondary);
   background: transparent;
   min-width: 32px;
   min-height: 32px;

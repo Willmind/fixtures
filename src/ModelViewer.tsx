@@ -3,9 +3,13 @@ import { HomeScene } from "./model/HomeScene";
 import type { ViewOptions } from "./model/HomeScene";
 import { Icon } from "./icons";
 
-type Props = { options: ViewOptions; onSelect: (id: string | null) => void };
+type Props = {
+  options: ViewOptions;
+  onSelect: (id: string | null) => void;
+  onLightsChange: (on: boolean) => void;
+};
 
-export function ModelViewer({ options, onSelect }: Props) {
+export function ModelViewer({ options, onSelect, onLightsChange }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<HomeScene | null>(null);
   const initialOptions = useRef(options);
@@ -51,7 +55,7 @@ export function ModelViewer({ options, onSelect }: Props) {
           <button onClick={() => window.location.reload()}>重新载入</button>
         </div>
       ) : null}
-      <div className="camera-tools" aria-label="视角控制">
+      <div className="camera-tools" aria-label="视角与灯光控制">
         <button
           title="放大"
           aria-label="放大模型"
@@ -73,6 +77,19 @@ export function ModelViewer({ options, onSelect }: Props) {
           onClick={() => scene.current?.resetView()}
         >
           <Icon name="reset" />
+        </button>
+        <span />
+        <button className="light-action" title="打开所有顶灯和床头灯"
+          aria-label="全部开灯" disabled={options.layout === "empty"}
+          onClick={() => onLightsChange(true)}>
+          <Icon name="bulb" size={18} />
+          <small>开灯</small>
+        </button>
+        <button className="light-action" title="关闭所有顶灯和床头灯"
+          aria-label="全部关灯" disabled={options.layout === "empty"}
+          onClick={() => onLightsChange(false)}>
+          <Icon name="bulb-off" size={18} />
+          <small>关灯</small>
         </button>
       </div>
     </>

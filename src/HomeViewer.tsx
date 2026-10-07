@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ModelViewer } from "./ModelViewer";
 import { AppIcon } from "./AppIcon";
 import { Icon } from "./icons";
+import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/HomeScene";
 import { photosForRoom } from "./visit/content";
@@ -49,11 +50,14 @@ export default function HomeViewer({
   onLock?: () => void;
 }) {
   const [view, setView] = useState<ViewOptions["view"]>("perspective");
+  const [lightingMode, setLightingMode] = useState<ViewOptions["lightingMode"]>("day");
+  const [lightCommand, setLightCommand] = useState<ViewOptions["lightCommand"]>();
   const [cutaway, setCutaway] = useState(true);
   const [wallHeight, setWallHeight] = useState<number>(defaults.wallHeight);
   const [labels, setLabels] = useState(true);
   const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
+  const [drainage, setDrainage] = useState(false);
   const [layout, setLayout] = useState<LayoutPreview>("tv-guest");
   const [curtainColor, setCurtainColor] = useState<CurtainColor>(curtainColors[0].id);
   const [televisionMount, setTelevisionMount] = useState<TelevisionMount>("cabinet");
@@ -68,6 +72,8 @@ export default function HomeViewer({
   const currentLayout = livingLayouts.find((item) => item.id === layout);
   const selectedBalcony = balconyChoices.find((item) => item.id === selected);
   const options = {
+    lightingMode,
+    lightCommand,
     selected,
     view,
     cutaway,
@@ -75,6 +81,7 @@ export default function HomeViewer({
     labels,
     dimensions,
     grid,
+    drainage,
     layout,
     curtainColor,
     televisionMount,
@@ -94,6 +101,7 @@ export default function HomeViewer({
           </span>
         </button>
         <div className="header-right">
+          <ThemeSwitch />
           {onLock ? (
             <button
               className="icon-button access-lock"
@@ -203,6 +211,8 @@ export default function HomeViewer({
               onChange={setDimensions}
             />
             <Toggle label="参考网格" checked={grid} onChange={setGrid} />
+            <Toggle label="排水坡向示意" checked={drainage} onChange={setDrainage} />
+            <p className="setting-note">开启可查看箭头与坡度；地漏位置、坡度和排水接管待现场确认。</p>
             <Toggle label="阳台顶板" checked={balconyRoofs} onChange={setBalconyRoofs} />
             <p className="setting-note">半高墙、俯视时顶板半透明，完整墙高时显示实体。</p>
             <Toggle label="阳台设备" checked={equipment} onChange={setEquipment} />
@@ -238,7 +248,8 @@ export default function HomeViewer({
             </span>
           </div>
         </aside>
-        <section className="viewport" aria-label="交互式户型查看器">
+        <section className="viewport" data-lighting={lightingMode} aria-label="交互式户型查看器">
+          <div className="viewport-controls">
           <div className="viewport-top">
             <div className="view-switch" role="group" aria-label="切换视角">
               <button
@@ -256,6 +267,18 @@ export default function HomeViewer({
               >
                 <Icon name="plan" size={18} />
                 俯视平面
+              </button>
+            </div>
+            <div className="view-switch lighting-switch" role="group" aria-label="切换白天或黑夜">
+              <button aria-pressed={lightingMode === "day"}
+                className={lightingMode === "day" ? "active" : ""}
+                onClick={() => setLightingMode("day")}>
+                <Icon name="sun" size={17} /> 白天
+              </button>
+              <button aria-pressed={lightingMode === "night"}
+                className={lightingMode === "night" ? "active" : ""}
+                onClick={() => setLightingMode("night")}>
+                <Icon name="moon" size={17} /> 黑夜
               </button>
             </div>
           </div>
@@ -356,7 +379,11 @@ export default function HomeViewer({
             </>}
             </div>
           </section>
-          <ModelViewer options={options} onSelect={setSelected} />
+          </div>
+          <ModelViewer options={options} onSelect={setSelected}
+            onLightsChange={(on) => setLightCommand((previous) => ({
+              on, revision: (previous?.revision ?? 0) + 1,
+            }))} />
           <div className="orientation-marker" aria-hidden="true">
             <span className="axis-y">Y</span>
             <span className="axis-z">Z</span>
@@ -395,7 +422,7 @@ export default function HomeViewer({
           ) : (
             <div className="view-invitation">
               <span className="hint-line" />
-              悬停显示手形的物品可点击操作，门窗、设备可开关
+              {labels ? "点房间名称查看介绍" : "从空间列表选择房间"}，手形物品可点击操作
             </div>
           )}
           <div className="viewport-bottom">
@@ -491,7 +518,7 @@ function SourceDialog({ onClose }: { onClose: () => void }) {
           <div>
             <dt>建模范围</dt>
             <dd>
-              室内、两个阳台与一小段门外走廊；三个卧室、书房、两个卫生间和入户门可点击开合，厨房使用可点击开合的推拉门，主阳台入口新增可点击开合的玻璃推拉门。门扇默认打开，开向为示意；原有窗洞的窗扇默认关闭，点击窗扇、窗框或把手可独立推拉开合，窗型为预览；门外走廊与鞋柜按候选布局展示，鞋柜两扇门默认关闭，可分别点击柜门或把手开合，打开可见内部层板；范围和尺寸待现场确认。客厅可切换两种电视、沙发布局，沙发前加浅胡桃色茶几，电视可放柜上或挂墙；面对电视时，左侧加浅胡桃色边柜，右侧加盆栽。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。主卧、次卧 A/B 各暂放一张无床头板的抽屉收纳床，点击抽屉可独立拉出或收回，点击床垫可统一开合该床抽屉；次卧 B 仅向通道侧拉出。原客房改为书房，沿墙放浅胡桃色电脑桌和电脑，配深灰色人体工学椅，旁边放空的玻璃展示柜，两扇柜门默认关闭，可分别点击开合；厨房沿墙布置橱柜台面，配双头燃气灶，两个炉头默认关闭，可点击炉头或对应旋钮独立开火、关火；另有抽油烟机、水槽和可点击开关水的水龙头，厨房与两个卫生间窗户上方均有可点击启动、停止的排气扇，入口旁墙角放冰箱，上下两扇门可独立点击开合，两个卫生间进门左侧先是洗手台与镜子，公卫使用白色蹲厕，主卫保留白色马桶；洗手台背面贴墙，左侧边也贴相邻侧墙；镜子采用无框镜面，可反射室内环境，两个洗手台的水龙头可点击开关水，台下柜底部离地约 0.30 m，淋浴区玻璃门可独立点击开合，里面有花洒和金属格栅地漏。餐厅放一桌四椅，主阳台两侧摆放一高一低的羽状叶树形盆栽，配陶土花盆，中间留入口通道。客餐厅、厨房、阳台、卧室与书房地面统一预览浅木色木纹砖，两个卫生间为白色地砖；厨房和卫生间内侧墙面铺白色瓷砖，其余墙面保留暖米白。砖色、铺法和规格为效果示意。床架、餐桌、餐椅、沙发和电视柜统一采用浅胡桃色系。主卧、次卧、书房及主阳台入口有米黄色轻透纱帘，默认两侧拉开，点击可独立切换开合。三个卧室和书房各有壁挂空调，客厅主阳台旁暂放柜机。新增家具跟随「只看毛坯」隐藏，产品、尺寸和点位均未定案。两个阳台各自对比保持原样和落地玻璃，生活阳台默认落地玻璃，主阳台默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，洗衣机门可点击开合；旁边放扫地机器人和固定充电座，点击机器人按预设路线走过生活阳台与客餐厅，再次点击暂停或继续，完成后回到充电座；实际摆放需保持干燥、避开溅水和直晒，按所选机型预留回充空间。设备上下关系和安装高度仅作示意。不含电梯及公共管井，其余房间用途仍可调整。
+              室内、两个阳台与一小段门外走廊；三个卧室、书房、两个卫生间和入户门可点击开合，厨房使用可点击开合的推拉门，主阳台入口新增可点击开合的玻璃推拉门。门扇默认打开，开向为示意；原有窗洞的窗扇默认关闭，点击窗扇、窗框或把手可独立推拉开合，窗型为预览；门外走廊与鞋柜按候选布局展示，鞋柜两扇门默认关闭，可分别点击柜门或把手开合，打开可见内部层板；范围和尺寸待现场确认。客厅可切换两种电视、沙发布局，沙发前加浅胡桃色茶几，电视可放柜上或挂墙；面对电视时，左侧加浅胡桃色边柜，右侧加盆栽。挂墙高度和支架为示意，半高墙时保留电视后方一小段原有墙体以显示连接关系。主卧、次卧 A/B 各暂放一张无床头板的抽屉收纳床，点击抽屉可独立拉出或收回，点击床垫可统一开合该床抽屉；次卧 B 仅向通道侧拉出。三个卧室各配浅胡桃色床头柜和靠墙衣柜，床头灯在白天默认关闭，切换黑夜时默认开启，点击灯罩、灯杆或底座可独立开关暖光。原客房改为书房，沿墙放浅胡桃色电脑桌和电脑，配深灰色人体工学椅，旁边放空的玻璃展示柜，两扇柜门默认关闭，可分别点击开合；厨房沿墙布置橱柜台面，配双头燃气灶，两个炉头默认关闭，可点击炉头或对应旋钮独立开火、关火；另有抽油烟机、水槽和可点击开关水的水龙头，厨房与两个卫生间窗户上方均有可点击启动、停止的排气扇，入口旁墙角放冰箱，上下两扇门可独立点击开合，两个卫生间进门左侧先是洗手台与镜子，公卫使用白色蹲厕，主卫保留白色马桶；洗手台背面贴墙，左侧边也贴相邻侧墙；镜子采用无框镜面，可反射室内环境，两个洗手台的水龙头可点击开关水，台下柜底部离地约 0.30 m，淋浴区玻璃门可独立点击开合，里面有花洒和金属格栅地漏。两个卫生间的淋浴区按 1.5% 坡度找向左上角地漏；玻璃隔断外的干区各预留一处候选地漏，按 1% 找坡。主阳台新增候选地漏与 1% 找坡，厨房新增候选地漏与 1% 找坡，地漏周边示意局部加大坡度。显示设置中的「排水坡向示意」可打开箭头和坡度标注，选中空间后只显示该空间。候选位置不代表现场已有排水口；干区和厨房地漏需结合清洁习惯、防臭措施、原排水接口与防水设计决定，阳台雨水与室内生活排水接法需现场核实。餐厅放一桌四椅，主阳台两侧摆放一高一低的羽状叶树形盆栽，配陶土花盆，中间留入口通道。客餐厅、阳台、卧室与书房地面统一预览浅木色木纹砖，厨房和两个卫生间为白色地砖；厨房和卫生间内侧墙面铺白色瓷砖，其余墙面保留暖米白，室内墙脚配白色踢脚线，门洞处断开。砖色、铺法和规格为效果示意。床架、餐桌、餐椅、沙发和电视柜统一采用浅胡桃色系。主卧、次卧、书房及主阳台入口有米黄色轻透纱帘，默认两侧拉开，点击可独立切换开合。三个卧室和书房各有壁挂空调，客厅主阳台旁暂放柜机。卧室、书房、阳台与玄关配顶灯，厨卫配平板灯，餐桌上方配吊灯，客厅预览六盏筒灯并分左右两组开关，过道另配筒灯。白天灯具默认关闭，切换黑夜时顶灯与床头灯自动开启，仍可点击独立开关，也可使用右侧「开灯」「关灯」按钮统一控制；选房间或调整其他设置不会重置灯光。顶灯随墙高定位，俯视时隐藏以保持平面图清晰。灯位与灯光效果为示意，吊顶、照度和配电回路待设计确认。新增家具跟随「只看毛坯」隐藏，产品、尺寸和点位均未定案。两个阳台各自对比保持原样和落地玻璃，生活阳台默认落地玻璃，主阳台默认原样；落地玻璃预览从地面通至顶板，只留周边细框并隐藏原栏杆，窗框与开启方式待定，不代表已实施。洗衣机、热水器标在生活阳台靠厨房侧，洗衣机门可点击开合；旁边放扫地机器人和固定充电座，点击机器人按预设路线走过生活阳台与客餐厅，再次点击暂停或继续，完成后回到充电座；实际摆放需保持干燥、避开溅水和直晒，按所选机型预留回充空间。设备上下关系和安装高度仅作示意。不含电梯及公共管井，其余房间用途仍可调整。
             </dd>
           </div>
         </dl>

@@ -12,6 +12,8 @@ import {
   bathroomFittings,
   bathroomVanitySize,
   bedroomBeds,
+  bedroomStorage,
+  ceilingLighting,
   bedroomAirConditioners,
   curtainColors,
   diningFurniture,
@@ -43,8 +45,15 @@ import { WaterTap } from "./waterTap";
 import { RobotRoute } from "./robotRoute";
 import { createBathroomMirror } from "./mirrors";
 import { ExhaustFan } from "./exhaustFans";
+import { floorElevation } from "./drainage";
+import { ReflectionBudget } from "./ReflectionBudget";
+import { bayWindowFor } from "./bayWindows";
+
+export type LightingMode = "day" | "night";
 
 export type FixtureOptions = {
+  lightingMode: LightingMode;
+  lightCommand?: { on: boolean; revision: number };
   layout: LayoutPreview;
   curtainColor: CurtainColor;
   televisionMount: TelevisionMount;
@@ -60,6 +69,8 @@ export type FixtureOptions = {
 /** Lightweight, reusable preview objects. Switching layouts never rebuilds meshes. */
 export class HomeFixtures {
   readonly group = new THREE.Group();
+  private lightingMode?: LightingMode;
+  private lightCommandRevision?: number;
   private roofs = new THREE.Group();
   private equipment = new THREE.Group();
   private furnishings = new THREE.Group();
@@ -74,6 +85,10 @@ export class HomeFixtures {
   private bedDrawers: { group: THREE.Group; closedX: number; side: number;
     travel: number; motion: OpenCloseMotion }[] = [];
   private gasBurners: GasBurner[] = [];
+  private bedsideLamps: { light: THREE.PointLight; shade: THREE.MeshStandardMaterial;
+    bulb: THREE.MeshStandardMaterial; on: boolean }[] = [];
+  private ceilingLights: { group: THREE.Group; light: THREE.PointLight;
+    surface: THREE.MeshStandardMaterial; power: number; on: boolean }[] = [];
   private taps: WaterTap[] = [];
   private robot?: { group: THREE.Group; route: RobotRoute; label: CSS2DObject };
   private hoodChimney?: THREE.Mesh;
@@ -92,6 +107,8 @@ export class HomeFixtures {
   private televisionBackdrops: THREE.Mesh[] = [];
   private mirrorBackdrops: THREE.Mesh[] = [];
   private mirrors: ReturnType<typeof createBathroomMirror>[] = [];
+  private reflectionBudget = new ReflectionBudget();
+  private reflectionFrame = { now: 0, moving: false };
   private televisionLabels: CSS2DObject[] = [];
   private labels: CSS2DObject[] = [];
   private equipmentLabels: CSS2DObject[] = [];
@@ -252,9 +269,11 @@ export class HomeFixtures {
       const wallGroup = this.at(this.entrances, wall.from, rotation);
       wallGroup.name = `${wall.id}-operable-windows`;
       for (const opening of windows) {
+        const bay = bayWindowFor(wall.id);
         const window = createSlidingWindow(opening, {
           frame: this.windowFrameMaterial, glass: this.windowGlassMaterial, handle: this.steelMaterial,
-        });
+        }, bay?.panes ?? 2);
+        if (bay) window.group.position.z = bay.outside * bay.projection;
         wallGroup.add(window.group);
         this.windows.push(window);
         this.registerGlazingDoor([window.group], window.apply);
@@ -318,7 +337,7 @@ export class HomeFixtures {
   }
 
   isOperable(object: THREE.Object3D) {
-    return ["homeDoorIndex", "glazingDoorIndex", "bedDrawerIndex", "curtainIndex", "gasBurnerIndex", "waterTapIndex", "exhaustFanIndex"].some(
+    return ["homeDoorIndex", "glazingDoorIndex", "bedDrawerIndex", "curtainIndex", "gasBurnerIndex", "waterTapIndex", "exhaustFanIndex", "bedsideLampIndex", "ceilingLightIndex"].some(
       (key) => typeof object.userData[key] === "number",
     ) || Array.isArray(object.userData.bedDrawerIds) || object.userData.robotVacuum === true;
   }
@@ -399,7 +418,7 @@ export class HomeFixtures {
     const material = new THREE.MeshPhysicalMaterial({
       color: curtainColors[0].color, roughness: 0.98, metalness: 0,
       sheen: 0.25, sheenColor: curtainColors[0].sheen, sheenRoughness: 0.95,
-      transparent: true, opacity: 0.70, depthWrite: false,
+      transparent: true, opacity: 0.94, depthWrite: false,
       alphaMap: this.curtainWeave,
       bumpMap: this.curtainWeave, bumpScale: 0.00025, vertexColors: true,
     });
@@ -697,12 +716,15 @@ export class HomeFixtures {
       this.buildBed(group, bed.width, bed.roomId);
       this.tagRoom(group, bed.roomId);
     }
+    this.buildBedroomStorage();
+    this.buildCeilingLights();
     for (const fitting of bathroomFittings) {
       const vanity = this.at(this.furnishings, fitting.vanity.center, fitting.vanity.rotation);
       vanity.name = `${fitting.roomId}-basin-and-mirror`;
       this.buildVanity(vanity);
       this.tagRoom(vanity, fitting.roomId);
       const toilet = this.at(this.furnishings, fitting.toilet.center, fitting.toilet.rotation);
+      toilet.position.y = floorElevation(fitting.roomId, fitting.toilet.center);
       toilet.name = `${fitting.roomId}-${fitting.toilet.kind}-toilet`;
       if (fitting.toilet.kind === "squat") {
         toilet.add(createSquatPan(this.ceramicMaterial));
@@ -728,6 +750,152 @@ export class HomeFixtures {
     this.buildAirConditioners();
   }
 
+  private buildCeilingLights() {
+    const casing = this.material({ color: "#f5f3ee", roughness: 0.65, side: THREE.DoubleSide });
+    const recess = this.material({ color: "#424546", roughness: 0.8, side: THREE.DoubleSide });
+    for (const config of ceilingLighting) {
+      const center: Point = [
+        config.fixtures.reduce((sum, [x]) => sum + x, 0) / config.fixtures.length,
+        config.fixtures.reduce((sum, [, z]) => sum + z, 0) / config.fixtures.length,
+      ];
+      const group = this.at(this.furnishings, center);
+      group.name = `${config.id}-ceiling-light`;
+      const surface = this.material({ color: "#eee9dd", roughness: 0.6, side: THREE.DoubleSide,
+        emissive: config.color, emissiveIntensity: 0 });
+      const add = (parent: THREE.Group, geometry: THREE.BufferGeometry, material: THREE.Material, y: number) => {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.y = y;
+        parent.add(mesh);
+        return mesh;
+      };
+      for (const [x, z] of config.fixtures) {
+        const fixture = new THREE.Group();
+        fixture.position.set(x - center[0], 0, z - center[1]);
+        group.add(fixture);
+        if (config.kind === "panel") {
+          // Thin frame and diffuser keep the light visible in the roofless view.
+          for (const side of [-1, 1]) {
+            this.box(fixture, [0.50, 0.055, 0.025], [0, -0.0275, side * 0.1375], casing, 0.004);
+            this.box(fixture, [0.025, 0.055, 0.25], [side * 0.2375, -0.0275, 0], casing, 0.004);
+          }
+          this.box(fixture, [0.45, 0.012, 0.25], [0, -0.049, 0], surface, 0.004);
+        } else if (config.kind === "pendant") {
+          add(fixture, new THREE.CylinderGeometry(0.075, 0.075, 0.035, 24), casing, -0.0175);
+          add(fixture, new THREE.CylinderGeometry(0.003, 0.003, 0.65, 8), this.steelMaterial, -0.36);
+          add(fixture, new THREE.CylinderGeometry(0.08, 0.23, 0.18, 32, 1, true), casing, -0.77);
+          const diffuser = add(fixture, new THREE.CircleGeometry(0.215, 32), surface, -0.858);
+          diffuser.rotation.x = Math.PI / 2;
+        } else {
+          const radius = config.kind === "downlights" ? 0.075 : 0.20;
+          add(fixture, new THREE.CylinderGeometry(radius, radius, 0.05, 32, 1, true), casing, -0.025);
+          const rim = add(fixture, new THREE.RingGeometry(radius * 0.80, radius, 32), casing, -0.004);
+          rim.rotation.x = Math.PI / 2;
+          if (config.kind === "downlights") {
+            const inner = add(fixture, new THREE.RingGeometry(radius * 0.58, radius * 0.81, 32), recess, -0.028);
+            inner.rotation.x = Math.PI / 2;
+          }
+          const diffuser = add(fixture, new THREE.CircleGeometry(radius * (config.kind === "downlights" ? 0.60 : 0.81), 32), surface, -0.048);
+          diffuser.rotation.x = Math.PI / 2;
+        }
+      }
+      // Share one non-shadow-casting light per circuit to keep mobile preview
+      // costs bounded; this is a layout preview, not a photometric simulation.
+      const light = new THREE.PointLight(config.color, 0, 5, 2);
+      light.visible = false;
+      light.position.y = config.kind === "pendant" ? -0.90 : -0.10;
+      group.add(light);
+      const index = this.ceilingLights.length;
+      group.traverse((object) => {
+        if (object instanceof THREE.Mesh) object.userData.ceilingLightIndex = index;
+      });
+      this.tagRoom(group, config.roomId);
+      this.ceilingLights.push({ group, light, surface, power: config.power, on: false });
+    }
+  }
+
+  toggleCeilingLight(object: THREE.Object3D) {
+    const index = object.userData.ceilingLightIndex;
+    if (typeof index !== "number" || !this.ceilingLights[index]) return false;
+    const lamp = this.ceilingLights[index];
+    lamp.on = !lamp.on;
+    this.syncLighting();
+    return true;
+  }
+
+  private buildBedroomStorage() {
+    for (const { roomId, bedside, wardrobe } of bedroomStorage) {
+      const cabinet = this.at(this.furnishings, bedside.center, bedside.rotation);
+      cabinet.name = `${roomId}-bedside-cabinet`;
+      this.box(cabinet, [0.36, 0.06, 0.34], [0, 0.03, 0], this.supportMaterial, 0.008);
+      this.box(cabinet, [0.40, 0.46, 0.38], [0, 0.29, 0], this.woodMaterial, 0.012);
+      for (const y of [0.18, 0.40]) {
+        this.box(cabinet, [0.37, 0.20, 0.018], [0, y, 0.198], this.woodMaterial, 0.005);
+        this.box(cabinet, [0.12, 0.012, 0.018], [0, y + 0.065, 0.216], this.steelMaterial, 0.004);
+      }
+      const lamp = new THREE.Group();
+      lamp.name = `${roomId}-clickable-bedside-lamp`;
+      cabinet.add(lamp);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.024, 24), this.steelMaterial);
+      base.position.y = 0.532; lamp.add(base);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.23, 12), this.steelMaterial);
+      stem.position.y = 0.659; lamp.add(stem);
+      const shadeMaterial = this.material({ color: "#eee3ce", roughness: 0.95,
+        side: THREE.DoubleSide, emissive: "#ffd79b", emissiveIntensity: 0 });
+      const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.17, 0.24, 32, 1, true), shadeMaterial);
+      shade.position.y = 0.85; lamp.add(shade);
+      const bulbMaterial = this.material({ color: "#fff3db", roughness: 0.3,
+        emissive: "#ffe0a6", emissiveIntensity: 0 });
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), bulbMaterial);
+      bulb.position.y = 0.78; lamp.add(bulb);
+      const light = new THREE.PointLight("#ffd49b", 0, 2.8, 2);
+      light.visible = false;
+      light.position.set(0, 0.76, 0); lamp.add(light);
+      const index = this.bedsideLamps.length;
+      lamp.traverse((object) => {
+        if (object instanceof THREE.Mesh) object.userData.bedsideLampIndex = index;
+      });
+      this.bedsideLamps.push({ light, shade: shadeMaterial, bulb: bulbMaterial, on: false });
+      this.tagRoom(cabinet, roomId);
+
+      const closet = this.at(this.furnishings, wardrobe.center, wardrobe.rotation);
+      closet.name = `${roomId}-wardrobe`;
+      const { width, depth } = wardrobe, height = 2.15;
+      this.box(closet, [width - 0.06, 0.08, depth - 0.04], [0, 0.04, 0], this.supportMaterial);
+      this.box(closet, [width, height - 0.08, depth], [0, (height + 0.08) / 2, 0], this.woodMaterial, 0.012);
+      for (const side of [-1, 1]) {
+        this.box(closet, [width / 2 - 0.016, height - 0.13, 0.018],
+          [side * width / 4, (height + 0.08) / 2, depth / 2 + 0.012], this.woodMaterial, 0.005);
+        this.box(closet, [0.014, 0.30, 0.020],
+          [side * 0.04, 1.05, depth / 2 + 0.033], this.steelMaterial, 0.004);
+      }
+      this.tagRoom(closet, roomId);
+    }
+  }
+
+  toggleBedsideLamp(object: THREE.Object3D) {
+    const index = object.userData.bedsideLampIndex;
+    if (typeof index !== "number" || !this.bedsideLamps[index]) return false;
+    const lamp = this.bedsideLamps[index];
+    lamp.on = !lamp.on;
+    this.syncLighting();
+    return true;
+  }
+
+  private syncLighting() {
+    const night = this.lightingMode === "night";
+    for (const lamp of this.bedsideLamps) {
+      lamp.light.visible = lamp.on && this.furnishings.visible;
+      lamp.light.intensity = lamp.light.visible ? (night ? 5 : 2.5) : 0;
+      lamp.shade.emissiveIntensity = lamp.on ? 0.45 : 0;
+      lamp.bulb.emissiveIntensity = lamp.on ? 2 : 0;
+    }
+    for (const lamp of this.ceilingLights) {
+      lamp.light.visible = lamp.on && lamp.group.visible && this.furnishings.visible;
+      lamp.light.intensity = lamp.light.visible ? lamp.power * (night ? 5 : 1) : 0;
+      lamp.surface.emissiveIntensity = lamp.on ? 1.1 : 0;
+    }
+  }
+
   private buildBed(group: THREE.Group, width: number, roomId: string) {
     const bed = storageBed(width, roomId);
     // A hollow base, supported at floor level; no solid block inside the drawers.
@@ -740,7 +908,12 @@ export class HomeFixtures {
     if (bed.sides.length === 2) {
       this.box(group, [0.035, 0.28, bed.length - 0.05], [0, 0.17, 0], this.woodMaterial);
     } else {
-      this.box(group, [0.025, 0.28, bed.length], [-bed.frameWidth / 2 + 0.0125, 0.17, 0], this.woodMaterial);
+      const closedSide = -bed.sides[0];
+      this.box(group, [0.025, 0.28, bed.length], [closedSide * (bed.frameWidth / 2 - 0.0125), 0.17, 0], this.woodMaterial);
+    }
+    for (const side of bed.sides) {
+      this.box(group, [0.025, 0.28, bed.headPanelLength],
+        [side * (bed.frameWidth / 2 - 0.0125), 0.17, bed.headPanelZ], this.woodMaterial);
     }
     const drawerIds: number[] = [];
     for (const placement of bed.drawers) {
@@ -950,7 +1123,9 @@ export class HomeFixtures {
     this.buildBasinFaucet(fixture);
     // A thin backing, with a real reflection plane just in front of the tiled wall.
     this.box(fixture, [width, 0.82, 0.006], [0, 1.53, wallZ + 0.003], this.ceramicMaterial, 0.002);
-    const mirror = createBathroomMirror(width, 0.82, this.mirrors);
+    const mirrorIndex = this.mirrors.length;
+    const mirror = createBathroomMirror(width, 0.82, this.mirrors,
+      () => this.reflectionBudget.allow(mirrorIndex, this.reflectionFrame.now, this.reflectionFrame.moving));
     mirror.position.set(0, 1.53, wallZ + 0.0065);
     fixture.add(mirror);
     this.mirrors.push(mirror);
@@ -1059,26 +1234,15 @@ export class HomeFixtures {
 
   private buildShowerEnclosure(
     group: THREE.Group,
-    { width, depth, height, doorWidth }: { width: number; depth: number; height: number; doorWidth: number },
+    { width, height, doorWidth }: { width: number; depth: number; height: number; doorWidth: number },
   ) {
-    // The floor and drain make the wet area readable even in the top view.
-    this.box(group, [width, 0.012, depth], [0, 0.006, -depth / 2], this.wetFloorMaterial);
-    const drain = new THREE.Group();
-    drain.name = "shower-floor-drain";
-    drain.position.set(-width / 2 + 0.23, 0.015, -depth + 0.23);
-    group.add(drain);
-    this.box(drain, [0.16, 0.004, 0.16], [0, 0, 0], this.steelMaterial);
-    this.box(drain, [0.135, 0.002, 0.135], [0, 0.003, 0], this.darkMaterial);
-    for (let index = 0; index < 8; index++) {
-      this.box(drain, [0.12, 0.002, 0.006], [0, 0.005, -0.056 + index * 0.016], this.steelMaterial);
-    }
-
+    // The sloped tiled floor and drain now belong to the room architecture.
     const frame = 0.018;
     for (const x of [-width / 2 + frame / 2, width / 2 - frame / 2]) {
       this.box(group, [frame, height, 0.025], [x, height / 2, 0], this.steelMaterial);
     }
     this.box(group, [width, frame, 0.03], [0, height - frame / 2, 0], this.steelMaterial);
-    this.box(group, [width, 0.025, 0.04], [0, 0.0125, 0], this.stoneMaterial);
+    this.box(group, [width, 0.075, 0.04], [0, -0.0125, 0], this.stoneMaterial);
 
     const fixedWidth = width - doorWidth - frame * 2 - 0.006;
     const fixedX = -width / 2 + frame + fixedWidth / 2;
@@ -1121,6 +1285,7 @@ export class HomeFixtures {
     };
     for (const placement of balconyFurniture.plants) {
       const group = this.at(plants, placement.center);
+      group.position.y = floorElevation("balcony", placement.center);
       group.add(createPottedTree(placement, materials));
     }
     this.tagRoom(plants, "balcony");
@@ -1139,6 +1304,7 @@ export class HomeFixtures {
     this.tagRoom(hood, "kitchen");
 
     const counter = this.at(this.furnishings, size.center, size.rotation);
+    counter.position.y = floorElevation("kitchen", size.center);
     counter.name = "kitchen-counter-stove-and-sink";
     this.box(counter, [size.width - 0.08, 0.15, size.depth - 0.08],
       [0, 0.075, 0], this.supportMaterial);
@@ -1367,6 +1533,7 @@ export class HomeFixtures {
     const { center, rotation, width, depth, height } = kitchenFurniture.fridge;
     const group = this.at(this.furnishings, center, rotation);
     group.name = "kitchen-fridge";
+    group.position.y = floorElevation("kitchen", center);
     const front = depth / 2;
     // Recessed base supports the cabinet; doors and handles stay in its footprint.
     this.box(group, [width - 0.08, 0.055, depth - 0.09], [0, 0.0275, -0.025], this.supportMaterial, 0.012);
@@ -1589,7 +1756,32 @@ export class HomeFixtures {
     }
   }
 
+  prepareReflections(now: number, moving: boolean) {
+    this.reflectionFrame.now = now;
+    this.reflectionFrame.moving = moving;
+    this.reflectionBudget.beginFrame(moving);
+  }
+
+  invalidateReflections() { this.reflectionBudget.invalidate(); }
+
+  get reflectionsPending() { return this.reflectionBudget.needsAnotherFrame; }
+
   update(options: FixtureOptions) {
+    this.invalidateReflections();
+    // Only a mode change applies the preset. Room selection and other settings
+    // must preserve any lights the user has manually switched off.
+    if (this.lightingMode !== options.lightingMode) {
+      this.lightingMode = options.lightingMode;
+      for (const lamp of [...this.bedsideLamps, ...this.ceilingLights]) {
+        lamp.on = options.lightingMode === "night";
+      }
+    }
+    if (options.lightCommand && options.lightCommand.revision !== this.lightCommandRevision) {
+      this.lightCommandRevision = options.lightCommand.revision;
+      for (const lamp of [...this.bedsideLamps, ...this.ceilingLights]) {
+        lamp.on = options.lightCommand.on;
+      }
+    }
     const visibleHeight = options.cutaway ? defaults.cutHeight : options.wallHeight;
     for (const window of this.windows) window.setVisibleHeight(visibleHeight);
     for (const door of this.doors) {
@@ -1624,6 +1816,12 @@ export class HomeFixtures {
     }
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.furnishings.visible = options.layout !== "empty";
+    for (const lamp of this.ceilingLights) {
+      lamp.group.position.y = options.wallHeight;
+      // Keep the top-down floor plan clear; light state survives view changes.
+      lamp.group.visible = options.view !== "plan";
+    }
+    this.syncLighting();
     if (this.dryingRack) this.dryingRack.position.y = options.wallHeight;
     for (const { group } of this.curtains) group.scale.y = options.wallHeight - 0.12;
     for (const { unit, backdrop } of this.airConditioners) {

@@ -21,6 +21,9 @@ import type { BalconyId } from "./arrangements";
 import { bathroomFittings, previewPalette } from "./arrangements";
 import { squatFloorHole } from "./squatToilet";
 import { applySurfaceUVs, createTileSurface, floorFinish, wallTileSides } from "./finishes";
+import { drainageZones, drainageElevation, floorDrainSize, floorElevation } from "./drainage";
+import { createDrainageFloor } from "./drainageGeometry";
+import { bayWindowFor, bayPortal, createBayWindow } from "./bayWindows";
 
 export type ViewOptions = FixtureOptions & {
   view: "perspective" | "plan";
@@ -30,6 +33,7 @@ export type ViewOptions = FixtureOptions & {
   dimensions: boolean;
   grid: boolean;
   selected: string | null;
+  drainage: boolean;
 };
 
 export class HomeScene {
@@ -42,9 +46,10 @@ export class HomeScene {
   private balconyRailings: { roomId: BalconyId; group: THREE.Group }[] = [];
   private labelGroup = new THREE.Group();
   private dimensions = new THREE.Group();
+  private drainageOverlay = new THREE.Group();
   private fixtures = new HomeFixtures();
   private floors: THREE.Mesh<
-    THREE.ExtrudeGeometry,
+    THREE.BufferGeometry,
     THREE.MeshStandardMaterial
   >[] = [];
   private squatFloorCover?: THREE.Mesh;
@@ -52,19 +57,29 @@ export class HomeScene {
   private materials = new Set<THREE.Material>();
   private textures = new Set<THREE.Texture>();
   private resizeObserver: ResizeObserver;
+  private themeObserver: MutationObserver;
   private frame = 0;
   private disposed = false;
+  private cameraInteracting = false;
+  private fixturesAnimating = false;
   private options: ViewOptions;
   private raycaster = new THREE.Raycaster();
   private hoverFrame = 0;
   private hoverPoint?: { clientX: number; clientY: number };
   private selectionGesture = new SelectionGesture();
+  private roomLabelGesture = new SelectionGesture(10);
+  private activeRoomLabel?: { element: HTMLButtonElement; roomId: string; pointerId: number };
   private labels: Map<string, HTMLElement> = new Map();
+  private roomOutlines = new Map<string, THREE.LineLoop>();
   private wallMaterial: THREE.MeshStandardMaterial;
   private wallTileMaterial: THREE.MeshStandardMaterial;
+  private skirtingMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial: THREE.LineBasicMaterial;
   private frameMaterial: THREE.MeshStandardMaterial;
   private glassMaterial: THREE.MeshStandardMaterial;
+  private skyLight = new THREE.HemisphereLight(0xeaf5ff, 0xb6aaa0, 2.5);
+  private sun = new THREE.DirectionalLight(0xfff6e8, 3.1);
+  private groundMaterial: THREE.MeshStandardMaterial;
 
   constructor(
     private host: HTMLElement,
@@ -86,12 +101,18 @@ export class HomeScene {
     this.renderer.toneMappingExposure = 1.25;
     this.renderer.domElement.setAttribute(
       "aria-label",
-      "毛坯房三维模型：拖动旋转，滚轮缩放，点击地面选择房间",
+      "毛坯房三维模型：拖动旋转，滚轮缩放，点击房间名称选择房间，点击物品进行操作",
     );
     this.renderer.domElement.setAttribute("role", "img");
     this.renderer.domElement.tabIndex = 0;
     this.host.appendChild(this.renderer.domElement);
     this.labelRenderer.domElement.className = "scene-labels";
+    this.labelRenderer.domElement.addEventListener("click", this.roomLabelClick);
+    this.labelRenderer.domElement.addEventListener("pointerdown", this.roomLabelPointerDown);
+    this.labelRenderer.domElement.addEventListener("pointermove", this.roomLabelPointerMove);
+    this.labelRenderer.domElement.addEventListener("pointerup", this.roomLabelPointerUp);
+    this.labelRenderer.domElement.addEventListener("pointercancel", this.roomLabelPointerCancel);
+    this.labelRenderer.domElement.addEventListener("lostpointercapture", this.roomLabelPointerCancel);
     this.host.appendChild(this.labelRenderer.domElement);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -103,6 +124,8 @@ export class HomeScene {
     this.controls.minPolarAngle = 0.03;
     this.controls.screenSpacePanning = true;
     this.controls.addEventListener("change", this.requestRender);
+    this.controls.addEventListener("start", this.cameraInteractionStart);
+    this.controls.addEventListener("end", this.cameraInteractionEnd);
     this.controls.listenToKeyEvents(this.renderer.domElement);
 
     this.wallMaterial = this.material({
@@ -111,6 +134,7 @@ export class HomeScene {
     });
     const wallTiles = createTileSurface("white", true);
     this.wallTileMaterial = this.material({ color: "#ffffff", ...wallTiles });
+    this.skirtingMaterial = this.material({ color: "#fafafa", roughness: 0.55 });
     this.textures.add(wallTiles.map).add(wallTiles.bumpMap);
     this.frameMaterial = this.material({
       color: "#343b3d",
@@ -132,8 +156,8 @@ export class HomeScene {
     });
     this.materials.add(this.edgeMaterial);
 
-    this.scene.add(new THREE.HemisphereLight(0xeaf5ff, 0xb6aaa0, 2.5));
-    const sun = new THREE.DirectionalLight(0xfff6e8, 3.1);
+    this.scene.add(this.skyLight);
+    const sun = this.sun;
     sun.position.set(-7, 16, 9);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -147,9 +171,10 @@ export class HomeScene {
     sun.shadow.bias = -0.0001;
     this.scene.add(sun);
 
+    this.groundMaterial = this.material({ color: "#e6ecec", roughness: 1 });
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
-      this.material({ color: "#e6ecec", roughness: 1 }),
+      this.groundMaterial,
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.19;
@@ -160,6 +185,7 @@ export class HomeScene {
     this.scene.add(this.grid);
     this.scene.add(this.architecture, this.labelGroup, this.dimensions, this.fixtures.group);
     this.buildFloors();
+    this.buildDrainage();
     this.buildDimensions();
     this.buildWalls();
     this.applyVisibility();
@@ -178,6 +204,12 @@ export class HomeScene {
     );
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(host);
+    this.themeObserver = new MutationObserver(() => {
+      this.applyCanvasTheme();
+      this.fixtures.invalidateReflections();
+      this.requestRender();
+    });
+    this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     this.resize();
     host.dataset.rendered = "true";
   }
@@ -230,8 +262,11 @@ export class HomeScene {
 
   private buildFloors() {
     const surfaces = { wood: createTileSurface("wood"), white: createTileSurface("white") };
+    const outlineMaterial = new THREE.LineBasicMaterial({ color: "#007aff", toneMapped: false, depthWrite: false });
+    this.materials.add(outlineMaterial);
     for (const surface of Object.values(surfaces)) this.textures.add(surface.map).add(surface.bumpMap);
     for (const room of rooms) {
+      const zones = drainageZones.filter(({ roomId }) => roomId === room.id);
       const shape = new THREE.Shape();
       room.polygon.forEach(([x, z], i) => {
         if (i === 0) shape.moveTo(x - modelCenter[0], -(z - modelCenter[1]));
@@ -242,7 +277,7 @@ export class HomeScene {
       const hole = squat && squatFloorHole(squat.toilet.center, squat.toilet.rotation);
       if (hole) shape.holes.push(hole);
       const geometry = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.16,
+        depth: zones.length ? 0.08 : 0.16,
         bevelEnabled: false,
       });
       geometry.rotateX(-Math.PI / 2);
@@ -255,12 +290,27 @@ export class HomeScene {
       floor.receiveShadow = true;
       this.floors.push(floor);
       this.scene.add(floor);
+      for (const zone of zones) {
+        const hasSquat = squat && squat.toilet.center[1] > zone.bounds.north && squat.toilet.center[1] < zone.bounds.south;
+        const top = new THREE.Mesh(createDrainageFloor(zone, hasSquat && hole ? [hole] : []), material);
+        top.name = `${zone.id}-sloped-floor`;
+        top.userData = { roomId: room.id, baseColor: color };
+        top.receiveShadow = true;
+        this.floors.push(top);
+        this.scene.add(top);
+      }
       if (hole) {
         // Restore a continuous tiled floor when furniture is hidden in shell view.
         const coverGeometry = new THREE.ExtrudeGeometry(new THREE.Shape(hole.getPoints()), {
           depth: 0.16, bevelEnabled: false,
         });
         coverGeometry.rotateX(-Math.PI / 2); coverGeometry.translate(0, -0.16, 0);
+        const points = coverGeometry.getAttribute("position");
+        for (let i = 0; i < points.count; i++) {
+          points.setY(i, points.getY(i) + floorElevation(room.id,
+            [points.getX(i) + modelCenter[0], points.getZ(i) + modelCenter[1]]));
+        }
+        coverGeometry.computeVertexNormals();
         applySurfaceUVs(coverGeometry);
         const cover = new THREE.Mesh(coverGeometry, material);
         cover.userData = { roomId: room.id, baseColor: color };
@@ -269,14 +319,73 @@ export class HomeScene {
         this.scene.add(cover);
         this.squatFloorCover = cover;
       }
-      const element = document.createElement("span");
+      // Inset the boundary past the wall thickness so it remains visible on
+      // the floor, without tinting the tiles or drawing through furniture.
+      const vertices = room.polygon.map(([x, z], i, points) => {
+        const previous = points[(i + points.length - 1) % points.length];
+        const next = points[(i + 1) % points.length];
+        const incoming = new THREE.Vector2(x - previous[0], z - previous[1]).normalize();
+        const outgoing = new THREE.Vector2(next[0] - x, next[1] - z).normalize();
+        const inset = 0.14 / (1 + incoming.dot(outgoing));
+        return this.position([x - (incoming.y + outgoing.y) * inset,
+          z + (incoming.x + outgoing.x) * inset], 0.018);
+      });
+      const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(vertices), outlineMaterial);
+      outline.name = `${room.id}-selection-outline`;
+      outline.visible = false;
+      this.scene.add(outline);
+      this.roomOutlines.set(room.id, outline);
+      const element = document.createElement("button");
+      element.type = "button";
       element.className = "room-label";
       element.textContent = room.name;
+      element.dataset.roomId = room.id;
+      element.setAttribute("aria-label", `选择${room.name}`);
+      element.setAttribute("aria-pressed", "false");
       const label = new CSS2DObject(element);
       label.position.copy(this.position(room.label, 0.1));
       this.labelGroup.add(label);
       this.labels.set(room.id, element);
     }
+  }
+
+  private buildDrainage() {
+    const metal = this.material({ color: "#899397", roughness: 0.35, metalness: 0.65 });
+    const recess = this.material({ color: "#222b30", roughness: 0.9 });
+    const arrowColor = 0x0099d8;
+    for (const zone of drainageZones) {
+      const drain = new THREE.Group();
+      drain.name = `${zone.id}-floor-drain${zone.candidate ? "-candidate" : ""}`;
+      drain.position.copy(this.position(zone.drain, drainageElevation(zone, zone.drain)));
+      this.scene.add(drain);
+      const size = floorDrainSize;
+      this.box(drain, size - 0.016, 0.004, size - 0.016, 0, -0.008, 0, recess);
+      for (const side of [-1, 1]) {
+        this.box(drain, size, 0.004, 0.012, 0, 0.001, side * (size / 2 - 0.006), metal);
+        this.box(drain, 0.012, 0.004, size - 0.024, side * (size / 2 - 0.006), 0.001, 0, metal);
+      }
+      for (let i = 0; i < 8; i++) {
+        this.box(drain, size - 0.024, 0.003, 0.006, 0, 0.0005, -0.056 + i * 0.016, metal);
+      }
+      const { west, east, north, south } = zone.bounds;
+      for (const point of [[west + 0.28, south - 0.25], [east - 0.28, north + 0.25], [(west + east) / 2, (north + south) / 2]] as Point[]) {
+        const from = this.position(point, drainageElevation(zone, point) + 0.025);
+        const to = this.position(zone.drain, drainageElevation(zone, zone.drain) + 0.025);
+        const direction = to.clone().sub(from), distance = direction.length();
+        if (distance < 0.3) continue;
+        const arrow = new THREE.ArrowHelper(direction.normalize(), from, Math.min(0.50, distance - 0.12), arrowColor, 0.085, 0.05);
+        arrow.userData.roomId = zone.roomId;
+        this.drainageOverlay.add(arrow);
+      }
+      const text = document.createElement("span");
+      text.className = "drainage-label";
+      text.textContent = `${zone.label} · ${(zone.slope * 100).toFixed(zone.slope === 0.015 ? 1 : 0)}%`;
+      const label = new CSS2DObject(text);
+      label.position.copy(this.position([zone.drain[0], zone.drain[1] - 0.18], 0.10));
+      label.userData.roomId = zone.roomId;
+      this.drainageOverlay.add(label);
+    }
+    this.scene.add(this.drainageOverlay);
   }
 
   private clearGeometry(group: THREE.Group) {
@@ -304,6 +413,7 @@ export class HomeScene {
       group.rotation.y = -Math.atan2(dz, dx);
       this.architecture.add(group);
       const thickness = wall.thickness ?? defaults.wallThickness;
+      const bay = bayWindowFor(wall.id);
       const tiled = wallTileSides(wall);
       const wallMaterials = [this.wallMaterial, this.wallMaterial, this.wallMaterial, this.wallMaterial,
         tiled.positive ? this.wallTileMaterial : this.wallMaterial,
@@ -311,7 +421,7 @@ export class HomeScene {
       for (const piece of splitWall(
         length,
         Math.min(wall.height ?? height, height),
-        wall.openings,
+        bay ? wall.openings?.map((opening) => opening.kind === "window" ? bayPortal(bay, opening) : opening) : wall.openings,
       )) {
         this.box(
           group,
@@ -324,9 +434,35 @@ export class HomeScene {
           wallMaterials,
           true,
         );
+        if (piece.bottom === 0) {
+          const midpoint = (piece.start + piece.end) / 2;
+          for (const side of [-1, 1]) {
+            // Put the strip only on room-facing surfaces, and use the same
+            // wall pieces so it stops at doors but continues below windows.
+            const offset = thickness / 2 + 0.02;
+            const x = wall.from[0] + dx / length * midpoint - side * dz / length * offset;
+            const z = wall.from[1] + dz / length * midpoint + side * dx / length * offset;
+            const insideRoom = rooms.some((room) => {
+              let inside = false;
+              for (let i = 0, j = room.polygon.length - 1; i < room.polygon.length; j = i++) {
+                const [xi, zi] = room.polygon[i], [xj, zj] = room.polygon[j];
+                if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
+              }
+              return inside;
+            });
+            if (!insideRoom) continue;
+            const skirtingHeight = Math.min(0.08, piece.top);
+            const strip = this.box(group, piece.end - piece.start, skirtingHeight, 0.012,
+              midpoint, skirtingHeight / 2, side * (thickness / 2 + 0.007), this.skirtingMaterial);
+            strip.name = `${wall.id}-white-skirting-${side}`;
+          }
+        }
       }
       // Operable window frames and panes are owned by HomeFixtures so their
       // motion survives wall rebuilding when toggling cutaway or wall height.
+      if (bay) group.add(createBayWindow(wall, bay, height, {
+        wall: this.wallMaterial, sill: this.skirtingMaterial, railing: this.frameMaterial,
+      }));
     }
 
     for (const railing of railings) {
@@ -415,8 +551,33 @@ export class HomeScene {
     }
   }
 
+  private applyCanvasTheme() {
+    const night = this.options.lightingMode === "night";
+    const dark = night || document.documentElement.dataset.theme === "dark";
+    this.groundMaterial.color.set(night ? "#202737" : dark ? "#323840" : "#e6ecec");
+    const materials = Array.isArray(this.grid.material) ? this.grid.material : [this.grid.material];
+    for (const material of materials) {
+      material.color.set(dark ? "#718095" : "#ffffff");
+      material.transparent = true;
+      material.opacity = dark ? 0.25 : 0.45;
+      material.depthWrite = false;
+      material.toneMapped = false;
+    }
+  }
+
   private applyVisibility() {
     this.fixtures.update(this.options);
+    const night = this.options.lightingMode === "night";
+    this.skyLight.color.set(night ? "#a8bcf0" : "#eaf5ff");
+    this.skyLight.groundColor.set(night ? "#504c61" : "#b6aaa0");
+    this.skyLight.intensity = night ? (this.options.view === "plan" ? 0.85 : 0.35) : 2.5;
+    this.sun.color.set(night ? "#a0b6ed" : "#fff6e8");
+    this.sun.intensity = night ? 0.18 : 3.1;
+    this.sun.castShadow = !night;
+    this.applyCanvasTheme();
+    const pixelRatio = Math.min(window.devicePixelRatio, night ? 1.25 : 2);
+    if (this.renderer.getPixelRatio() !== pixelRatio) this.renderer.setPixelRatio(pixelRatio);
+    this.host.dataset.lighting = this.options.lightingMode;
     if (this.squatFloorCover) this.squatFloorCover.visible = this.options.layout === "empty";
     for (const { roomId, group } of this.balconyRailings) {
       group.visible = this.options.balconyModes[roomId] === "original";
@@ -424,12 +585,15 @@ export class HomeScene {
     this.labelGroup.visible = this.options.labels;
     this.dimensions.visible = this.options.dimensions;
     this.grid.visible = this.options.grid;
-    for (const floor of this.floors) {
-      const selected = floor.userData.roomId === this.options.selected;
-      floor.material.color.set(selected ? "#92b5a5" : floor.userData.baseColor);
-      this.labels
-        .get(floor.userData.roomId)
-        ?.classList.toggle("is-selected", selected);
+    this.drainageOverlay.visible = this.options.drainage;
+    for (const object of this.drainageOverlay.children) {
+      object.visible = !this.options.selected || object.userData.roomId === this.options.selected;
+    }
+    for (const [roomId, label] of this.labels) {
+      const selected = roomId === this.options.selected;
+      label.classList.toggle("is-selected", selected);
+      label.setAttribute("aria-pressed", String(selected));
+      this.roomOutlines.get(roomId)!.visible = selected;
     }
   }
 
@@ -468,7 +632,7 @@ export class HomeScene {
     this.controls.touches.ONE = plan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     this.renderer.domElement.setAttribute(
       "aria-label",
-      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击地面选择房间，点击门、窗户、窗帘或床底抽屉切换开合，也可点击床垫开合整床抽屉`,
+      `毛坯房${plan ? "俯视" : "三维"}模型：拖动${plan ? "平移" : "旋转"}，滚轮缩放，点击房间名称选择房间，点击物品进行操作`,
     );
     this.camera.lookAt(-0.9, 0, 0);
     this.camera.updateProjectionMatrix();
@@ -507,18 +671,33 @@ export class HomeScene {
     this.frame = requestAnimationFrame(this.render);
   };
 
+  private cameraInteractionStart = () => {
+    this.cameraInteracting = true;
+    this.requestRender();
+  };
+  private cameraInteractionEnd = () => {
+    this.cameraInteracting = false;
+    this.requestRender();
+  };
+
   private render = (now: number) => {
     this.frame = 0;
     if (this.disposed) return;
-    this.controls.update();
+    const cameraMoved = this.controls.update();
     const curtainsMoving = this.fixtures.animateCurtains(now);
     const doorsMoving = this.fixtures.animateDoors(now);
     const drawersMoving = this.fixtures.animateBedDrawers(now);
     const burnersMoving = this.fixtures.animateGasBurners(now);
     const appliancesMoving = this.fixtures.animateAppliances(now);
+    const fixturesMoving = curtainsMoving || doorsMoving || drawersMoving || burnersMoving || appliancesMoving;
+    // A finished door/drawer must appear in its final position even if it
+    // stopped inside the reflection throttle interval.
+    if (this.fixturesAnimating && !fixturesMoving) this.fixtures.invalidateReflections();
+    this.fixturesAnimating = fixturesMoving;
+    this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
-    if (curtainsMoving || doorsMoving || drawersMoving || burnersMoving || appliancesMoving) this.requestRender();
+    if (fixturesMoving || this.fixtures.reflectionsPending) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -589,7 +768,7 @@ export class HomeScene {
   private pointerUp = (event: PointerEvent) => {
     const selected = this.selectionGesture.end(event);
     this.renderer.domElement.style.cursor = "";
-    if (!selected) return;
+    if (!selected || event.target !== this.renderer.domElement) return;
     const first = this.pickFirst(event);
     if (first && this.fixtures.isOperable(first.object) && event.pointerType !== "touch") {
       this.renderer.domElement.style.cursor = "pointer";
@@ -597,16 +776,81 @@ export class HomeScene {
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (first && (this.fixtures.toggleRobot(first.object, now)
+      || this.fixtures.toggleBedsideLamp(first.object)
+      || this.fixtures.toggleCeilingLight(first.object)
       || this.fixtures.toggleExhaustFan(first.object, now, reducedMotion)
       || this.fixtures.toggleWaterTap(first.object, now, reducedMotion)
       || this.fixtures.toggleGasBurner(first.object, now, reducedMotion)
       || this.fixtures.toggleDoor(first.object, now, reducedMotion)
       || this.fixtures.toggleBedDrawer(first.object, now, reducedMotion)
       || this.fixtures.toggleCurtain(first.object, now, reducedMotion))) {
+      this.fixtures.invalidateReflections();
       this.requestRender();
       return;
     }
-    this.onSelect(first?.object.userData.roomId ?? null);
+  };
+
+  private roomLabelClick = (event: MouseEvent) => {
+    // Pointer activation happens on release; retain native keyboard/AT clicks
+    // without letting the subsequent browser click toggle the room twice.
+    if (event.detail > 0 || (event instanceof PointerEvent && event.pointerType)) return;
+    if (!this.options.labels || !(event.target instanceof Element)) return;
+    const label = event.target.closest<HTMLButtonElement>("button.room-label[data-room-id]");
+    const roomId = label?.dataset.roomId;
+    if (!label || !this.labelRenderer.domElement.contains(label) || !rooms.some(({ id }) => id === roomId)) return;
+    this.activateRoomLabel(roomId!);
+  };
+
+  private activateRoomLabel(roomId: string) {
+    const selected = this.options.selected === roomId ? null : roomId;
+    // Immediate feedback also keeps quick successive taps from reading the
+    // previous selection while React is committing the updated URL/state.
+    this.options = { ...this.options, selected };
+    for (const [id, label] of this.labels) {
+      label.classList.toggle("is-selected", id === selected);
+      label.setAttribute("aria-pressed", String(id === selected));
+      this.roomOutlines.get(id)!.visible = id === selected;
+    }
+    this.requestRender();
+    this.onSelect(selected);
+  }
+
+  private roomLabelPointerDown = (event: PointerEvent) => {
+    if (this.activeRoomLabel) {
+      // A second finger cancels activation instead of selecting another room.
+      this.roomLabelPointerCancel({ pointerId: this.activeRoomLabel.pointerId } as PointerEvent);
+      return;
+    }
+    if (!this.options.labels || event.button !== 0 || !event.isPrimary || !(event.target instanceof Element)) return;
+    const label = event.target.closest<HTMLButtonElement>("button.room-label[data-room-id]");
+    const roomId = label?.dataset.roomId;
+    if (!label || !roomId || !this.labels.has(roomId)) return;
+    this.roomLabelGesture.start(event);
+    this.activeRoomLabel = { element: label, roomId, pointerId: event.pointerId };
+    // Follow the originally pressed button even if damping moves its screen
+    // position between press and release.
+    label.setPointerCapture(event.pointerId);
+  };
+
+  private roomLabelPointerMove = (event: PointerEvent) => {
+    this.roomLabelGesture.move(event);
+  };
+
+  private roomLabelPointerUp = (event: PointerEvent) => {
+    const active = this.activeRoomLabel;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const activate = this.roomLabelGesture.end(event);
+    this.activeRoomLabel = undefined;
+    if (active.element.hasPointerCapture(event.pointerId)) active.element.releasePointerCapture(event.pointerId);
+    if (activate && this.options.labels) this.activateRoomLabel(active.roomId);
+  };
+
+  private roomLabelPointerCancel = (event: PointerEvent) => {
+    const active = this.activeRoomLabel;
+    if (!active || active.pointerId !== event.pointerId) return;
+    this.roomLabelGesture.cancel(event.pointerId);
+    this.activeRoomLabel = undefined;
+    if (active.element.hasPointerCapture(event.pointerId)) active.element.releasePointerCapture(event.pointerId);
   };
 
   private contextLost = (event: Event) => {
@@ -619,8 +863,18 @@ export class HomeScene {
     cancelAnimationFrame(this.frame);
     cancelAnimationFrame(this.hoverFrame);
     this.resizeObserver.disconnect();
+    this.themeObserver.disconnect();
     this.controls.removeEventListener("change", this.requestRender);
+    this.controls.removeEventListener("start", this.cameraInteractionStart);
+    this.controls.removeEventListener("end", this.cameraInteractionEnd);
     this.controls.dispose();
+    this.labelRenderer.domElement.removeEventListener("click", this.roomLabelClick);
+    this.labelRenderer.domElement.removeEventListener("pointerdown", this.roomLabelPointerDown);
+    this.labelRenderer.domElement.removeEventListener("pointermove", this.roomLabelPointerMove);
+    this.labelRenderer.domElement.removeEventListener("pointerup", this.roomLabelPointerUp);
+    this.labelRenderer.domElement.removeEventListener("pointercancel", this.roomLabelPointerCancel);
+    this.labelRenderer.domElement.removeEventListener("lostpointercapture", this.roomLabelPointerCancel);
+    if (this.activeRoomLabel) this.roomLabelPointerCancel({ pointerId: this.activeRoomLabel.pointerId } as PointerEvent);
     this.renderer.domElement.removeEventListener(
       "pointerdown",
       this.pointerDown,

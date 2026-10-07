@@ -1,16 +1,17 @@
 import * as THREE from "three";
 import type { Opening } from "./plan.ts";
 
-/** Two-track sliding preview: one fixed pane, one pane that stacks beside it. */
+/** Sliding preview: the last pane stacks beside its neighbour. */
 export function createSlidingWindow(opening: Opening, materials: {
   frame: THREE.Material; glass: THREE.Material; handle: THREE.Material;
-}) {
+}, paneCount: 2 | 3 = 2) {
   const group = new THREE.Group();
   group.name = "operable-room-window";
   group.position.set(opening.start, opening.sill, 0);
   const width = opening.end - opening.start, height = opening.top - opening.sill;
   const frame = 0.025, clearWidth = width - frame * 2;
-  const panelWidth = (clearWidth + frame) / 2, travel = clearWidth - panelWidth;
+  const panelWidth = (clearWidth + frame * (paneCount - 1)) / paneCount;
+  const travel = panelWidth - frame;
   const topBars: THREE.Mesh[] = [], bottomBars: { mesh: THREE.Mesh; y: number }[] = [];
   const box = (parent: THREE.Group, size: [number, number, number], position: [number, number, number], material: THREE.Material) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
@@ -27,11 +28,12 @@ export function createSlidingWindow(opening: Opening, materials: {
   topBars.push(box(group, [width, frame, 0.07], [width / 2, height - frame / 2, 0], materials.frame));
 
   let moving!: THREE.Group, handle!: THREE.Mesh;
-  const closedX = frame + clearWidth - panelWidth;
-  for (const sliding of [false, true]) {
+  const closedX = frame + (paneCount - 1) * travel;
+  for (let index = 0; index < paneCount; index++) {
+    const sliding = index === paneCount - 1;
     const panel = new THREE.Group();
     panel.name = sliding ? "sliding-window-panel" : "fixed-window-panel";
-    panel.position.set(sliding ? closedX : frame, 0, sliding ? 0.022 : -0.022);
+    panel.position.set(frame + index * travel, 0, sliding ? 0.022 : -0.022);
     group.add(panel);
     box(panel, [panelWidth - frame * 2, height - frame * 4, 0.006],
       [panelWidth / 2, height / 2, 0], materials.glass);

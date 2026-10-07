@@ -1,9 +1,9 @@
 .room-notebook {
   margin: 28px 0;
   padding: 28px;
-  border: 1px solid #e5e8ee;
+  border: 1px solid var(--separator);
   border-radius: 26px;
-  background: #fff;
+  background: var(--surface);
   scroll-margin-top: 96px;
 }
 .notebook-heading,
@@ -21,13 +21,13 @@
 .notebook-heading p,
 .notebook-storage p {
   margin: 0;
-  color: #62626a;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 .notebook-progress {
   flex-shrink: 0;
-  color: #245e4c;
-  background: #ebf5ef;
+  color: var(--success-text);
+  background: var(--success-background);
   border-radius: 99px;
   padding: 8px 14px;
   font-size: 14px;
@@ -35,7 +35,7 @@
 .notebook-storage {
   padding: 18px;
   border-radius: 16px;
-  background: #f5f6f8;
+  background: var(--surface-muted);
   margin: 24px 0;
 }
 .notebook-storage strong {
@@ -56,8 +56,8 @@
   min-height: 44px;
   padding: 10px 15px;
   border-radius: 12px;
-  color: #0065c9;
-  background: #eaf2ff;
+  color: var(--tint);
+  background: var(--tint-soft);
   font-size: 14px;
 }
 .notebook-columns {
@@ -76,14 +76,14 @@
 .notebook-fields textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid #cbd1d9;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   padding: 12px;
   font: inherit;
   font-weight: 400;
   font-size: 16px;
-  background: #fff;
-  color: #242429;
+  background: var(--surface);
+  color: var(--text-primary);
 }
 .notebook-fields textarea {
   resize: vertical;
@@ -91,7 +91,7 @@
 }
 .notebook-fields input::placeholder,
 .notebook-fields textarea::placeholder {
-  color: #737982;
+  color: var(--text-tertiary);
 }
 .room-notebook fieldset,
 .notebook-import fieldset {
@@ -109,7 +109,7 @@
 .notebook-fields fieldset > p {
   margin: 0 0 14px;
   font-size: 13px;
-  color: #62626a;
+  color: var(--text-secondary);
 }
 .notebook-dimensions {
   display: grid;
@@ -140,21 +140,21 @@
   flex-shrink: 0;
 }
 .notebook-tasks .is-done {
-  color: #39705b;
+  color: var(--success-text);
 }
 .notebook-footnote {
   font-size: 13px;
-  color: #62626a;
+  color: var(--text-secondary);
 }
 .notebook-error {
-  color: #a02f25;
-  background: #fff1ec;
+  color: var(--danger-text);
+  background: var(--danger-background);
   border-radius: 12px;
   padding: 12px;
 }
 .notebook-message {
   font-size: 14px;
-  color: #265e49;
+  color: var(--success-text);
 }
 .notebook-import {
   width: min(580px, calc(100% - 28px));
@@ -163,7 +163,7 @@
   border: 0;
   border-radius: 24px;
   padding: 26px;
-  color: #242429;
+  color: var(--text-primary);
 }
 .notebook-import::backdrop {
   background: #14223875;
@@ -193,14 +193,14 @@
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--separator);
 }
 .notebook-import li span {
   flex: 1;
   overflow-wrap: anywhere;
 }
 .notebook-import li small {
-  color: #865b1d;
+  color: var(--warning-text);
 }
 .notebook-import .notebook-primary {
   background: #0071e3;
@@ -247,7 +247,7 @@
 .notebook-heading::after {
   content: "展开 ＋";
   font-size: 14px;
-  color: #0065c9;
+  color: var(--tint);
   white-space: nowrap;
 }
 .room-notebook[open] > .notebook-heading::after {

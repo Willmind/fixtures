@@ -1,0 +1,140 @@
+:root {
+  --action-fill: #0071e3;
+  --surface: #fff;
+  --surface-raised: #fbfbfd;
+  --surface-muted: #f5f5f7;
+  --control-background: #e8e8ed;
+  --surface-border: #fff;
+  --border-strong: #d2d2d7;
+  --glass-border: #ffffff80;
+  --glass-strong: #fffffff0;
+  --glass-muted: #f5f5f7d9;
+  --text-tertiary: #86868b;
+  --media-background: #ececea;
+  --tint-border: #c5d9f3;
+  --success-text: #306b4c;
+  --success-background: #eaf5ee;
+  --danger-text: #a02f25;
+  --danger-background: #fff1ec;
+  --warning-text: #846644;
+  --warning-background: #fff9ee;
+  --warning-border: #e7d3b7;
+  --warm-glass: #f8f7f2ec;
+  --success-glass: #eef6f1ed;
+  --blue-glass: #edf4f8ed;
+  --ambient-blue: #e1eaff;
+  --ambient-violet: #ede5fa;
+  --ambient-blue-soft: #e9effb90;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --text-primary: #f2f2f7;
+  --text-secondary: #b0b0b8;
+  --text-tertiary: #97979f;
+  --page-background: #111113;
+  --surface: #1c1c1e;
+  --surface-raised: #202023;
+  --surface-muted: #28282c;
+  --control-background: #343438;
+  --surface-border: #303034;
+  --separator: #333338;
+  --border-strong: #4b4b53;
+  --tint: #64adff;
+  --action-fill: #0a71d9;
+  --tint-soft: #1b304a;
+  --tint-border: #355c88;
+  --glass: #222225d9;
+  --glass-strong: #242427f2;
+  --glass-muted: #2a2a2ed9;
+  --glass-border: #ffffff1a;
+  --media-background: #252527;
+  --card-shadow: 0 4px 24px #00000026, 0 1px 2px #0000001f;
+  --success-text: #8cd8ad;
+  --success-background: #1b3529;
+  --danger-text: #ffaaa0;
+  --danger-background: #3f2525;
+  --warning-text: #e3c18c;
+  --warning-background: #382e21;
+  --warning-border: #675239;
+  --warm-glass: #34302aeb;
+  --success-glass: #213b30eb;
+  --blue-glass: #21384ceb;
+  --ambient-blue: #18243a;
+  --ambient-violet: #251e36;
+  --ambient-blue-soft: #1b2a3b80;
+}
+body { background: var(--page-background); }
+dialog { background: var(--surface); color: var(--text-primary); }
+::selection { background: var(--tint-soft); color: var(--text-primary); }
+
+.theme-switch { display: flex; flex-shrink: 0; }
+.theme-switch .theme-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  font-size: 13px;
+  line-height: 1;
+}
+.theme-menu {
+  position: fixed;
+  inset: 84px 28px auto auto;
+  margin: 0;
+  padding: 8px;
+  width: 200px;
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  box-shadow: 0 12px 40px #00000026;
+  backdrop-filter: blur(24px);
+}
+.theme-menu::backdrop { background: transparent; }
+.theme-menu p { margin: 5px 10px 8px; font-size: 11px; color: var(--text-secondary); }
+.theme-switch .theme-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+.theme-switch .theme-menu button span { flex: 1; }
+.theme-switch .theme-menu button:hover { background: var(--surface-muted); }
+.theme-switch .theme-menu button[aria-pressed="true"] { background: var(--tint-soft); color: var(--tint); }
+.toggle-track::after { background: #fff; }
+
+/* Lazy page styles inherit tokens. These few selectors cover intentional
+ * light-only colours that need a different treatment, without changing media. */
+:root[data-theme="dark"] .viewport:not([data-lighting="night"]) {
+  background: radial-gradient(ellipse at 50% 30%, #323840, #181a20);
+}
+:root[data-theme="dark"] .drainage-label { color: #a7e6ff; }
+:root[data-theme="dark"] .notebook-import { color: var(--text-primary); }
+:root[data-theme="dark"] .cad-loading-overlay { background: var(--glass-strong); }
+:root[data-theme="dark"] .cad-viewport.is-dark { background: #172229; }
+:root[data-theme="dark"] .viewer-error button { background: var(--control-background); }
+:root[data-theme="dark"] .guide-light-preview { border-color: var(--separator); }
+
+@media (max-width: 760px) {
+  .theme-switch .theme-trigger { width: 44px; height: 44px; padding: 0; }
+  .theme-trigger span { display: none; }
+  .theme-menu { inset: 70px 16px auto auto; }
+  .app-header .header-right { gap: 6px; }
+  .header-right > .text-button { font-size: 0; gap: 0; padding: 8px; }
+  .guide-header nav { gap: 6px; }
+}
+@media (max-width: 420px) {
+  .guide-header nav > button { font-size: 0; padding-inline: 10px; gap: 0; }
+}

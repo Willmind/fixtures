@@ -7,6 +7,11 @@ type PointerSample = Pick<
 export class SelectionGesture {
   private pointers = new Set<number>();
   private candidate: PointerSample | null = null;
+  private tolerance: number;
+
+  constructor(tolerance = 5) {
+    this.tolerance = tolerance;
+  }
 
   start(event: PointerSample) {
     this.pointers.add(event.pointerId);
@@ -27,7 +32,7 @@ export class SelectionGesture {
       Math.hypot(
         event.clientX - this.candidate.clientX,
         event.clientY - this.candidate.clientY,
-      ) > 5
+      ) > this.tolerance
     ) {
       this.candidate = null;
     }
