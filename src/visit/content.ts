@@ -5,8 +5,15 @@ export type SitePhoto = (typeof photos)[number];
 export const sitePhotos: SitePhoto[] = photos;
 export const photoUrl = (photo: SitePhoto, thumbnail = false) =>
   `/site-visit/${thumbnail ? "thumbs/" : ""}${photo.id}.webp`;
-export const photosForRoom = (roomId: string) =>
-  sitePhotos.filter((photo) => photo.roomId === roomId);
+const roomPhotos = new Map<string, SitePhoto[]>();
+for (const photo of sitePhotos) {
+  const group = roomPhotos.get(photo.roomId) ?? [];
+  group.push(photo);
+  roomPhotos.set(photo.roomId, group);
+}
+const noPhotos: SitePhoto[] = [];
+export const photosForRoom = (roomId: string): readonly SitePhoto[] =>
+  roomPhotos.get(roomId) ?? noPhotos;
 
 export type RoomVisit = {
   roomId: RoomId;

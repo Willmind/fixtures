@@ -19,7 +19,9 @@ import { HomeFixtures } from "./HomeFixtures";
 import { MeshPickIndex } from "./MeshPickIndex";
 import { RenderProfiler } from "./RenderProfiler";
 import { animateFixtures, toggleFixture } from "./fixtures/interactions";
-import { viewOptionsChanged } from "./options";
+import { fixtureAppearanceChanged, viewOptionsChanged } from "./options";
+import { OnDemandFrames } from "./OnDemandFrames";
+import { ShadowUpdates } from "./ShadowUpdates";
 import type { ViewOptions } from "./options";
 export type { ViewOptions } from "./options";
 import type { BalconyId } from "./arrangements";
@@ -52,7 +54,8 @@ export class HomeScene {
   private textures = new Set<THREE.Texture>();
   private resizeObserver: ResizeObserver;
   private themeObserver: MutationObserver;
-  private frame = 0;
+  private renderLoop: OnDemandFrames;
+  private shadows = new ShadowUpdates();
   private disposed = false;
   private cameraInteracting = false;
   private fixturesAnimating = false;
@@ -92,6 +95,7 @@ export class HomeScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0xeaf0f2, 0);
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.25;
@@ -102,6 +106,10 @@ export class HomeScene {
     this.renderer.domElement.setAttribute("role", "img");
     this.renderer.domElement.tabIndex = 0;
     this.host.appendChild(this.renderer.domElement);
+    this.renderLoop = new OnDemandFrames(this.render, {
+      request: (callback) => requestAnimationFrame(callback),
+      cancel: (id) => cancelAnimationFrame(id),
+    }, !this.host.ownerDocument.hidden);
     this.labelRenderer.domElement.className = "scene-labels";
     this.labelRenderer.domElement.addEventListener("click", this.roomLabelClick);
     this.labelRenderer.domElement.addEventListener("pointerdown", this.roomLabelPointerDown);
@@ -206,6 +214,7 @@ export class HomeScene {
     );
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(host);
+    this.host.ownerDocument.addEventListener("visibilitychange", this.visibilityChanged);
     this.themeObserver = new MutationObserver(() => {
       this.applyCanvasTheme();
       this.fixtures.invalidateReflections();
@@ -608,6 +617,7 @@ export class HomeScene {
     this.profiler?.noteUpdate(wallsChanged);
     if (wallsChanged) this.buildWalls();
     this.applyVisibility();
+    if (fixtureAppearanceChanged(previous, options)) this.shadows.invalidate();
     if (previous.view !== options.view) this.resetView();
     this.host.dataset.view = options.view;
     this.host.dataset.wallHeight = String(
@@ -669,8 +679,21 @@ export class HomeScene {
   };
 
   private requestRender = () => {
-    if (this.frame || this.disposed) return;
-    this.frame = requestAnimationFrame(this.render);
+    this.renderLoop.request();
+  };
+
+  private visibilityChanged = () => {
+    const visible = !this.host.ownerDocument.hidden;
+    if (!visible) {
+      cancelAnimationFrame(this.hoverFrame);
+      this.hoverFrame = 0;
+      this.hoverPoint = undefined;
+      this.cameraInteracting = false;
+      this.renderer.domElement.style.cursor = "";
+    } else {
+      this.fixtures.invalidateReflections();
+    }
+    this.renderLoop.setVisible(visible);
   };
 
   private cameraInteractionStart = () => {
@@ -683,7 +706,6 @@ export class HomeScene {
   };
 
   private render = (now: number) => {
-    this.frame = 0;
     if (this.disposed) return;
     const started = this.profiler ? performance.now() : 0;
     const renderFrame = this.renderer.info.render.frame;
@@ -694,6 +716,7 @@ export class HomeScene {
     // stopped inside the reflection throttle interval.
     if (this.fixturesAnimating && !fixturesMoving) this.fixtures.invalidateReflections();
     this.fixturesAnimating = fixturesMoving;
+    this.renderer.shadowMap.needsUpdate = this.shadows.consume(fixturesMoving);
     this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
@@ -721,6 +744,7 @@ export class HomeScene {
     this.renderer.domElement.style.cursor = hit && this.fixtures.isOperable(hit.object) ? "pointer" : "";
   };
   private pointerMove = (event: PointerEvent) => {
+    if (this.host.ownerDocument.hidden) return;
     this.selectionGesture.move(event);
     if (event.pointerType === "touch") return;
     if (this.hoverFrame) cancelAnimationFrame(this.hoverFrame);
@@ -780,6 +804,7 @@ export class HomeScene {
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (first && toggleFixture(this.fixtures, first.object, now, reducedMotion)) {
+      this.shadows.invalidate();
       this.fixtures.invalidateReflections();
       this.requestRender();
       return;
@@ -851,15 +876,19 @@ export class HomeScene {
 
   private contextLost = (event: Event) => {
     event.preventDefault();
+    this.renderLoop.dispose();
+    cancelAnimationFrame(this.hoverFrame);
+    this.hoverFrame = 0;
     this.onError("图形上下文已中断，请刷新页面重新载入模型。");
   };
 
   dispose() {
     this.disposed = true;
-    cancelAnimationFrame(this.frame);
+    this.renderLoop.dispose();
     cancelAnimationFrame(this.hoverFrame);
     this.resizeObserver.disconnect();
     this.themeObserver.disconnect();
+    this.host.ownerDocument.removeEventListener("visibilitychange", this.visibilityChanged);
     this.controls.removeEventListener("change", this.requestRender);
     this.controls.removeEventListener("start", this.cameraInteractionStart);
     this.controls.removeEventListener("end", this.cameraInteractionEnd);

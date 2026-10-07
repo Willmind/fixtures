@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import AccessGate from "./access/AccessGate";
 import { NotebookProvider } from "./notes/NotebookContext";
 import { AppIcon } from "./AppIcon";
@@ -38,7 +38,11 @@ function ProtectedWorkspace() {
 function Workspace({ onLock }: { onLock?: () => void }) {
   const { route, position, revision, navigate, returnToGuide } =
     useWorkspaceNavigation();
-  const [photoIndices, setPhotoIndices] = useState<Record<string, number>>({});
+  // Remember gallery position across routes without rerendering the whole workspace.
+  const photoIndices = useRef<Record<string, number>>({});
+  const rememberPhoto = useCallback((room: string, index: number) => {
+    photoIndices.current[room] = index;
+  }, []);
   const { view } = route;
   return (
     <NotebookProvider>
@@ -83,10 +87,8 @@ function Workspace({ onLock }: { onLock?: () => void }) {
                   },
                 )
               }
-              photoIndices={photoIndices}
-              onPhotoChange={(room, index) =>
-                setPhotoIndices((previous) => ({ ...previous, [room]: index }))
-              }
+              photoIndices={photoIndices.current}
+              onPhotoChange={rememberPhoto}
               onModel={() =>
                 navigate(
                   { view: "model", room: route.room ?? "living" },

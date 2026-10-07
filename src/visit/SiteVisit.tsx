@@ -62,7 +62,7 @@ export function SiteVisit({
         <PhotoGallery
           key={roomId}
           photos={photosForRoom(roomId)}
-          index={photoIndex}
+          initialIndex={photoIndex}
           onIndexChange={onPhotoChange}
           roomName={room.name}
         />

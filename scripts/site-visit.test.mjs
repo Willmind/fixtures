@@ -7,10 +7,23 @@ import {
   sitePhotos,
   roomVisits,
   photoUrl,
+  photosForRoom,
   videoChapters,
 } from "../src/visit/content.ts";
 
 const asset = (path) => new URL(`../public${path}`, import.meta.url);
+
+test("房间相册索引保持稳定，更新记录时不重新安排照片预加载", () => {
+  const combined = [];
+  for (const room of rooms) {
+    const photos = photosForRoom(room.id);
+    assert.strictEqual(photosForRoom(room.id), photos);
+    assert.ok(photos.every((photo) => photo.roomId === room.id));
+    combined.push(...photos);
+  }
+  assert.deepEqual(new Set(combined), new Set(sitePhotos));
+  assert.equal(photosForRoom("missing").length, 0);
+});
 
 test("现场资料覆盖全部房间，照片和缩略图均可发布", () => {
   const ids = new Set(rooms.map((room) => room.id));

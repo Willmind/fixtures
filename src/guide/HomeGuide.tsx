@@ -1,5 +1,5 @@
 import { openDialogAtTitle } from "../dialogs/openDialog";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AppIcon } from "../AppIcon";
 import { Icon } from "../icons";
 import { ThemeSwitch } from "../theme/ThemeSwitch";
@@ -51,6 +51,9 @@ export default function HomeGuide({
   ).length;
   const room = roomGuides.find((r) => r.id === selected)!;
   const [imageFailed, setImageFailed] = useState(false);
+  const changePhoto = useCallback((index: number) => {
+    onPhotoChange(selected, index);
+  }, [onPhotoChange, selected]);
   return (
     <div className="home-guide">
       <header className="guide-header">
@@ -166,7 +169,7 @@ export default function HomeGuide({
               onRoomChange={setSelected}
               onPlan={onPlan}
               photoIndex={photoIndices[selected] ?? 0}
-              onPhotoChange={(index) => onPhotoChange(selected, index)}
+              onPhotoChange={changePhoto}
               onNotes={showNotes}
               onModel={onModel}
               onSource={() => setPage(room.page)}

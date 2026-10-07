@@ -1,5 +1,5 @@
 import { openDialogAtTitle } from "../dialogs/openDialog";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
 import { warmImage } from "../guide/imageWarmup";
 import { photoUrl, type SitePhoto } from "./content";
@@ -77,17 +77,24 @@ function PhotoImage({
   );
 }
 
-export function PhotoGallery({
+export const PhotoGallery = memo(function PhotoGallery({
   photos,
   roomName,
-  index,
-  onIndexChange: setIndex,
+  initialIndex,
+  onIndexChange,
 }: {
-  index: number;
+  initialIndex: number;
   onIndexChange: (index: number) => void;
-  photos: SitePhoto[];
+  photos: readonly SitePhoto[];
   roomName: string;
 }) {
+  const [index, updateIndex] = useState(() =>
+    Math.max(0, Math.min(initialIndex, photos.length - 1)),
+  );
+  function setIndex(next: number) {
+    updateIndex(next);
+    onIndexChange(next);
+  }
   const [expanded, setExpanded] = useState(false);
   const photo = photos[index];
   useEffect(() => {
@@ -151,7 +158,7 @@ export function PhotoGallery({
       ) : null}
     </div>
   );
-}
+});
 
 function PhotoDialog({
   photo,

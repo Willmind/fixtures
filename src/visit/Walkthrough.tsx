@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { videoChapters } from "./content";
 
-export function Walkthrough({
+export const Walkthrough = memo(function Walkthrough({
   roomName,
   roomStart,
 }: {
@@ -14,6 +14,13 @@ export function Walkthrough({
   const [failed, setFailed] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const pause = () => {
+      if (document.hidden) video.current?.pause();
+    };
+    document.addEventListener("visibilitychange", pause);
+    return () => document.removeEventListener("visibilitychange", pause);
+  }, []);
   function playAt(time: number) {
     desiredTime.current = time;
     if (failed) {
@@ -117,4 +124,4 @@ export function Walkthrough({
       </div>
     </section>
   );
-}
+});
