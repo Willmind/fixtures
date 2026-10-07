@@ -1,0 +1,1 @@
+function e(e){e.showModal(),e.querySelector(`[data-dialog-title]`)?.focus({preventScroll:!0})}export{e as t};
