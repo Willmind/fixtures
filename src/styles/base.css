@@ -1,0 +1,140 @@
+:root {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  color: var(--text-primary);
+  background: var(--page-background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  font-weight: 400;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --page-background: #f5f5f7;
+  --tint: #0071e3;
+  --tint-soft: #e8f2ff;
+  --separator: #e5e5ea;
+  --glass: #ffffffc9;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --card-shadow: 0 4px 24px #1d1d1f05, 0 1px 2px #1d1d1f03;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button {
+  border: 0;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #007aff80;
+  outline-offset: 4px;
+}
+button {
+  color: inherit;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+svg {
+  flex-shrink: 0;
+}
+button:hover {
+  filter: brightness(0.98);
+}
+.app-loading {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 24px;
+  color: var(--text-secondary);
+  background: var(--page-background);
+}
+.app-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.app-loading-icon {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+.app-loading-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.app-loading-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid #0071e31f;
+  border-top-color: var(--tint);
+  border-radius: 50%;
+  animation: app-loading-spin 800ms linear infinite;
+}
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.app-error {
+  text-align: center;
+}
+.app-error h1 {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+}
+.app-error p {
+  margin: 0;
+  max-width: 320px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.app-error-actions {
+  display: flex;
+  gap: 12px;
+}
+.app-error-actions button,
+.app-error-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  text-decoration: none;
+}
+.app-error-actions button {
+  background: var(--action-fill);
+  color: #fff;
+}
+.app-error-actions a {
+  background: var(--tint-soft);
+  color: var(--tint);
+}

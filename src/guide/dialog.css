@@ -1,0 +1,196 @@
+.guide-dialog {
+  border: 1px solid var(--glass-border);
+  border-radius: 26px;
+  padding: 0;
+  max-width: 1200px;
+  width: 94vw;
+  height: 92dvh;
+  max-height: 92dvh;
+  color: var(--ink);
+  background: var(--glass-strong);
+  box-shadow: 0 24px 100px #0003;
+}
+.guide-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  animation: sheet-in 380ms var(--ease-out) both;
+}
+.guide-dialog::backdrop {
+  background: #15152066;
+  backdrop-filter: blur(10px);
+  animation: backdrop-in 300ms ease both;
+}
+.guide-dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px 7px;
+  flex-shrink: 0;
+}
+.guide-dialog header span {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.guide-dialog h2 {
+  font-size: 22px;
+  margin: 5px 0;
+  font-weight: 550;
+}
+.guide-dialog header button {
+  background: var(--control-background);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.guide-dialog-description {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  margin: 5px 25px 13px;
+}
+.guide-dialog-tools {
+  padding: 10px 25px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-block: 1px solid var(--separator);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.guide-dialog-tools button {
+  background: var(--tint-soft);
+  padding: 8px 16px;
+  border-radius: 20px;
+  color: var(--accent);
+}
+.guide-dialog-tools button:disabled {
+  opacity: 0.45;
+}
+.guide-dialog-tools a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.guide-dialog-tools span {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.guide-dialog-image {
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
+  background: var(--control-background);
+}
+.guide-dialog-image img {
+  display: block;
+  width: 100%;
+  margin: auto;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+.guide-dialog-image[data-state="loaded"] img {
+  opacity: 1;
+}
+.guide-dialog-image-feedback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 14px;
+}
+.guide-dialog-image-feedback p {
+  margin: 0;
+}
+.guide-dialog-image-feedback button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--tint-soft);
+}
+.guide-dialog-image img.is-zoomed {
+  width: 1800px;
+  max-width: none;
+}
+.guide-image-error {
+  position: absolute;
+  inset: 40% 10%;
+  background: var(--surface);
+  color: var(--danger-text);
+  padding: 12px;
+  font-size: 12px;
+  z-index: 3;
+}
+@media (max-width: 760px) {
+.guide-dialog {
+    width: 96vw;
+    height: 94dvh;
+    max-height: 94dvh;
+  }
+.guide-dialog header {
+    padding: 17px 16px 5px;
+  }
+.guide-dialog h2 {
+    font-size: 18px;
+  }
+.guide-dialog-description {
+    margin: 5px 16px 12px;
+    font-size: 11px;
+  }
+.guide-dialog-tools {
+    padding: 10px 16px;
+    gap: 12px;
+    font-size: 11px;
+  }
+.guide-dialog-tools span {
+    display: none;
+  }
+.guide-dialog-image img.is-zoomed {
+    width: 1300px;
+  }
+
+}
+.guide-dialog.is-closing {
+  animation: sheet-out 180ms ease-in both;
+}
+.guide-dialog.is-closing::backdrop {
+  animation: backdrop-in 180ms ease-in reverse both;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+.guide-source-link:hover,
+  .guide-dialog-tools a:hover {
+    text-decoration: underline;
+  }
+
+}
+@media (max-width: 760px) {
+.guide-dialog {
+    border-radius: 22px;
+  }
+
+}
+.guide-dialog-image .guide-dialog-preview {
+  position: absolute;
+  inset: 12px;
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  object-fit: contain;
+  opacity: 1;
+}
+.guide-dialog-image-feedback {
+  inset: auto auto 20px 20px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--glass-strong);
+}

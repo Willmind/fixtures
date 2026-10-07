@@ -16,7 +16,12 @@ import type { Point } from "./plan";
 import { splitWall } from "./geometry";
 import { SelectionGesture } from "./SelectionGesture";
 import { HomeFixtures } from "./HomeFixtures";
-import type { FixtureOptions } from "./HomeFixtures";
+import { MeshPickIndex } from "./MeshPickIndex";
+import { RenderProfiler } from "./RenderProfiler";
+import { animateFixtures, toggleFixture } from "./fixtures/interactions";
+import { viewOptionsChanged } from "./options";
+import type { ViewOptions } from "./options";
+export type { ViewOptions } from "./options";
 import type { BalconyId } from "./arrangements";
 import { bathroomFittings, previewPalette } from "./arrangements";
 import { squatFloorHole } from "./squatToilet";
@@ -24,17 +29,6 @@ import { applySurfaceUVs, createTileSurface, floorFinish, wallTileSides } from "
 import { drainageZones, drainageElevation, floorDrainSize, floorElevation } from "./drainage";
 import { createDrainageFloor } from "./drainageGeometry";
 import { bayWindowFor, bayPortal, createBayWindow } from "./bayWindows";
-
-export type ViewOptions = FixtureOptions & {
-  view: "perspective" | "plan";
-  cutaway: boolean;
-  wallHeight: number;
-  labels: boolean;
-  dimensions: boolean;
-  grid: boolean;
-  selected: string | null;
-  drainage: boolean;
-};
 
 export class HomeScene {
   private scene = new THREE.Scene();
@@ -64,6 +58,8 @@ export class HomeScene {
   private fixturesAnimating = false;
   private options: ViewOptions;
   private raycaster = new THREE.Raycaster();
+  private pickIndex = new MeshPickIndex();
+  private profiler?: RenderProfiler;
   private hoverFrame = 0;
   private hoverPoint?: { clientX: number; clientY: number };
   private selectionGesture = new SelectionGesture();
@@ -182,6 +178,12 @@ export class HomeScene {
     this.scene.add(ground);
     this.grid = new THREE.GridHelper(100, 100, 0xc5cfce, 0xd4dcdb);
     this.grid.position.y = -0.18;
+    if (new URLSearchParams(window.location.search).get("debug") === "performance") {
+      this.profiler = new RenderProfiler();
+      window.__fixturesPerformance = this.profiler;
+      // Include shadow/mirror passes in the counters, not just the final main pass.
+      this.renderer.info.autoReset = false;
+    }
     this.scene.add(this.grid);
     this.scene.add(this.architecture, this.labelGroup, this.dimensions, this.fixtures.group);
     this.buildFloors();
@@ -398,6 +400,7 @@ export class HomeScene {
   }
 
   private buildWalls() {
+    this.pickIndex.invalidate();
     this.clearGeometry(this.architecture);
     this.balconyRailings = [];
     const height = this.options.cutaway
@@ -599,12 +602,11 @@ export class HomeScene {
 
   update(options: ViewOptions) {
     const previous = this.options;
+    if (!viewOptionsChanged(previous, options)) return;
     this.options = options;
-    if (
-      previous.cutaway !== options.cutaway ||
-      previous.wallHeight !== options.wallHeight
-    )
-      this.buildWalls();
+    const wallsChanged = previous.cutaway !== options.cutaway || previous.wallHeight !== options.wallHeight;
+    this.profiler?.noteUpdate(wallsChanged);
+    if (wallsChanged) this.buildWalls();
     this.applyVisibility();
     if (previous.view !== options.view) this.resetView();
     this.host.dataset.view = options.view;
@@ -683,13 +685,11 @@ export class HomeScene {
   private render = (now: number) => {
     this.frame = 0;
     if (this.disposed) return;
+    const started = this.profiler ? performance.now() : 0;
+    const renderFrame = this.renderer.info.render.frame;
+    if (this.profiler) this.renderer.info.reset();
     const cameraMoved = this.controls.update();
-    const curtainsMoving = this.fixtures.animateCurtains(now);
-    const doorsMoving = this.fixtures.animateDoors(now);
-    const drawersMoving = this.fixtures.animateBedDrawers(now);
-    const burnersMoving = this.fixtures.animateGasBurners(now);
-    const appliancesMoving = this.fixtures.animateAppliances(now);
-    const fixturesMoving = curtainsMoving || doorsMoving || drawersMoving || burnersMoving || appliancesMoving;
+    const fixturesMoving = animateFixtures(this.fixtures, now);
     // A finished door/drawer must appear in its final position even if it
     // stopped inside the reflection throttle interval.
     if (this.fixturesAnimating && !fixturesMoving) this.fixtures.invalidateReflections();
@@ -697,6 +697,15 @@ export class HomeScene {
     this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
+    if (this.profiler) {
+      const { render, memory, programs } = this.renderer.info;
+      this.profiler.record({
+        frameWorkMs: performance.now() - started, drawCalls: render.calls,
+        triangles: render.triangles, renderPasses: render.frame - renderFrame,
+        geometries: memory.geometries, textures: memory.textures, programs: programs?.length ?? 0,
+        lighting: this.options.lightingMode, moving: this.cameraInteracting || cameraMoved || fixturesMoving,
+      });
+    }
     if (fixturesMoving || this.fixtures.reflectionsPending) this.requestRender();
   };
 
@@ -748,13 +757,8 @@ export class HomeScene {
     this.raycaster.setFromCamera(mouse, this.camera);
     // Include walls so a click on a wall cannot select an invisible floor behind it.
     // Hidden original railings must not intercept clicks through the new glazing.
-    const architecture: THREE.Mesh[] = [];
-    this.architecture.traverseVisible((object) => {
-      if (object instanceof THREE.Mesh) architecture.push(object);
-    });
     const hits = this.raycaster.intersectObjects(
-      [...this.floors.filter((floor) => floor.visible), ...architecture, ...this.fixtures.selectable],
-      false,
+      this.pickIndex.visibleMeshes([...this.floors, this.architecture, this.fixtures.group]), false,
     );
     // Operable glass is a hit target; fixed translucent glazing lets taps through
     // to curtains. Solid walls and furniture continue to block objects behind.
@@ -775,15 +779,7 @@ export class HomeScene {
     }
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (first && (this.fixtures.toggleRobot(first.object, now)
-      || this.fixtures.toggleBedsideLamp(first.object)
-      || this.fixtures.toggleCeilingLight(first.object)
-      || this.fixtures.toggleExhaustFan(first.object, now, reducedMotion)
-      || this.fixtures.toggleWaterTap(first.object, now, reducedMotion)
-      || this.fixtures.toggleGasBurner(first.object, now, reducedMotion)
-      || this.fixtures.toggleDoor(first.object, now, reducedMotion)
-      || this.fixtures.toggleBedDrawer(first.object, now, reducedMotion)
-      || this.fixtures.toggleCurtain(first.object, now, reducedMotion))) {
+    if (first && toggleFixture(this.fixtures, first.object, now, reducedMotion)) {
       this.fixtures.invalidateReflections();
       this.requestRender();
       return;
@@ -892,14 +888,18 @@ export class HomeScene {
       "webglcontextlost",
       this.contextLost,
     );
+    const geometries = new Set<THREE.BufferGeometry>();
     this.scene.traverse((object) => {
       if (object instanceof THREE.InstancedMesh) object.dispose();
       if (object instanceof THREE.Mesh || object instanceof THREE.Line)
-        object.geometry.dispose();
+        geometries.add(object.geometry);
       if (object instanceof CSS2DObject) object.element.remove();
     });
+    for (const geometry of geometries) geometry.dispose();
     for (const material of this.materials) material.dispose();
     this.fixtures.dispose();
+    this.pickIndex.invalidate();
+    if (this.profiler && window.__fixturesPerformance === this.profiler) delete window.__fixturesPerformance;
     for (const texture of this.textures) texture.dispose();
     const gridMaterials = Array.isArray(this.grid.material)
       ? this.grid.material

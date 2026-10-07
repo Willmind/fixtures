@@ -1,3 +1,5 @@
+@import "./dialog.css";
+
 .home-guide {
   --ink: var(--text-primary);
   --muted: var(--text-secondary);
@@ -644,228 +646,96 @@
 .guide-source-status b {
   font-weight: 550;
 }
-.guide-dialog {
-  border: 1px solid var(--glass-border);
-  border-radius: 26px;
-  padding: 0;
-  max-width: 1200px;
-  width: 94vw;
-  height: 92dvh;
-  max-height: 92dvh;
-  color: var(--ink);
-  background: var(--glass-strong);
-  box-shadow: 0 24px 100px #0003;
-}
-.guide-dialog[open] {
-  display: flex;
-  flex-direction: column;
-  animation: sheet-in 380ms var(--ease-out) both;
-}
-.guide-dialog::backdrop {
-  background: #15152066;
-  backdrop-filter: blur(10px);
-  animation: backdrop-in 300ms ease both;
-}
-.guide-dialog header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 25px 7px;
-  flex-shrink: 0;
-}
-.guide-dialog header span {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.guide-dialog h2 {
-  font-size: 22px;
-  margin: 5px 0;
-  font-weight: 550;
-}
-.guide-dialog header button {
-  background: var(--control-background);
-  border-radius: 50%;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
-.guide-dialog-description {
-  font-size: 12px;
-  line-height: 1.8;
-  color: var(--text-primary);
-  margin: 5px 25px 13px;
-}
-.guide-dialog-tools {
-  padding: 10px 25px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border-block: 1px solid var(--separator);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.guide-dialog-tools button {
-  background: var(--tint-soft);
-  padding: 8px 16px;
-  border-radius: 20px;
-  color: var(--accent);
-}
-.guide-dialog-tools button:disabled {
-  opacity: 0.45;
-}
-.guide-dialog-tools a {
-  color: var(--accent);
-  text-decoration: none;
-}
-.guide-dialog-tools span {
-  margin-left: auto;
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-.guide-dialog-image {
-  position: relative;
-  min-height: 0;
-  overflow: auto;
-  flex: 1;
-  background: var(--control-background);
-}
-.guide-dialog-image img {
-  display: block;
-  width: 100%;
-  margin: auto;
-  opacity: 0;
-  transition: opacity 240ms ease;
-}
-.guide-dialog-image[data-state="loaded"] img {
-  opacity: 1;
-}
-.guide-dialog-image-feedback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: var(--surface-muted);
-  color: var(--muted);
-  font-size: 14px;
-}
-.guide-dialog-image-feedback p {
-  margin: 0;
-}
-.guide-dialog-image-feedback button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  color: var(--accent);
-  background: var(--tint-soft);
-}
-.guide-dialog-image img.is-zoomed {
-  width: 1800px;
-  max-width: none;
-}
-.guide-image-error {
-  position: absolute;
-  inset: 40% 10%;
-  background: var(--surface);
-  color: var(--danger-text);
-  padding: 12px;
-  font-size: 12px;
-  z-index: 3;
-}
 @media (min-width: 1450px) {
-  .guide-room-layout {
+.guide-room-layout {
     grid-template-columns: minmax(0, 1fr) 370px;
   }
-  .guide-pin {
+.guide-pin {
     font-size: 12px;
     padding: 5px 8px;
   }
-  .guide-room-detail {
+.guide-room-detail {
     padding: 26px 30px;
   }
-  .guide-detail-section p {
+.guide-detail-section p {
     font-size: 14px;
   }
+
 }
 @media (max-width: 1000px) {
-  .guide-room-layout {
+.guide-room-layout {
     grid-template-columns: minmax(0, 1fr) 290px;
     gap: 15px;
   }
-  .guide-main {
+.guide-main {
     padding: 26px 3% 0;
   }
-  .guide-room-detail {
+.guide-room-detail {
     padding: 20px;
   }
-  .guide-card-heading {
+.guide-card-heading {
     padding: 20px 17px 10px;
   }
-  .guide-card-heading p {
+.guide-card-heading p {
     font-size: 11px;
   }
-  .guide-card-heading h2 {
+.guide-card-heading h2 {
     font-size: 14px;
   }
-  .guide-plan {
+.guide-plan {
     margin: 10px 12px 0;
   }
-  .guide-pin {
+.guide-pin {
     font-size: 10px;
     padding: 3px 5px;
   }
-  .guide-pin span {
+.guide-pin span {
     display: none;
   }
-  .guide-glossary {
+.guide-glossary {
     grid-template-columns: 1fr 1fr;
   }
-  .guide-next {
+.guide-next {
     padding: 28px;
   }
-  .guide-next ol {
+.guide-next ol {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .guide-sheet-grid {
+.guide-sheet-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
 }
 @media (max-width: 760px) {
-  .guide-header {
+.guide-header {
     height: 72px;
     padding: 0 17px;
   }
-  .guide-brand {
+.guide-brand {
     font-size: 15px;
     gap: 9px;
   }
-  .guide-header nav {
+.guide-header nav {
     gap: 6px;
   }
-  .guide-header nav button {
+.guide-header nav button {
     font-size: 11px;
     padding: 0 10px;
   }
-  .guide-main {
+.guide-main {
     padding: 23px 17px 0;
   }
-  .guide-intro {
+.guide-intro {
     display: block;
     margin-bottom: 15px;
   }
-  .guide-intro h1 {
+.guide-intro h1 {
     font-size: 30px;
   }
-  .guide-lead {
+.guide-lead {
     font-size: 12px;
   }
-  .guide-house-facts {
+.guide-house-facts {
     display: flex;
     gap: 20px;
     align-items: center;
@@ -875,177 +745,151 @@
     border-top: 1px solid var(--separator);
     font-size: 10px;
   }
-  .guide-house-facts span {
+.guide-house-facts span {
     white-space: nowrap;
   }
-  .guide-house-facts b {
+.guide-house-facts b {
     display: inline;
     font-size: 18px;
     margin-right: 4px;
   }
-  .guide-house-facts small {
+.guide-house-facts small {
     display: none;
   }
-  .guide-tabbar {
+.guide-tabbar {
     gap: 0;
     margin-bottom: 20px;
   }
-  .guide-tabbar button {
+.guide-tabbar button {
     font-size: 12px;
     padding: 10px 1px;
   }
-  .guide-tabbar button span {
+.guide-tabbar button span {
     font-size: 9px;
     margin-right: 5px;
   }
-  .guide-room-layout {
+.guide-room-layout {
     display: flex;
     flex-direction: column;
     gap: 15px;
   }
-  .guide-plan-card {
+.guide-plan-card {
     width: 100%;
     border-radius: 22px;
   }
-  .guide-card-heading {
+.guide-card-heading {
     padding: 15px 14px 8px;
   }
-  .guide-card-heading p {
+.guide-card-heading p {
     font-size: 10px;
   }
-  .guide-text-link {
+.guide-text-link {
     font-size: 10px;
   }
-  .guide-plan {
+.guide-plan {
     margin: 10px 8px 0;
   }
-  .guide-pin {
+.guide-pin {
     font-size: 9px;
     padding: 2px 4px;
     min-height: 25px;
   }
-  .guide-plan-footer {
+.guide-plan-footer {
     margin: 10px 15px 13px;
     font-size: 8px;
     gap: 10px;
   }
-  .guide-room-chips {
+.guide-room-chips {
     padding: 12px 14px;
     gap: 6px;
   }
-  .guide-room-chips button {
+.guide-room-chips button {
     font-size: 10px;
     padding: 5px 8px;
     min-height: 30px;
   }
-  .guide-room-detail {
+.guide-room-detail {
     width: 100%;
     padding: 20px;
   }
-  .guide-room-detail h2 {
+.guide-room-detail h2 {
     font-size: 25px;
   }
-  .guide-detail-section p {
+.guide-detail-section p {
     font-size: 13px;
   }
-  .guide-detail-section ul {
+.guide-detail-section ul {
     font-size: 12px;
   }
-  .guide-next {
+.guide-next {
     display: block;
     padding: 24px;
     margin-top: 23px;
   }
-  .guide-next ol {
+.guide-next ol {
     grid-template-columns: 1fr;
     margin-top: 22px;
     gap: 20px;
   }
-  .guide-next h2 {
+.guide-next h2 {
     font-size: 22px;
   }
-  .guide-evidence-note {
+.guide-evidence-note {
     font-size: 10px;
     gap: 7px;
   }
-  .guide-footer {
+.guide-footer {
     font-size: 9px;
     letter-spacing: 0;
     gap: 10px;
   }
-  .guide-section-intro h2 {
+.guide-section-intro h2 {
     font-size: 23px;
   }
-  .guide-glossary {
+.guide-glossary {
     grid-template-columns: 1fr;
     gap: 13px;
   }
-  .guide-glossary article {
+.guide-glossary article {
     padding: 20px;
   }
-  .guide-symbol {
+.guide-symbol {
     min-height: 0;
     float: right;
     font-size: 25px;
   }
-  .guide-glossary h3 {
+.guide-glossary h3 {
     margin-top: 0;
   }
-  .guide-lighting {
+.guide-lighting {
     grid-template-columns: 1fr;
     padding: 20px;
   }
-  .guide-lighting h2 {
+.guide-lighting h2 {
     font-size: 20px;
   }
-  .guide-inline-actions {
+.guide-inline-actions {
     flex-wrap: wrap;
   }
-  .guide-sheet-grid {
+.guide-sheet-grid {
     grid-template-columns: 1fr;
   }
-  .guide-sheet-preview {
+.guide-sheet-preview {
     aspect-ratio: 2.25;
   }
-  .guide-cad-source {
+.guide-cad-source {
     flex-wrap: wrap;
     gap: 15px;
     padding: 20px;
   }
-  .guide-cad-icon {
+.guide-cad-icon {
     display: none;
   }
-  .guide-cad-source > button {
+.guide-cad-source > button {
     margin: 0;
   }
-  .guide-dialog {
-    width: 96vw;
-    height: 94dvh;
-    max-height: 94dvh;
-  }
-  .guide-dialog header {
-    padding: 17px 16px 5px;
-  }
-  .guide-dialog h2 {
-    font-size: 18px;
-  }
-  .guide-dialog-description {
-    margin: 5px 16px 12px;
-    font-size: 11px;
-  }
-  .guide-dialog-tools {
-    padding: 10px 16px;
-    gap: 12px;
-    font-size: 11px;
-  }
-  .guide-dialog-tools span {
-    display: none;
-  }
-  .guide-dialog-image img.is-zoomed {
-    width: 1300px;
-  }
-}
 
+}
 .guide-tab-indicator {
   position: absolute;
   top: 4px;
@@ -1084,82 +928,70 @@
   padding: 0;
   background: transparent;
 }
-.guide-dialog.is-closing {
-  animation: sheet-out 180ms ease-in both;
-}
-.guide-dialog.is-closing::backdrop {
-  animation: backdrop-in 180ms ease-in reverse both;
-}
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .guide-sheet-card:hover,
+.guide-sheet-card:hover,
   .guide-light-preview:hover {
     translate: 0 -3px;
     box-shadow: 0 10px 32px #0000000b;
   }
-  .guide-source-link:hover,
-  .guide-dialog-tools a:hover {
-    text-decoration: underline;
-  }
+
 }
 @media (max-width: 760px) {
-  .guide-header {
+.guide-header {
     height: 72px;
   }
-  .guide-main {
+.guide-main {
     padding-top: 30px;
   }
-  .guide-intro {
+.guide-intro {
     margin-bottom: 24px;
   }
-  .guide-intro h1 {
+.guide-intro h1 {
     letter-spacing: -1px;
   }
-  .guide-lead {
+.guide-lead {
     font-size: 13px;
     max-width: 280px;
     line-height: 1.8;
   }
-  .guide-tabbar {
+.guide-tabbar {
     width: 100%;
   }
-  .guide-tabbar button {
+.guide-tabbar button {
     min-height: 40px;
   }
-  .guide-house-facts {
+.guide-house-facts {
     gap: 24px;
   }
-  .guide-room-chips button {
+.guide-room-chips button {
     font-size: 11px;
   }
-  .guide-text-link {
+.guide-text-link {
     padding: 6px 9px;
   }
-  .guide-card-heading h2 {
+.guide-card-heading h2 {
     font-size: 15px;
   }
-  .guide-card-heading p {
+.guide-card-heading p {
     font-size: 11px;
   }
-  .guide-room-detail {
+.guide-room-detail {
     border-radius: 22px;
   }
-  .guide-detail-section p {
+.guide-detail-section p {
     font-size: 14px;
   }
-  .guide-detail-section ul {
+.guide-detail-section ul {
     font-size: 13px;
   }
-  .guide-evidence-note {
+.guide-evidence-note {
     font-size: 11px;
   }
-  .guide-cad-icon {
+.guide-cad-icon {
     display: none;
   }
-  .guide-dialog {
-    border-radius: 22px;
-  }
-}
 
+}
 /* Navigation targets sit below the persistent header. */
 #guide-browse,
 #room-plan,
@@ -1173,48 +1005,48 @@
   display: none;
 }
 @media (max-width: 760px) {
-  .home-guide {
+.home-guide {
     --muted: var(--text-secondary);
   }
-  .guide-header {
+.guide-header {
     padding-inline: 14px;
   }
-  .guide-header nav {
+.guide-header nav {
     gap: 5px;
   }
-  .guide-header nav button {
+.guide-header nav button {
     height: 44px;
     font-size: 12px;
     padding-inline: 10px;
   }
-  .guide-header nav .guide-lock-button {
+.guide-header nav .guide-lock-button {
     width: 44px;
   }
-  .guide-intro {
+.guide-intro {
     margin-bottom: 20px;
   }
-  .guide-intro h1 {
+.guide-intro h1 {
     font-size: 28px;
   }
-  .guide-lead {
+.guide-lead {
     font-size: 15px;
     max-width: none;
   }
-  .guide-house-facts {
+.guide-house-facts {
     font-size: 12px;
   }
-  .guide-tabbar button {
+.guide-tabbar button {
     min-height: 44px;
     font-size: 13px;
   }
-  .guide-card-heading p,
+.guide-card-heading p,
   .guide-plan-footer {
     font-size: 12px;
   }
-  .guide-pin {
+.guide-pin {
     display: none;
   }
-  .guide-map-number {
+.guide-map-number {
     display: grid;
     place-items: center;
     position: absolute;
@@ -1229,70 +1061,57 @@
     color: var(--text-primary);
     pointer-events: none;
   }
-  .guide-map-number.is-selected {
+.guide-map-number.is-selected {
     color: #fff;
     background: var(--action-fill);
     border-color: var(--tint);
   }
-  .guide-room-chips {
+.guide-room-chips {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
-  .guide-room-chips button {
+.guide-room-chips button {
     min-height: 44px;
     font-size: 14px;
     padding: 8px 6px;
     border-radius: 12px;
   }
-  .guide-chip-number {
+.guide-chip-number {
     display: inline;
     margin-right: 5px;
     font-size: 11px;
     opacity: 0.7;
   }
-  .guide-back-plan {
+.guide-back-plan {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
   }
-  .guide-detail-section p,
+.guide-detail-section p,
   .guide-detail-section ul {
     font-size: 16px;
     line-height: 1.8;
   }
-  .guide-detail-section .guide-label,
+.guide-detail-section .guide-label,
   .guide-original-name,
   .guide-kicker {
     font-size: 13px;
   }
-  .guide-source-link,
+.guide-source-link,
   .guide-text-link {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
     font-size: 13px;
   }
-  .guide-next li p {
+.guide-next li p {
     font-size: 15px;
   }
-  .guide-evidence-note {
+.guide-evidence-note {
     font-size: 13px;
   }
-}
-.guide-dialog-image .guide-dialog-preview {
-  position: absolute;
-  inset: 12px;
-  width: calc(100% - 24px);
-  height: calc(100% - 24px);
-  object-fit: contain;
-  opacity: 1;
-}
-.guide-dialog-image-feedback {
-  inset: auto auto 20px 20px;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: var(--glass-strong);
+
 }
 .guide-room-actions {
   display: flex;
@@ -1341,7 +1160,8 @@
   color: var(--tint);
 }
 @media (max-width: 760px) {
-  .guide-header {
+.guide-header {
     background: var(--glass-strong);
   }
+
 }

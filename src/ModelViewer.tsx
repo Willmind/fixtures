@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HomeScene } from "./model/HomeScene";
-import type { ViewOptions } from "./model/HomeScene";
+import type { ViewOptions } from "./model/options";
 import { Icon } from "./icons";
 
 type Props = {

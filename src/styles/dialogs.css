@@ -1,0 +1,64 @@
+.source-dialog {
+  border: 1px solid var(--glass-border);
+  padding: 0;
+  border-radius: 26px;
+  max-width: min(530px, calc(100vw - 32px));
+  box-shadow: 0 20px 80px #1d1d1f30;
+  color: var(--text-primary);
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px);
+}
+.source-dialog::backdrop {
+  background: #15152055;
+  backdrop-filter: blur(8px);
+}
+.dialog-content {
+  padding: 28px;
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dialog-heading h2 {
+  font-size: 20px;
+  margin: 0;
+}
+.dialog-content p {
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--text-secondary);
+}
+.dialog-content dl {
+  margin: 25px 0;
+}
+.dialog-content dl > div {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  margin-bottom: 17px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.dialog-content dt {
+  font-weight: 600;
+}
+.dialog-content dd {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.source-note {
+  background: var(--surface-muted);
+  padding: 14px;
+  border-radius: 7px;
+}
+.dialog-content .primary-button {
+  float: right;
+  margin-top: 6px;
+}
+.dialog-content form {
+  display: flow-root;
+}
+.source-dialog[open] {
+  animation: sheet-in 360ms var(--ease-out) both;
+}

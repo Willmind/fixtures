@@ -1,94 +1,65 @@
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { isFixtureOperable } from "./fixtures/interactions.ts";
+import { BoxGeometryPool } from "./fixtures/BoxGeometryPool.ts";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-import { defaults, modelCenter, walls } from "./plan";
-import type { Point } from "./plan";
+import { defaults, modelCenter, walls } from "./plan.ts";
+import type { Point } from "./plan.ts";
 import {
   balconyRoofs,
   balconyFurniture,
-  balconyEntryDoor,
   balconyChoices,
   balconyWindowRuns,
   bathroomFittings,
   bathroomVanitySize,
   bedroomBeds,
   bedroomStorage,
-  ceilingLighting,
-  bedroomAirConditioners,
   curtainColors,
-  diningFurniture,
   furnitureSize,
   homeOfficeFurniture,
   kitchenFurniture,
   livingLayouts,
-  livingAirConditioner,
   livingPlacement,
   previewPalette,
   televisionSideDecor,
   roomCurtains,
   utilityEquipment,
   utilityDryingRack,
-} from "./arrangements";
-import type { BalconyId, BalconyModes, CurtainColor, LayoutPreview } from "./arrangements";
-import { sofaBody, sofaSupport, televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture";
-import type { BoxPart, TelevisionMount } from "./furniture";
-import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains";
-import { applySurfaceUVs, createTileSurface } from "./finishes";
-import { entryCorridor, homeDoors } from "./doors";
-import { OpenCloseMotion } from "./OpenCloseMotion";
-import { storageBed } from "./beds";
-import { createPottedTree } from "./plants";
-import { createSlidingWindow } from "./windows";
-import { createSquatPan } from "./squatToilet";
-import { createGasFlameMaterial, createGasFlames, GasBurner } from "./gasBurner";
-import { WaterTap } from "./waterTap";
-import { RobotRoute } from "./robotRoute";
-import { createBathroomMirror } from "./mirrors";
-import { ExhaustFan } from "./exhaustFans";
-import { floorElevation } from "./drainage";
-import { ReflectionBudget } from "./ReflectionBudget";
-import { bayWindowFor } from "./bayWindows";
+} from "./arrangements.ts";
+import type { BalconyId, LayoutPreview } from "./arrangements.ts";
+import { televisionMounts, televisionParts, televisionWallBackdrop } from "./furniture.ts";
+import type { BoxPart, TelevisionMount } from "./furniture.ts";
+import { createSlidingCurtainPanel, createCurtainWeave, CurtainTransition } from "./curtains.ts";
+import { applySurfaceUVs, createTileSurface } from "./finishes.ts";
+import { OpenCloseMotion } from "./OpenCloseMotion.ts";
+import { storageBed } from "./beds.ts";
+import { createPottedTree } from "./plants.ts";
+import { createSquatPan } from "./squatToilet.ts";
+import { createGasFlameMaterial, createGasFlames, GasBurner } from "./gasBurner.ts";
+import { WaterTap } from "./waterTap.ts";
+import { RobotRoute } from "./robotRoute.ts";
+import { createBathroomMirror } from "./mirrors.ts";
+import { ExhaustFan } from "./exhaustFans.ts";
+import { floorElevation } from "./drainage.ts";
+import { ReflectionBudget } from "./ReflectionBudget.ts";
 
-export type LightingMode = "day" | "night";
-
-export type FixtureOptions = {
-  lightingMode: LightingMode;
-  lightCommand?: { on: boolean; revision: number };
-  layout: LayoutPreview;
-  curtainColor: CurtainColor;
-  televisionMount: TelevisionMount;
-  balconyRoofs: boolean;
-  balconyModes: BalconyModes;
-  equipment: boolean;
-  cutaway: boolean;
-  view: "perspective" | "plan";
-  wallHeight: number;
-  labels: boolean;
-};
+import type { FixtureOptions } from "./options.ts";
+import { fixtureOptionsChanged, fixtureAppearanceChanged } from "./options.ts";
+export type { FixtureOptions, LightingMode } from "./options.ts";
+import { FurnitureBuilder } from "./fixtures/FurnitureBuilder.ts";
+import { OpeningFixtures } from "./fixtures/OpeningFixtures.ts";
+import { FixtureLighting } from "./fixtures/FixtureLighting.ts";
+import type { FixtureBuilderContext } from "./fixtures/context.ts";
 
 /** Lightweight, reusable preview objects. Switching layouts never rebuilds meshes. */
 export class HomeFixtures {
   readonly group = new THREE.Group();
-  private lightingMode?: LightingMode;
-  private lightCommandRevision?: number;
   private roofs = new THREE.Group();
   private equipment = new THREE.Group();
   private furnishings = new THREE.Group();
   private entrances = new THREE.Group();
-  private entranceWall?: THREE.Mesh;
-  private doors: {
-    body: THREE.Group; height: number; header: THREE.Mesh;
-    handles: THREE.Group[]; motion: OpenCloseMotion; apply: (value: number) => void;
-  }[] = [];
-  private glazingDoors: { motion: OpenCloseMotion; apply: (value: number) => void }[] = [];
-  private windows: ReturnType<typeof createSlidingWindow>[] = [];
   private bedDrawers: { group: THREE.Group; closedX: number; side: number;
     travel: number; motion: OpenCloseMotion }[] = [];
   private gasBurners: GasBurner[] = [];
-  private bedsideLamps: { light: THREE.PointLight; shade: THREE.MeshStandardMaterial;
-    bulb: THREE.MeshStandardMaterial; on: boolean }[] = [];
-  private ceilingLights: { group: THREE.Group; light: THREE.PointLight;
-    surface: THREE.MeshStandardMaterial; power: number; on: boolean }[] = [];
   private taps: WaterTap[] = [];
   private robot?: { group: THREE.Group; route: RobotRoute; label: CSS2DObject };
   private hoodChimney?: THREE.Mesh;
@@ -113,6 +84,8 @@ export class HomeFixtures {
   private labels: CSS2DObject[] = [];
   private equipmentLabels: CSS2DObject[] = [];
   private equipmentPlanLabel?: CSS2DObject;
+  private previousOptions?: FixtureOptions;
+  private geometryPool = new BoxGeometryPool();
   private materials = new Set<THREE.Material>();
   private textures = new Set<THREE.Texture>();
   private roofMaterial = this.material({ color: "#d1d0ca", roughness: 0.95 });
@@ -154,9 +127,42 @@ export class HomeFixtures {
     depthWrite: false, side: THREE.DoubleSide,
   });
 
+  private readonly builder: FixtureBuilderContext = {
+    box: (...args) => this.box(...args),
+    at: (...args) => this.at(...args),
+    part: (...args) => this.part(...args),
+    pipe: (...args) => this.pipe(...args),
+    tagRoom: (...args) => this.tagRoom(...args),
+    label: (...args) => this.label(...args),
+    material: (...args) => this.material(...args),
+    materials: {
+      cabinet: this.cabinetMaterial,
+      sofa: this.sofaMaterial,
+      cushion: this.cushionMaterial,
+      white: this.whiteMaterial,
+      dark: this.darkMaterial,
+      support: this.supportMaterial,
+      chairMesh: this.chairMeshMaterial,
+      wood: this.woodMaterial,
+      wetFloor: this.wetFloorMaterial,
+      ceramic: this.ceramicMaterial,
+      steel: this.steelMaterial,
+      mirror: this.mirrorMaterial,
+      backdrop: this.backdropMaterial,
+      windowFrame: this.windowFrameMaterial,
+      windowGlass: this.windowGlassMaterial,
+      doorGlass: this.doorGlassMaterial,
+    },
+  };
+  private readonly furniture = new FurnitureBuilder(this.builder);
+  private readonly openings: OpeningFixtures;
+  private readonly lighting: FixtureLighting;
+
   constructor() {
     this.group.name = "balcony-roofs-and-layout-previews";
     this.group.add(this.roofs, this.equipment, this.furnishings, this.entrances);
+    this.openings = new OpeningFixtures(this.builder, this.entrances, this.furnishings);
+    this.lighting = new FixtureLighting(this.builder, this.furnishings);
     this.buildRoofs();
     this.buildEnclosures();
     for (const layout of livingLayouts) {
@@ -170,8 +176,8 @@ export class HomeFixtures {
       const coffeeTable = this.at(group, placement.coffeeTable.center, placement.coffeeTable.rotation);
       this.buildTelevision(tv);
       this.buildTelevisionSideDecor(tv);
-      this.buildSofa(sofa);
-      this.buildCoffeeTable(coffeeTable);
+      this.furniture.buildSofa(sofa);
+      this.furniture.buildCoffeeTable(coffeeTable);
       this.televisionLabels.push(this.label(tv, "电视 / 电视柜", 1.55, "tv"));
       this.label(sofa, "沙发", 1.0, "sofa");
       this.label(coffeeTable, "茶几", furnitureSize.coffeeTable.height + 0.12, "coffee-table");
@@ -180,233 +186,19 @@ export class HomeFixtures {
     this.buildEquipment();
     this.buildRoomFurnishings();
     this.buildUtilityDryingRack();
-    this.buildDoors();
-    this.buildWindows();
-    this.buildBalconyEntryDoor();
-    this.buildEntranceCorridor();
   }
 
-  private buildDoors() {
-    for (const placement of homeDoors) {
-      const { wall, opening, frame, gap, kind } = placement;
-      const body = this.at(this.entrances, wall.from, placement.rotation);
-      body.name = `${wall.id}-operable-door`;
-      const width = opening.end - opening.start, height = opening.top;
-      const thickness = wall.thickness ?? defaults.wallThickness;
-      const material = kind === "entry" ? this.cabinetMaterial
-        : kind === "bathroom" ? this.whiteMaterial : this.woodMaterial;
-      const frameMaterial = kind === "sliding" ? this.windowFrameMaterial : material;
-      for (const x of [opening.start + frame / 2, opening.end - frame / 2]) {
-        this.box(body, [frame, height, thickness + 0.025], [x, height / 2, 0], frameMaterial);
-      }
-      const header = this.box(body, [width, frame, thickness + 0.025],
-        [(opening.start + opening.end) / 2, height - frame / 2, 0], frameMaterial);
-      const handles: THREE.Group[] = [];
-      const addHandle = (parent: THREE.Group, x: number, z: number, direction: number) => {
-        const handle = new THREE.Group();
-        handle.position.set(x, 1, z);
-        parent.add(handle);
-        this.box(handle, [0.04, kind === "entry" ? 0.19 : 0.11, 0.016],
-          [0, 0, 0], kind === "entry" ? this.darkMaterial : this.steelMaterial, 0.008);
-        this.box(handle, [0.105, 0.018, 0.025], [-direction * 0.035, 0, Math.sign(z) * 0.018],
-          this.steelMaterial, 0.008);
-        handles.push(handle);
-      };
-      let apply: (value: number) => void;
-      if (kind === "sliding") {
-        const clearWidth = width - frame * 2 - gap * 2;
-        const left = opening.start + frame + gap;
-        const panel = new THREE.Group();
-        // Park the open panel along the kitchen-side wall, leaving the whole
-        // doorway clear instead of reducing a 1.2 m opening to half its width.
-        panel.position.set(left, 0, thickness / 2 + 0.055);
-        body.add(panel);
-        for (const x of [0.012, clearWidth - 0.012]) {
-          this.box(panel, [0.024, height - frame - 0.025, 0.03],
-            [x, (height - frame + 0.025) / 2, 0], frameMaterial);
-        }
-        for (const y of [0.04, height - frame - 0.015]) {
-          this.box(panel, [clearWidth, 0.03, 0.03], [clearWidth / 2, y, 0], frameMaterial);
-        }
-        this.box(panel, [clearWidth - 0.048, height - frame - 0.085, 0.006],
-          [clearWidth / 2, (height - frame + 0.025) / 2, 0], this.doorGlassMaterial);
-        for (const side of [-1, 1]) addHandle(panel, clearWidth - 0.075, side * 0.032, 1);
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(clearWidth * 2 + 0.05, 0.04, 0.06), frameMaterial);
-        rail.position.set(-clearWidth / 2, 0.065, thickness / 2 + 0.055);
-        header.add(rail);
-        apply = (value) => { panel.position.x = left - (clearWidth + gap) * value; };
-      } else {
-        const direction = placement.hinge === "start" ? 1 : -1;
-        const leafWidth = width - frame * 2 - gap * 2;
-        const pivot = new THREE.Group();
-        pivot.position.x = direction === 1 ? opening.start + frame + gap : opening.end - frame - gap;
-        // Put the hinge at the room-facing edge so the open leaf clears the jamb.
-        pivot.position.z = -placement.swing * direction * (thickness / 2 + 0.03);
-        body.add(pivot);
-        this.box(pivot, [leafWidth, height - frame - 0.025, 0.045],
-          [direction * leafWidth / 2, (height - frame + 0.025) / 2, 0], material, 0.004);
-        for (const side of [-1, 1]) addHandle(pivot, direction * (leafWidth - 0.085), side * 0.032, direction);
-        for (const y of [0.25, height - 0.3]) {
-          const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.09, 12), this.steelMaterial);
-          hinge.position.set(0, y, 0);
-          pivot.add(hinge);
-        }
-        apply = (value) => { pivot.rotation.y = placement.swing * Math.PI / 2 * value; };
-      }
-      const motion = new OpenCloseMotion();
-      apply(motion.value);
-      const index = this.doors.length;
-      body.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.homeDoorIndex = index; });
-      this.doors.push({ body, height, header, handles, motion, apply });
-    }
-  }
 
-  private buildWindows() {
-    for (const wall of walls) {
-      const rotation = -Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0]);
-      const windows = (wall.openings ?? []).filter(({ kind }) => kind === "window");
-      if (!windows.length) continue;
-      const wallGroup = this.at(this.entrances, wall.from, rotation);
-      wallGroup.name = `${wall.id}-operable-windows`;
-      for (const opening of windows) {
-        const bay = bayWindowFor(wall.id);
-        const window = createSlidingWindow(opening, {
-          frame: this.windowFrameMaterial, glass: this.windowGlassMaterial, handle: this.steelMaterial,
-        }, bay?.panes ?? 2);
-        if (bay) window.group.position.z = bay.outside * bay.projection;
-        wallGroup.add(window.group);
-        this.windows.push(window);
-        this.registerGlazingDoor([window.group], window.apply);
-      }
-    }
-  }
-
-  private buildEntranceCorridor() {
-    const { from, to, shoeCabinet: cabinet } = entryCorridor;
-    const width = to[0] - from[0], depth = to[1] - from[1];
-    const corridor = this.at(this.entrances, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]);
-    corridor.name = "exterior-entry-corridor-preview";
-    this.box(corridor, [width, 0.16, depth], [0, -0.08, 0], this.wetFloorMaterial);
-    this.entranceWall = this.box(corridor, [width, 1, 0.12], [0, 0.5, depth / 2], this.backdropMaterial);
-    this.label(corridor, "门外走廊 · 示意", 0.05, "corridor");
-    const cabinetGroup = this.at(this.furnishings, cabinet.center, cabinet.rotation);
-    cabinetGroup.name = "entry-shoe-cabinet";
-    this.box(cabinetGroup, [cabinet.width - 0.08, 0.1, cabinet.depth - 0.06],
-      [0, 0.05, 0], this.supportMaterial, 0.01);
-    const panel = 0.03;
-    const bodyHeight = cabinet.height - 0.1;
-    const bodyCenterY = (cabinet.height + 0.1) / 2;
-    this.box(cabinetGroup, [cabinet.width, bodyHeight, panel],
-      [0, bodyCenterY, -(cabinet.depth - panel) / 2], this.woodMaterial);
-    for (const side of [-1, 1]) {
-      this.box(cabinetGroup, [panel, bodyHeight, cabinet.depth],
-        [side * (cabinet.width - panel) / 2, bodyCenterY, 0], this.woodMaterial);
-    }
-    for (const y of [0.1 + panel / 2, cabinet.height - panel / 2]) {
-      this.box(cabinetGroup, [cabinet.width - panel * 2, panel, cabinet.depth],
-        [0, y, 0], this.woodMaterial);
-    }
-    for (const y of [0.34, 0.58, 0.82]) {
-      this.box(cabinetGroup, [cabinet.width - panel * 2, 0.022, cabinet.depth - 0.06],
-        [0, y, -0.005], this.woodMaterial);
-    }
-    const hingeX = (cabinet.width - panel) / 2;
-    const doorWidth = hingeX - 0.006;
-    for (const side of [-1, 1]) {
-      const door = new THREE.Group();
-      door.name = `shoe-cabinet-door-${side < 0 ? "left" : "right"}`;
-      door.position.set(side * hingeX, 0, cabinet.depth / 2 + 0.014);
-      cabinetGroup.add(door);
-      this.box(door, [doorWidth, cabinet.height - 0.15, 0.022],
-        [-side * doorWidth / 2, bodyCenterY, 0], this.woodMaterial, 0.008);
-      this.box(door, [0.015, 0.15, 0.025],
-        [-side * (doorWidth - 0.03), 0.83, 0.023], this.steelMaterial, 0.005);
-      this.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
-    }
-    this.label(cabinetGroup, "鞋柜", cabinet.height + 0.12, "shoe-cabinet");
-  }
-
-  private registerGlazingDoor(parts: THREE.Group[], apply: (value: number) => void, initialOpen = false) {
-    const index = this.glazingDoors.length;
-    const motion = new OpenCloseMotion(initialOpen);
-    for (const part of parts) part.traverse((object) => {
-      if (object instanceof THREE.Mesh) object.userData.glazingDoorIndex = index;
-    });
-    this.glazingDoors.push({ motion, apply });
-    apply(motion.value);
-  }
-
-  isOperable(object: THREE.Object3D) {
-    return ["homeDoorIndex", "glazingDoorIndex", "bedDrawerIndex", "curtainIndex", "gasBurnerIndex", "waterTapIndex", "exhaustFanIndex", "bedsideLampIndex", "ceilingLightIndex"].some(
-      (key) => typeof object.userData[key] === "number",
-    ) || Array.isArray(object.userData.bedDrawerIds) || object.userData.robotVacuum === true;
-  }
-
-  private buildBalconyEntryDoor() {
-    const { center, width, height } = balconyEntryDoor;
-    const group = this.at(this.entrances, center);
-    group.name = "main-balcony-sliding-glass-door";
-    for (const x of [-width / 2, width / 2]) {
-      this.box(group, [0.035, height, 0.1], [x, height / 2, 0], this.windowFrameMaterial);
-    }
-    for (const y of [0.02, height - 0.02]) {
-      this.box(group, [width, 0.04, 0.1], [0, y, 0], this.windowFrameMaterial);
-    }
-    const panelWidth = width / 4;
-    const panels: THREE.Group[] = [];
-    for (let i = 0; i < 4; i++) {
-      const panel = new THREE.Group();
-      panel.position.set(-width / 2 + panelWidth * (i + 0.5), 0, i === 1 || i === 2 ? -0.045 : 0.015);
-      group.add(panel);
-      this.box(panel, [panelWidth - 0.045, height - 0.1, 0.008],
-        [0, height / 2, 0], this.windowGlassMaterial);
-      for (const x of [-panelWidth / 2 + 0.012, panelWidth / 2 - 0.012]) {
-        this.box(panel, [0.024, height - 0.08, 0.028], [x, height / 2, 0], this.windowFrameMaterial);
-      }
-      for (const y of [0.045, height - 0.045]) {
-        this.box(panel, [panelWidth, 0.024, 0.028], [0, y, 0], this.windowFrameMaterial);
-      }
-      if (i === 1 || i === 2) {
-        const x = (i === 1 ? 1 : -1) * (panelWidth / 2 - 0.085);
-        for (const z of [-0.035, 0.035]) {
-          this.box(panel, [0.02, 0.22, 0.025], [x, 1.05, z], this.steelMaterial, 0.006);
-        }
-        panels.push(panel);
-      }
-    }
-    this.registerGlazingDoor(panels, (value) => {
-      panels[0].position.x = -panelWidth / 2 - (panelWidth - 0.035) * value;
-      panels[1].position.x = panelWidth / 2 + (panelWidth - 0.035) * value;
-    }, true);
-    this.tagRoom(group, "balcony");
-  }
 
   toggleDoor(object: THREE.Object3D, now: number, reducedMotion = false) {
-    const glazingIndex = object.userData.glazingDoorIndex;
-    if (typeof glazingIndex === "number") {
-      const door = this.glazingDoors[glazingIndex];
-      if (!door) return false;
-      door.motion.toggle(now, reducedMotion);
-      door.apply(door.motion.value);
-      return true;
-    }
-    const index = object.userData.homeDoorIndex;
-    if (typeof index !== "number") return false;
-    const door = this.doors[index];
-    if (!door) return false;
-    door.motion.toggle(now, reducedMotion);
-    door.apply(door.motion.value);
-    return true;
+    return this.openings.toggleDoor(object, now, reducedMotion);
   }
+  animateDoors(now: number) { return this.openings.animateDoors(now); }
 
-  animateDoors(now: number) {
-    let moving = false;
-    for (const door of [...this.doors, ...this.glazingDoors]) {
-      moving = door.motion.advance(now) || moving;
-      door.apply(door.motion.value);
-    }
-    return moving;
-  }
+  toggleCeilingLight(object: THREE.Object3D) { return this.lighting.toggleCeilingLight(object); }
+  toggleBedsideLamp(object: THREE.Object3D) { return this.lighting.toggleBedsideLamp(object); }
+
+  isOperable(object: THREE.Object3D) { return isFixtureOperable(object); }
 
   private material(options: THREE.MeshStandardMaterialParameters) {
     const material = new THREE.MeshStandardMaterial(options);
@@ -460,12 +252,13 @@ export class HomeFixtures {
     parent: THREE.Group, size: [number, number, number],
     position: [number, number, number], material: THREE.Material | THREE.Material[], radius = 0,
   ) {
-    const geometry = radius
-      ? new RoundedBoxGeometry(...size, 2, radius)
-      : new THREE.BoxGeometry(...size);
+    const usesWorldUVs = (Array.isArray(material) ? material : [material]).some(
+      (item) => item === this.wetWallMaterial || item === this.wetFloorMaterial,
+    );
+    const geometry = this.geometryPool.get(size, radius, usesWorldUVs);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(...position);
-    if ((Array.isArray(material) ? material : [material]).some((item) => item === this.wetWallMaterial || item === this.wetFloorMaterial)) {
+    if (usesWorldUVs) {
       parent.updateWorldMatrix(true, false);
       mesh.updateMatrix();
       applySurfaceUVs(geometry, new THREE.Matrix4().multiplyMatrices(parent.matrixWorld, mesh.matrix));
@@ -560,34 +353,6 @@ export class HomeFixtures {
     }
   }
 
-  private buildSofa(group: THREE.Group) {
-    const { width, depth, height } = furnitureSize.sofa;
-    this.part(group, sofaSupport, this.supportMaterial);
-    this.part(group, sofaBody, this.sofaMaterial);
-    this.box(group, [width, height - 0.2, 0.2],
-      [0, (height + 0.2) / 2, -depth / 2 + 0.1], this.sofaMaterial, 0.06);
-    for (const x of [-width / 2 + 0.1, width / 2 - 0.1]) {
-      this.box(group, [0.2, 0.36, depth], [x, 0.43, 0], this.sofaMaterial, 0.05);
-    }
-    for (const x of [-0.5, 0.5]) {
-      this.box(group, [0.96, 0.16, 0.65], [x, 0.43, 0.1], this.cushionMaterial, 0.05);
-      this.box(group, [0.95, 0.34, 0.12], [x, 0.62, -0.23], this.cushionMaterial, 0.04);
-    }
-  }
-
-  private buildCoffeeTable(group: THREE.Group) {
-    const { width, depth, height } = furnitureSize.coffeeTable;
-    group.name = "living-light-walnut-coffee-table";
-    const topThickness = 0.035;
-    this.box(group, [width, topThickness, depth], [0, height - topThickness / 2, 0], this.woodMaterial, 0.016);
-    const legHeight = height - topThickness;
-    for (const x of [-width / 2 + 0.10, width / 2 - 0.10]) {
-      for (const z of [-depth / 2 + 0.10, depth / 2 - 0.10]) {
-        this.box(group, [0.055, legHeight, 0.055], [x, legHeight / 2, z], this.woodMaterial, 0.006);
-      }
-    }
-    this.box(group, [width - 0.15, 0.022, depth - 0.16], [0, 0.12, 0], this.woodMaterial, 0.009);
-  }
 
   private buildEquipment() {
     const { washer: washerPosition, heater: heaterPosition } = utilityEquipment;
@@ -620,7 +385,7 @@ export class HomeFixtures {
     const glass = new THREE.Mesh(new THREE.CircleGeometry(0.166, 32), this.windowGlassMaterial);
     glass.position.set(0.205, 0, 0.003); door.add(glass);
     this.box(door, [0.035, 0.105, 0.04], [0.385, 0, 0.018], this.whiteMaterial, 0.012);
-    this.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI * 0.55 * value; });
+    this.openings.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI * 0.55 * value; });
     this.box(washer, [0.44, 0.055, 0.02], [0, 0.75, 0.315], this.darkMaterial);
     this.equipmentLabels.push(this.label(washer, "洗衣机", 1.0, "equipment"));
     this.equipmentPlanLabel = this.label(washer, "洗衣机 / 热水器", 1.0, "equipment");
@@ -717,7 +482,6 @@ export class HomeFixtures {
       this.tagRoom(group, bed.roomId);
     }
     this.buildBedroomStorage();
-    this.buildCeilingLights();
     for (const fitting of bathroomFittings) {
       const vanity = this.at(this.furnishings, fitting.vanity.center, fitting.vanity.rotation);
       vanity.name = `${fitting.roomId}-basin-and-mirror`;
@@ -731,7 +495,7 @@ export class HomeFixtures {
         this.box(toilet, [0.36, 0.40, 0.11], [0, 1.02, -0.285], this.ceramicMaterial, 0.025);
         this.box(toilet, [0.065, 0.008, 0.035], [0, 1.224, -0.285], this.faucetMaterial, 0.005);
         this.pipe(toilet, [[0, 0.825, -0.235], [0, 0.12, -0.235], [0, 0.06, -0.28]], 0.014);
-      } else this.buildToilet(toilet);
+      } else this.furniture.buildToilet(toilet);
       this.tagRoom(toilet, fitting.roomId);
       const shower = this.at(this.furnishings, fitting.shower.center, fitting.shower.rotation);
       shower.name = `${fitting.roomId}-shower`;
@@ -744,83 +508,12 @@ export class HomeFixtures {
     }
     this.buildKitchen();
     this.buildHomeOffice();
-    this.buildDining();
+    this.furniture.buildDining(this.furnishings);
     this.buildBalconyFurniture();
     this.buildCurtains();
-    this.buildAirConditioners();
+    this.airConditioners = this.furniture.buildAirConditioners(this.furnishings);
   }
 
-  private buildCeilingLights() {
-    const casing = this.material({ color: "#f5f3ee", roughness: 0.65, side: THREE.DoubleSide });
-    const recess = this.material({ color: "#424546", roughness: 0.8, side: THREE.DoubleSide });
-    for (const config of ceilingLighting) {
-      const center: Point = [
-        config.fixtures.reduce((sum, [x]) => sum + x, 0) / config.fixtures.length,
-        config.fixtures.reduce((sum, [, z]) => sum + z, 0) / config.fixtures.length,
-      ];
-      const group = this.at(this.furnishings, center);
-      group.name = `${config.id}-ceiling-light`;
-      const surface = this.material({ color: "#eee9dd", roughness: 0.6, side: THREE.DoubleSide,
-        emissive: config.color, emissiveIntensity: 0 });
-      const add = (parent: THREE.Group, geometry: THREE.BufferGeometry, material: THREE.Material, y: number) => {
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.y = y;
-        parent.add(mesh);
-        return mesh;
-      };
-      for (const [x, z] of config.fixtures) {
-        const fixture = new THREE.Group();
-        fixture.position.set(x - center[0], 0, z - center[1]);
-        group.add(fixture);
-        if (config.kind === "panel") {
-          // Thin frame and diffuser keep the light visible in the roofless view.
-          for (const side of [-1, 1]) {
-            this.box(fixture, [0.50, 0.055, 0.025], [0, -0.0275, side * 0.1375], casing, 0.004);
-            this.box(fixture, [0.025, 0.055, 0.25], [side * 0.2375, -0.0275, 0], casing, 0.004);
-          }
-          this.box(fixture, [0.45, 0.012, 0.25], [0, -0.049, 0], surface, 0.004);
-        } else if (config.kind === "pendant") {
-          add(fixture, new THREE.CylinderGeometry(0.075, 0.075, 0.035, 24), casing, -0.0175);
-          add(fixture, new THREE.CylinderGeometry(0.003, 0.003, 0.65, 8), this.steelMaterial, -0.36);
-          add(fixture, new THREE.CylinderGeometry(0.08, 0.23, 0.18, 32, 1, true), casing, -0.77);
-          const diffuser = add(fixture, new THREE.CircleGeometry(0.215, 32), surface, -0.858);
-          diffuser.rotation.x = Math.PI / 2;
-        } else {
-          const radius = config.kind === "downlights" ? 0.075 : 0.20;
-          add(fixture, new THREE.CylinderGeometry(radius, radius, 0.05, 32, 1, true), casing, -0.025);
-          const rim = add(fixture, new THREE.RingGeometry(radius * 0.80, radius, 32), casing, -0.004);
-          rim.rotation.x = Math.PI / 2;
-          if (config.kind === "downlights") {
-            const inner = add(fixture, new THREE.RingGeometry(radius * 0.58, radius * 0.81, 32), recess, -0.028);
-            inner.rotation.x = Math.PI / 2;
-          }
-          const diffuser = add(fixture, new THREE.CircleGeometry(radius * (config.kind === "downlights" ? 0.60 : 0.81), 32), surface, -0.048);
-          diffuser.rotation.x = Math.PI / 2;
-        }
-      }
-      // Share one non-shadow-casting light per circuit to keep mobile preview
-      // costs bounded; this is a layout preview, not a photometric simulation.
-      const light = new THREE.PointLight(config.color, 0, 5, 2);
-      light.visible = false;
-      light.position.y = config.kind === "pendant" ? -0.90 : -0.10;
-      group.add(light);
-      const index = this.ceilingLights.length;
-      group.traverse((object) => {
-        if (object instanceof THREE.Mesh) object.userData.ceilingLightIndex = index;
-      });
-      this.tagRoom(group, config.roomId);
-      this.ceilingLights.push({ group, light, surface, power: config.power, on: false });
-    }
-  }
-
-  toggleCeilingLight(object: THREE.Object3D) {
-    const index = object.userData.ceilingLightIndex;
-    if (typeof index !== "number" || !this.ceilingLights[index]) return false;
-    const lamp = this.ceilingLights[index];
-    lamp.on = !lamp.on;
-    this.syncLighting();
-    return true;
-  }
 
   private buildBedroomStorage() {
     for (const { roomId, bedside, wardrobe } of bedroomStorage) {
@@ -832,29 +525,7 @@ export class HomeFixtures {
         this.box(cabinet, [0.37, 0.20, 0.018], [0, y, 0.198], this.woodMaterial, 0.005);
         this.box(cabinet, [0.12, 0.012, 0.018], [0, y + 0.065, 0.216], this.steelMaterial, 0.004);
       }
-      const lamp = new THREE.Group();
-      lamp.name = `${roomId}-clickable-bedside-lamp`;
-      cabinet.add(lamp);
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.024, 24), this.steelMaterial);
-      base.position.y = 0.532; lamp.add(base);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.23, 12), this.steelMaterial);
-      stem.position.y = 0.659; lamp.add(stem);
-      const shadeMaterial = this.material({ color: "#eee3ce", roughness: 0.95,
-        side: THREE.DoubleSide, emissive: "#ffd79b", emissiveIntensity: 0 });
-      const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.17, 0.24, 32, 1, true), shadeMaterial);
-      shade.position.y = 0.85; lamp.add(shade);
-      const bulbMaterial = this.material({ color: "#fff3db", roughness: 0.3,
-        emissive: "#ffe0a6", emissiveIntensity: 0 });
-      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), bulbMaterial);
-      bulb.position.y = 0.78; lamp.add(bulb);
-      const light = new THREE.PointLight("#ffd49b", 0, 2.8, 2);
-      light.visible = false;
-      light.position.set(0, 0.76, 0); lamp.add(light);
-      const index = this.bedsideLamps.length;
-      lamp.traverse((object) => {
-        if (object instanceof THREE.Mesh) object.userData.bedsideLampIndex = index;
-      });
-      this.bedsideLamps.push({ light, shade: shadeMaterial, bulb: bulbMaterial, on: false });
+      this.lighting.addBedside(cabinet, roomId);
       this.tagRoom(cabinet, roomId);
 
       const closet = this.at(this.furnishings, wardrobe.center, wardrobe.rotation);
@@ -872,29 +543,6 @@ export class HomeFixtures {
     }
   }
 
-  toggleBedsideLamp(object: THREE.Object3D) {
-    const index = object.userData.bedsideLampIndex;
-    if (typeof index !== "number" || !this.bedsideLamps[index]) return false;
-    const lamp = this.bedsideLamps[index];
-    lamp.on = !lamp.on;
-    this.syncLighting();
-    return true;
-  }
-
-  private syncLighting() {
-    const night = this.lightingMode === "night";
-    for (const lamp of this.bedsideLamps) {
-      lamp.light.visible = lamp.on && this.furnishings.visible;
-      lamp.light.intensity = lamp.light.visible ? (night ? 5 : 2.5) : 0;
-      lamp.shade.emissiveIntensity = lamp.on ? 0.45 : 0;
-      lamp.bulb.emissiveIntensity = lamp.on ? 2 : 0;
-    }
-    for (const lamp of this.ceilingLights) {
-      lamp.light.visible = lamp.on && lamp.group.visible && this.furnishings.visible;
-      lamp.light.intensity = lamp.light.visible ? lamp.power * (night ? 5 : 1) : 0;
-      lamp.surface.emissiveIntensity = lamp.on ? 1.1 : 0;
-    }
-  }
 
   private buildBed(group: THREE.Group, width: number, roomId: string) {
     const bed = storageBed(width, roomId);
@@ -978,64 +626,6 @@ export class HomeFixtures {
     return moving;
   }
 
-  private buildToilet(group: THREE.Group) {
-    this.box(group, [0.27, 0.25, 0.37], [0, 0.125, 0.04], this.ceramicMaterial, 0.06);
-    this.box(group, [0.40, 0.73, 0.19], [0, 0.365, -0.24], this.ceramicMaterial, 0.045);
-    this.box(group, [0.075, 0.012, 0.04], [0, 0.735, -0.24], this.steelMaterial, 0.005);
-    const bowl = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), this.ceramicMaterial);
-    bowl.scale.set(0.22, 0.15, 0.30);
-    bowl.position.set(0, 0.31, 0.07);
-    bowl.castShadow = true;
-    bowl.receiveShadow = true;
-    group.add(bowl);
-    const opening = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), this.ceramicMaterial);
-    opening.rotation.x = -Math.PI / 2;
-    opening.scale.y = 1.35;
-    opening.position.set(0, 0.463, 0.07);
-    group.add(opening);
-    const seat = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.035, 8, 32), this.ceramicMaterial);
-    seat.rotation.x = -Math.PI / 2;
-    seat.scale.y = 1.35;
-    seat.position.set(0, 0.467, 0.07);
-    seat.castShadow = true;
-    seat.receiveShadow = true;
-    group.add(seat);
-  }
-
-  private buildAirConditioners() {
-    for (const placement of bedroomAirConditioners) {
-      const group = this.at(this.furnishings, placement.center, placement.rotation);
-      group.name = `${placement.roomId}-wall-air-conditioner`;
-      const unit = new THREE.Group();
-      group.add(unit);
-      this.box(unit, [0.86, 0.29, 0.21], [0, 0, 0], this.whiteMaterial, 0.055);
-      this.box(unit, [0.69, 0.055, 0.015], [0, -0.075, 0.103], this.darkMaterial, 0.015);
-      this.box(unit, [0.67, 0.013, 0.035], [0, -0.08, 0.117], this.whiteMaterial, 0.005);
-      this.box(unit, [0.04, 0.017, 0.005], [0.29, 0.025, 0.108], this.mirrorMaterial);
-      const backdrop = this.box(group, [0.99, 1, defaults.wallThickness],
-        [0, 0, -0.205], this.backdropMaterial);
-      this.airConditioners.push({ unit, backdrop });
-      this.tagRoom(group, placement.roomId);
-    }
-    const tower = this.at(this.furnishings, livingAirConditioner.center, livingAirConditioner.rotation);
-    tower.name = "living-floor-air-conditioner";
-    for (const [radius, height, y, material] of [
-      [0.20, 0.08, 0.04, this.supportMaterial],
-      [0.17, 1.7, 0.92, this.whiteMaterial],
-    ] as const) {
-      const part = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 32), material);
-      part.position.y = y;
-      part.castShadow = true;
-      part.receiveShadow = true;
-      tower.add(part);
-    }
-    this.box(tower, [0.18, 0.95, 0.03], [0, 1.00, 0.155], this.darkMaterial, 0.04);
-    for (let index = 0; index < 10; index++) {
-      this.box(tower, [0.15, 0.012, 0.022], [0, 0.65 + index * 0.075, 0.177], this.whiteMaterial);
-    }
-    this.box(tower, [0.07, 0.04, 0.012], [0, 1.57, 0.165], this.darkMaterial, 0.015);
-    this.tagRoom(tower, "living");
-  }
 
   private buildCurtains() {
     for (const placement of roomCurtains) {
@@ -1270,7 +860,7 @@ export class HomeFixtures {
       this.box(door, [0.022, 0.20, 0.022], [-doorWidth + 0.1, 1.05, z], this.steelMaterial, 0.008);
     }
     // Hinge on the right, opening into the wet area rather than the toilet aisle.
-    this.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI / 2 * value; });
+    this.openings.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI / 2 * value; });
   }
 
   private buildBalconyFurniture() {
@@ -1580,38 +1170,9 @@ export class HomeFixtures {
       if (bottom > 0.6) {
         this.box(door, [0.09, 0.12, 0.005], [doorWidth / 2 + 0.15, 1.40, 0.021], this.darkMaterial, 0.008);
       }
-      this.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI / 2 * value; });
+      this.openings.registerGlazingDoor([door], (value) => { door.rotation.y = -Math.PI / 2 * value; });
     }
     this.tagRoom(group, "kitchen");
-  }
-
-  private buildDining() {
-    const { width, depth, center, chairs } = diningFurniture;
-    const group = this.at(this.furnishings, center);
-    group.name = "dining-table-with-four-chairs";
-    this.box(group, [width, 0.075, depth], [0, 0.7375, 0], this.woodMaterial, 0.035);
-    for (const x of [-width / 2 + 0.1, width / 2 - 0.1]) {
-      for (const z of [-depth / 2 + 0.1, depth / 2 - 0.1]) {
-        this.box(group, [0.06, 0.70, 0.06], [x, 0.35, z], this.woodMaterial, 0.015);
-      }
-    }
-    for (const placement of chairs) {
-      const chair = new THREE.Group();
-      chair.position.set(placement.x, 0, placement.z);
-      chair.rotation.y = placement.rotation;
-      group.add(chair);
-      for (const x of [-0.17, 0.17]) {
-        for (const z of [-0.17, 0.17]) {
-          this.box(chair, [0.045, 0.425, 0.045], [x, 0.2125, z], this.woodMaterial);
-        }
-      }
-      this.box(chair, [0.44, 0.08, 0.44], [0, 0.46, 0], this.woodMaterial, 0.035);
-      for (const x of [-0.17, 0.17]) {
-        this.box(chair, [0.045, 0.38, 0.045], [x, 0.615, -0.185], this.woodMaterial);
-      }
-      this.box(chair, [0.44, 0.26, 0.065], [0, 0.755, -0.185], this.woodMaterial, 0.025);
-    }
-    this.tagRoom(group, "living");
   }
 
   private buildHomeOffice() {
@@ -1685,75 +1246,13 @@ export class HomeFixtures {
         door.add(hinge);
       }
       // Reuse glass-door picking, cursor feedback and reversible motion.
-      this.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
+      this.openings.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
     }
     this.tagRoom(display, roomId);
     const chair = this.at(this.furnishings, homeOfficeFurniture.chair.center, homeOfficeFurniture.chair.rotation);
     chair.name = "study-ergonomic-chair";
-    this.buildOfficeChair(chair);
+    this.furniture.buildOfficeChair(chair);
     this.tagRoom(chair, roomId);
-  }
-
-  private buildOfficeChair(group: THREE.Group) {
-    for (let index = 0; index < 5; index++) {
-      const spoke = new THREE.Group();
-      spoke.rotation.y = index * Math.PI * 2 / 5;
-      group.add(spoke);
-      this.box(spoke, [0.30, 0.035, 0.045], [0.14, 0.12, 0], this.supportMaterial, 0.012);
-      this.box(spoke, [0.028, 0.08, 0.045], [0.28, 0.08, 0], this.supportMaterial, 0.008);
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.035, 16), this.darkMaterial);
-      wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(0.28, 0.04, 0);
-      wheel.castShadow = true;
-      spoke.add(wheel);
-    }
-    const lift = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.032, 0.27, 16), this.steelMaterial);
-    lift.position.y = 0.255;
-    group.add(lift);
-    this.box(group, [0.22, 0.045, 0.22], [0, 0.405, 0], this.supportMaterial, 0.01);
-    this.box(group, [0.48, 0.075, 0.47], [0, 0.4575, 0.015], this.darkMaterial, 0.035);
-    this.pipe(group, [[0, 0.39, -0.1], [0, 0.56, -0.23], [0, 0.77, -0.265]], 0.025);
-    const back = new THREE.Group();
-    back.position.set(0, 0.78, -0.24);
-    back.rotation.x = -0.12;
-    group.add(back);
-    for (const x of [-0.23, 0.23]) this.box(back, [0.035, 0.52, 0.035], [x, 0, 0], this.supportMaterial, 0.016);
-    for (const y of [-0.25, 0.25]) this.box(back, [0.46, 0.035, 0.035], [0, y, 0], this.supportMaterial, 0.016);
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.49), this.chairMeshMaterial);
-    mesh.position.z = 0.004;
-    mesh.castShadow = mesh.receiveShadow = true;
-    back.add(mesh);
-    this.box(back, [0.34, 0.075, 0.055], [0, -0.15, 0.035], this.darkMaterial, 0.025);
-    this.box(back, [0.045, 0.20, 0.04], [0, 0.32, -0.015], this.supportMaterial, 0.015);
-    this.box(back, [0.28, 0.14, 0.085], [0, 0.42, 0], this.darkMaterial, 0.04);
-    for (const x of [-0.25, 0.25]) {
-      // One continuous profile joins the arm pad to its support. The foot
-      // extends into the rounded seat edge instead of only touching its top.
-      const profile = new THREE.Shape();
-      profile.moveTo(-0.006, 0.435);
-      profile.lineTo(0.036, 0.435);
-      profile.lineTo(0.036, 0.602);
-      profile.quadraticCurveTo(0.036, 0.632, 0.066, 0.632);
-      profile.lineTo(0.182, 0.632);
-      profile.quadraticCurveTo(0.2, 0.632, 0.2, 0.65);
-      profile.quadraticCurveTo(0.2, 0.668, 0.182, 0.668);
-      profile.lineTo(-0.062, 0.668);
-      profile.quadraticCurveTo(-0.08, 0.668, -0.08, 0.65);
-      profile.quadraticCurveTo(-0.08, 0.632, -0.062, 0.632);
-      profile.lineTo(-0.036, 0.632);
-      profile.quadraticCurveTo(-0.006, 0.632, -0.006, 0.602);
-      profile.closePath();
-      const geometry = new THREE.ExtrudeGeometry(profile, {
-        depth: 0.052, steps: 1, curveSegments: 6,
-        bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 3,
-      });
-      geometry.translate(0, 0, -0.026);
-      geometry.rotateY(-Math.PI / 2);
-      const armrest = new THREE.Mesh(geometry, this.darkMaterial);
-      armrest.position.x = x;
-      armrest.castShadow = armrest.receiveShadow = true;
-      group.add(armrest);
-    }
   }
 
   prepareReflections(now: number, moving: boolean) {
@@ -1767,36 +1266,14 @@ export class HomeFixtures {
   get reflectionsPending() { return this.reflectionBudget.needsAnotherFrame; }
 
   update(options: FixtureOptions) {
+    const previous = this.previousOptions;
+    if (previous && !fixtureOptionsChanged(previous, options)) return;
+    this.previousOptions = options;
+    this.updateLabels(options);
+    // Labels have no WebGL geometry; toggling them needs no reflection pass.
+    if (previous && !fixtureAppearanceChanged(previous, options)) return;
     this.invalidateReflections();
-    // Only a mode change applies the preset. Room selection and other settings
-    // must preserve any lights the user has manually switched off.
-    if (this.lightingMode !== options.lightingMode) {
-      this.lightingMode = options.lightingMode;
-      for (const lamp of [...this.bedsideLamps, ...this.ceilingLights]) {
-        lamp.on = options.lightingMode === "night";
-      }
-    }
-    if (options.lightCommand && options.lightCommand.revision !== this.lightCommandRevision) {
-      this.lightCommandRevision = options.lightCommand.revision;
-      for (const lamp of [...this.bedsideLamps, ...this.ceilingLights]) {
-        lamp.on = options.lightCommand.on;
-      }
-    }
-    const visibleHeight = options.cutaway ? defaults.cutHeight : options.wallHeight;
-    for (const window of this.windows) window.setVisibleHeight(visibleHeight);
-    for (const door of this.doors) {
-      const height = Math.min(visibleHeight, door.height), scale = height / door.height;
-      door.body.scale.y = scale;
-      door.header.visible = visibleHeight >= door.height;
-      for (const handle of door.handles) {
-        handle.position.y = Math.min(1, height - 0.12) / scale;
-        handle.scale.y = 1 / scale;
-      }
-    }
-    if (this.entranceWall) {
-      this.entranceWall.scale.y = visibleHeight;
-      this.entranceWall.position.y = visibleHeight / 2;
-    }
+    this.openings.update(options);
     const curtainColor = curtainColors.find((item) => item.id === options.curtainColor) ?? curtainColors[0];
     this.curtainMaterial.color.set(curtainColor.color);
     this.curtainMaterial.sheenColor.set(curtainColor.sheen);
@@ -1816,12 +1293,7 @@ export class HomeFixtures {
     }
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.furnishings.visible = options.layout !== "empty";
-    for (const lamp of this.ceilingLights) {
-      lamp.group.position.y = options.wallHeight;
-      // Keep the top-down floor plan clear; light state survives view changes.
-      lamp.group.visible = options.view !== "plan";
-    }
-    this.syncLighting();
+    this.lighting.update(options);
     if (this.dryingRack) this.dryingRack.position.y = options.wallHeight;
     for (const { group } of this.curtains) group.scale.y = options.wallHeight - 0.12;
     for (const { unit, backdrop } of this.airConditioners) {
@@ -1859,6 +1331,9 @@ export class HomeFixtures {
     this.roofs.traverse((object) => {
       if (object instanceof THREE.Mesh) object.castShadow = !transparent;
     });
+  }
+
+  private updateLabels(options: FixtureOptions) {
     for (const label of this.labels) label.visible = options.labels;
     for (const label of this.equipmentLabels) {
       label.visible = options.labels && options.view !== "plan";
@@ -1868,17 +1343,8 @@ export class HomeFixtures {
     }
   }
 
-  get selectable() {
-    // Raycaster ignores visibility on nested parents too. Exclude hidden TV
-    // variants and the cutaway backdrop as well as hidden room arrangements.
-    const meshes: THREE.Mesh[] = [];
-    this.group.traverseVisible((object) => {
-      if (object instanceof THREE.Mesh) meshes.push(object);
-    });
-    return meshes;
-  }
-
   dispose() {
+    this.geometryPool.clear();
     // HomeScene owns geometry and CSS label disposal through its scene traversal.
     for (const material of this.materials) material.dispose();
     for (const mirror of this.mirrors) mirror.dispose();

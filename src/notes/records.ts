@@ -1,3 +1,4 @@
+import { isRoomId } from "../house/rooms.ts";
 import { roomGuides } from "../guide/content.ts";
 import { roomVisits } from "../visit/content.ts";
 
@@ -56,7 +57,6 @@ export const tasksForRoom = (roomId: string) => [
 ];
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-const roomIds = new Set(roomGuides.map((room) => room.id));
 
 export function parseNotebook(text: string): Notebook {
   if (text.length > MAX_IMPORT_BYTES)
@@ -76,7 +76,7 @@ export function parseNotebook(text: string): Notebook {
     throw new Error("不是受支持的房屋准备记录文件。");
   const result = emptyNotebook();
   for (const [id, value] of Object.entries(input.rooms)) {
-    if (!roomIds.has(id) || !isObject(value))
+    if (!isRoomId(id) || !isObject(value))
       throw new Error("文件中包含无法识别的房间。");
     const record = emptyRecord();
     for (const field of [

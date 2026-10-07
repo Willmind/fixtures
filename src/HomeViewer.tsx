@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ModelViewer } from "./ModelViewer";
 import { AppIcon } from "./AppIcon";
 import { Icon } from "./icons";
 import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { defaults, rooms } from "./model/plan";
-import type { ViewOptions } from "./model/HomeScene";
+import type { ViewOptions } from "./model/options";
 import { photosForRoom } from "./visit/content";
 import { balconyChoices, balconyModeLabels, curtainColors, livingLayouts } from "./model/arrangements";
 import type { BalconyModes, CurtainColor, LayoutPreview } from "./model/arrangements";
@@ -71,7 +71,7 @@ export default function HomeViewer({
   const room = rooms.find((item) => item.id === selected);
   const currentLayout = livingLayouts.find((item) => item.id === layout);
   const selectedBalcony = balconyChoices.find((item) => item.id === selected);
-  const options = {
+  const options = useMemo<ViewOptions>(() => ({
     lightingMode,
     lightCommand,
     selected,
@@ -88,7 +88,9 @@ export default function HomeViewer({
     balconyRoofs,
     balconyModes,
     equipment,
-  };
+  }), [lightingMode, lightCommand, selected, view, cutaway, wallHeight, labels,
+    dimensions, grid, drainage, layout, curtainColor, televisionMount,
+    balconyRoofs, balconyModes, equipment]);
 
   return (
     <div className="app-shell">

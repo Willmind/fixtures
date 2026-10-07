@@ -1,3 +1,6 @@
+import { roomIdentity } from "../house/rooms.ts";
+import type { RoomId } from "../house/rooms.ts";
+
 /**
  * PDF 第 1、2 页的人工几何重建，单位为米。
  * x 从图纸左向右，z 从上向下（不是地理北向）。y 为竖直高度。
@@ -7,7 +10,7 @@
  */
 export type Point = readonly [number, number];
 export type Room = {
-  id: string;
+  id: RoomId;
   name: string;
   originalName?: string;
   kind: "living" | "bedroom" | "kitchen" | "bathroom" | "balcony";
@@ -46,8 +49,8 @@ export const rect = (x: number, z: number, w: number, d: number): Point[] => [
 
 export const rooms: Room[] = [
   {
-    id: "living",
-    name: "客餐厅",
+    id: roomIdentity.living.id,
+    name: roomIdentity.living.name,
     kind: "living",
     label: [4.65, 6.2],
     polygon: [
@@ -67,9 +70,9 @@ export const rooms: Room[] = [
     description: "前侧连接主阳台。客厅保留两种电视、沙发相对摆法，沙发前放一张低矮茶几，家具统一浅胡桃色系；面对电视时，左侧是边柜，右侧是盆栽。餐厅暂放一张四人餐桌和四把椅子。",
   },
   {
-    id: "master",
-    name: "主卧",
-    originalName: "主人房",
+    id: roomIdentity.master.id,
+    name: roomIdentity.master.name,
+    originalName: roomIdentity.master.originalName,
     kind: "bedroom",
     label: [11.8, 6.45],
     polygon: [
@@ -83,69 +86,69 @@ export const rooms: Room[] = [
     description: "保留原图右侧的主卧套间布局，内侧连接独立卫生间。1.8 m 收纳床的床头靠西侧实墙，两侧保留通道；床头柜旁使用固定床底段，抽屉从柜子前方拉出。尺寸按示意模型预留，待现场复测。",
   },
   {
-    id: "parents",
-    name: "次卧 A",
-    originalName: "女孩房",
+    id: roomIdentity.parents.id,
+    name: roomIdentity.parents.name,
+    originalName: roomIdentity.parents.originalName,
     kind: "bedroom",
     polygon: rect(6.8, 5.15, 3.4, 3.5),
     label: [8.5, 6.9],
     description: "原图标注「女孩房」，当前按父母房预览。1.5 m 收纳床的床头靠东侧实墙，两侧保留通道；西侧衣柜采用 0.42 m 深的浅柜示意，需侧向挂衣，床尾至柜前约留 0.60 m。最终柜型与净尺寸待复测。",
   },
   {
-    id: "study",
-    name: "次卧 B",
-    originalName: "男孩房",
+    id: roomIdentity.study.id,
+    name: roomIdentity.study.name,
+    originalName: roomIdentity.study.originalName,
     kind: "bedroom",
     polygon: rect(7.6, 1.2, 2.6, 3.05),
     label: [8.9, 2.8],
     description: "原图标注「男孩房」。1.2 m 单人收纳床的床头靠西侧实墙，一侧贴近北侧窗边，南侧留通道，抽屉只朝南侧拉出；衣柜放在南墙旁并避开门扇。书房安排在原客房，模型未修改墙体。",
   },
   {
-    id: "guest",
-    name: "书房",
-    originalName: "客房",
+    id: roomIdentity.guest.id,
+    name: roomIdentity.guest.name,
+    originalName: roomIdentity.guest.originalName,
     kind: "bedroom",
     polygon: rect(0, 5.15, 2.6, 3.5),
     label: [1.3, 6.9],
     description: "原客房按你的计划用作书房，靠墙摆放电脑桌和电脑，配深灰色人体工学椅，旁边是空的手办展示柜，两扇玻璃柜门可分别点击开合，默认关闭。保留原图门窗，桌柜采用浅胡桃木色。",
   },
   {
-    id: "kitchen",
-    name: "厨房",
+    id: roomIdentity.kitchen.id,
+    name: roomIdentity.kitchen.name,
     kind: "kitchen",
     polygon: rect(0.6, 0, 2, 3.7),
     label: [1.6, 1.9],
     description: "厨房从餐厅一侧进入，与生活阳台之间无门。沿墙暂摆橱柜、可点击炉头或旋钮独立开关火的双头燃气灶、抽油烟机、水槽和可点击开关水的水龙头，窗户上方的排气扇可点击启动或停止，入口旁的墙角放冰箱，上下两扇门可分别点击开合；地面加 1% 找坡与候选地漏，位置及可接入的排水接口需复测。",
   },
   {
-    id: "bath",
-    name: "公卫",
+    id: roomIdentity.bath.id,
+    name: roomIdentity.bath.name,
     kind: "bathroom",
     polygon: rect(5.8, 1.2, 1.8, 3.05),
     label: [6.7, 2.8],
     description: "由公共过道进入，左墙旁依次为悬浮洗手台与镜子、白色蹲厕，镜子无框，水龙头可点击开关水，柜底离地约 0.30 m，玻璃门后是最里面的淋浴区。湿区按 1.5% 找向左上角地漏，隔断外干区按 1% 找向候选地漏；可在显示设置中开启排水坡向。窗户上方有排气扇，可点击启动或停止。按期望布局预览，尺寸和给排水点位待现场核实。",
   },
   {
-    id: "ensuite",
-    name: "主卫",
+    id: roomIdentity.ensuite.id,
+    name: roomIdentity.ensuite.name,
     kind: "bathroom",
     polygon: rect(10.2, 1.2, 1.8, 3.05),
     label: [11.1, 2.8],
     description: "主卧内的独立卫生间，进门左墙旁依次为悬浮洗手台与镜子、马桶，镜子无框，水龙头可点击开关水，柜底离地约 0.30 m，再经玻璃门进入淋浴区。湿区按 1.5% 找向左上角地漏，隔断外干区按 1% 找向候选地漏；可在显示设置中开启排水坡向。窗户上方有排气扇，可点击启动或停止。按期望布局预览，尺寸和给排水点位待现场核实。",
   },
   {
-    id: "balcony",
-    name: "主阳台",
-    originalName: "普通阳台",
+    id: roomIdentity.balcony.id,
+    name: roomIdentity.balcony.name,
+    originalName: roomIdentity.balcony.originalName,
     kind: "balcony",
     polygon: rect(2.6, 8.65, 4.2, 1.2),
     label: [4.7, 9.25],
     description: "连接客厅，上方有顶板；入口预览四扇玻璃推拉门，左右不留墙垛，中间两扇可点击开合。两侧摆放一高一低的羽状叶树形盆栽，配陶土花盆，中间保留入口通道。外侧可独立对比保持原样与封窗，地面加 1% 找坡与候选地漏，雨水接管、防水和入口高差待现场确认，尺寸和窗型待实测。",
   },
   {
-    id: "utility",
-    name: "生活阳台",
-    originalName: "给水阳台",
+    id: roomIdentity.utility.id,
+    name: roomIdentity.utility.name,
+    originalName: roomIdentity.utility.originalName,
     kind: "balcony",
     polygon: rect(2.6, 0, 3.2, 1.2),
     label: [4.2, 0.6],

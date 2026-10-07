@@ -1,0 +1,77 @@
+.text-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  font-size: 14px;
+  padding: 8px 0;
+  white-space: nowrap;
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  min-height: 37px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.toggle-row input {
+  position: absolute;
+  right: 0;
+  width: 30px;
+  height: 17px;
+  opacity: 0;
+  cursor: pointer;
+}
+.toggle-track {
+  margin-left: auto;
+  display: block;
+  background: var(--control-background);
+  width: 29px;
+  height: 17px;
+  border-radius: 10px;
+  position: relative;
+  pointer-events: none;
+}
+.toggle-track:after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  height: 11px;
+  width: 11px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px #0001;
+  transition: transform 0.15s;
+}
+.toggle-row input:checked + .toggle-track {
+  background: #34c759;
+}
+.toggle-row input:checked + .toggle-track:after {
+  transform: translateX(12px);
+}
+.toggle-row input:focus-visible + .toggle-track {
+  outline: 3px solid #007aff80;
+  outline-offset: 4px;
+}
+.icon-button {
+  background: transparent;
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+}
+.icon-button:hover {
+  background: var(--surface-muted);
+}
+.primary-button {
+  border-radius: 20px;
+  background: var(--action-fill);
+  color: white;
+  padding: 11px 20px;
+}

@@ -1,3 +1,4 @@
+import type { RoomId } from "../house/rooms.ts";
 import photos from "./photos.json" with { type: "json" };
 
 export type SitePhoto = (typeof photos)[number];
@@ -8,7 +9,7 @@ export const photosForRoom = (roomId: string) =>
   sitePhotos.filter((photo) => photo.roomId === roomId);
 
 export type RoomVisit = {
-  roomId: string;
+  roomId: RoomId;
   observed: string[];
   measure: string[];
   videoStart?: number;

@@ -1,5 +1,8 @@
+import { roomIdentity } from "../house/rooms.ts";
+import type { RoomId } from "../house/rooms.ts";
+
 export type RoomGuide = {
-  id: string;
+  id: RoomId;
   name: string;
   original: string;
   point: [number, number];
@@ -11,9 +14,9 @@ export type RoomGuide = {
 // Hotspots on a crop of PDF page 1. Coordinates are image pixels, not dimensions.
 export const roomGuides: RoomGuide[] = [
   {
-    id: "living",
-    name: "客餐厅",
-    original: "客厅、餐厅、玄关",
+    id: roomIdentity.living.id,
+    name: roomIdentity.living.name,
+    original: roomIdentity.living.originalName,
     point: [300, 270],
     page: 2,
     fact: "入户后经过玄关，餐厅和客厅连在一起。客厅朝向普通阳台，另一侧的过道通往三个房间。",
@@ -25,9 +28,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "master",
-    name: "主卧",
-    original: "主人房",
+    id: roomIdentity.master.id,
+    name: roomIdentity.master.name,
+    original: roomIdentity.master.originalName,
     point: [651, 308],
     page: 2,
     fact: "位于图纸右侧，房间内连接一个独立卫生间。原家具图画了床和衣柜，但这不代表毛坯房已经有这些配置。",
@@ -39,9 +42,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "parents",
-    name: "次卧 A",
-    original: "女孩房",
+    id: roomIdentity.parents.id,
+    name: roomIdentity.parents.name,
+    original: roomIdentity.parents.originalName,
     point: [493, 330],
     page: 2,
     fact: "在客厅右侧、主卧左侧，与公用卫生间通过过道连接。原图的“女孩房”只是当时的设计名称。",
@@ -53,9 +56,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "study",
-    name: "次卧 B",
-    original: "男孩房",
+    id: roomIdentity.study.id,
+    name: roomIdentity.study.name,
+    original: roomIdentity.study.originalName,
     point: [510, 137],
     page: 2,
     fact: "位于图纸上侧、公卫和主卫之间。原家具图画的是卧室；目前没有改墙或确定新用途。",
@@ -67,9 +70,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "guest",
-    name: "书房",
-    original: "客房",
+    id: roomIdentity.guest.id,
+    name: roomIdentity.guest.name,
+    original: roomIdentity.guest.originalName,
     point: [156, 323],
     page: 2,
     fact: "靠近入户玄关，是一个独立房间。原图中的床只是布置参考，房间用途可重新安排。",
@@ -81,9 +84,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "kitchen",
-    name: "厨房",
-    original: "厨房",
+    id: roomIdentity.kitchen.id,
+    name: roomIdentity.kitchen.name,
+    original: roomIdentity.kitchen.originalName,
     point: [178, 101],
     page: 2,
     fact: "在餐厅左侧，旁边是给水阳台。原平面图画有灶台、水槽和冰箱的位置，属于设计布置。",
@@ -95,9 +98,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "bath",
-    name: "公卫",
-    original: "卫7a",
+    id: roomIdentity.bath.id,
+    name: roomIdentity.bath.name,
+    original: roomIdentity.bath.originalName,
     point: [418, 110],
     page: 2,
     fact: "从公共过道进入。PDF 第 1 页还有这个区域门洞调整的文字说明，需要与交付现场对照。",
@@ -109,9 +112,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "ensuite",
-    name: "主卫",
-    original: "卫9",
+    id: roomIdentity.ensuite.id,
+    name: roomIdentity.ensuite.name,
+    original: roomIdentity.ensuite.originalName,
     point: [619, 114],
     page: 2,
     fact: "位于主卧内部，和公卫是两个独立空间。原家具图画有洁具位置，不能据此认定现场管道准确位置。",
@@ -123,9 +126,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "balcony",
-    name: "主阳台",
-    original: "普通阳台",
+    id: roomIdentity.balcony.id,
+    name: roomIdentity.balcony.name,
+    original: roomIdentity.balcony.originalName,
     point: [310, 452],
     page: 1,
     fact: "连接客厅，原图名为普通阳台。你已确认上方有顶板；图纸中的坡度和高差仍属于设计信息。",
@@ -137,9 +140,9 @@ export const roomGuides: RoomGuide[] = [
     ],
   },
   {
-    id: "utility",
-    name: "生活阳台",
-    original: "给水阳台",
+    id: roomIdentity.utility.id,
+    name: roomIdentity.utility.name,
+    original: roomIdentity.utility.originalName,
     point: [303, 45],
     page: 2,
     fact: "在餐厅上侧、厨房旁边，上方有顶板。你已确认与厨房之间没有门。",
