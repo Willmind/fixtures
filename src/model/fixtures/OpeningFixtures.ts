@@ -181,6 +181,7 @@ export class OpeningFixtures {
     }
     const hingeX = (cabinet.width - panel) / 2;
     const doorWidth = hingeX - 0.006;
+    const leaves: THREE.Group[] = [];
     for (const side of [-1, 1]) {
       const door = new THREE.Group();
       door.name = `shoe-cabinet-door-${side < 0 ? "left" : "right"}`;
@@ -190,19 +191,78 @@ export class OpeningFixtures {
         [-side * doorWidth / 2, bodyCenterY, 0], this.ctx.materials.wood, 0.008);
       this.ctx.box(door, [0.015, 0.15, 0.025],
         [-side * (doorWidth - 0.03), 0.83, 0.023], this.ctx.materials.steel, 0.005);
-      this.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
+      leaves.push(door);
     }
+    this.registerGlazingDoor(leaves, (value) => {
+      leaves[0].rotation.y = -Math.PI / 2 * value;
+      leaves[1].rotation.y = Math.PI / 2 * value;
+    });
     this.ctx.label(cabinetGroup, "鞋柜", cabinet.height + 0.12, "shoe-cabinet");
   }
 
-  registerGlazingDoor(parts: THREE.Group[], apply: (value: number) => void, initialOpen = false) {
+  registerGlazingDoor(parts: THREE.Group[], apply: (value: number) => void, initialOpen = false, title?: string) {
     const index = this.glazingDoors.length;
     const motion = new OpenCloseMotion(initialOpen);
     for (const part of parts) part.traverse((object) => {
-      if (object instanceof THREE.Mesh) object.userData.glazingDoorIndex = index;
+      if (object instanceof THREE.Mesh) {
+        object.userData.glazingDoorIndex = index;
+        if (title) object.userData.fixtureTitle = title;
+      }
     });
     this.glazingDoors.push({ motion, apply });
     apply(motion.value);
+  }
+
+  /** Hollow carcass with one shared motion for every leaf in this cabinet. */
+  buildCabinet(parent: THREE.Group, size: { width: number; depth: number; bottom: number; top: number;
+    title: string; material?: THREE.Material; doors?: number }) {
+    const { width, depth, bottom, top, title, doors = 2, material = this.ctx.materials.wood } = size;
+    const panel = 0.022, height = top - bottom, y = (bottom + top) / 2;
+    this.ctx.box(parent, [width, height, panel], [0, y, -(depth - panel) / 2], material);
+    for (const side of [-1, 1]) {
+      this.ctx.box(parent, [panel, height, depth], [side * (width - panel) / 2, y, 0], material);
+    }
+    for (const level of [bottom + panel / 2, top - panel / 2]) {
+      this.ctx.box(parent, [width - panel * 2, panel, depth], [0, level, 0], material);
+    }
+    this.ctx.box(parent, [width - panel * 2, panel, depth - panel * 2], [0, y, 0], material);
+    const leaves: { group: THREE.Group; side: number }[] = [];
+    const section = (width - panel * 2) / doors, doorWidth = section - 0.004;
+    for (let i = 0; i < doors; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const center = -width / 2 + panel + section * (i + 0.5);
+      const leaf = new THREE.Group(); leaf.name = `${parent.name}-door-${i}`;
+      leaf.position.set(center + side * doorWidth / 2, 0, depth / 2 - panel / 2);
+      parent.add(leaf);
+      this.ctx.box(leaf, [doorWidth, height - 0.006, panel], [-side * doorWidth / 2, y, 0], material, 0.004);
+      this.ctx.box(leaf, [0.012, Math.min(0.12, height / 3), 0.018],
+        [-side * (doorWidth - 0.026), y + height * 0.2, panel / 2 + 0.009], this.ctx.materials.steel, 0.003);
+      leaves.push({ group: leaf, side });
+    }
+    this.registerGlazingDoor(leaves.map((leaf) => leaf.group), (value) => {
+      for (const leaf of leaves) leaf.group.rotation.y = leaf.side * Math.PI / 2 * value;
+    }, false, title);
+  }
+
+  buildBedsideDrawers(parent: THREE.Group) {
+    const wood = this.ctx.materials.wood;
+    this.ctx.box(parent, [0.40, 0.46, 0.018], [0, 0.29, -0.181], wood);
+    for (const x of [-0.191, 0.191]) this.ctx.box(parent, [0.018, 0.46, 0.38], [x, 0.29, 0], wood);
+    for (const y of [0.069, 0.29, 0.511]) this.ctx.box(parent, [0.364, 0.018, 0.38], [0, y, 0], wood);
+    const drawers = [0.18, 0.40].map((y, index) => {
+      const drawer = new THREE.Group(); drawer.name = `${parent.name}-drawer-${index}`;
+      parent.add(drawer);
+      const front = this.ctx.box(drawer, [0.37, 0.20, 0.018], [0, y, 0.198], wood, 0.005);
+      front.userData.fixtureHintPriority = 1;
+      this.ctx.box(drawer, [0.12, 0.012, 0.018], [0, y + 0.065, 0.216], this.ctx.materials.steel, 0.004);
+      this.ctx.box(drawer, [0.342, 0.014, 0.31], [0, y - 0.087, 0.032], wood);
+      this.ctx.box(drawer, [0.342, 0.16, 0.014], [0, y, -0.123], wood);
+      for (const x of [-0.164, 0.164]) this.ctx.box(drawer, [0.014, 0.16, 0.31], [x, y, 0.032], wood);
+      return drawer;
+    });
+    this.registerGlazingDoor(drawers, (value) => {
+      for (const drawer of drawers) drawer.position.z = 0.24 * value;
+    }, false, "床头柜抽屉");
   }
 
   private buildBalconyEntryDoor() {

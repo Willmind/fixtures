@@ -3,100 +3,24 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createBathroomMirror } from "./mirrors.ts";
 
-test("反射裁剪排除紧贴镜面背后的白色底板，同时保留镜前物体", () => {
-  for (const camera of [
-    new THREE.OrthographicCamera(-10, 10, 8, -8, 0.1, 150),
-    new THREE.PerspectiveCamera(50, 1.5, 0.1, 150),
-  ]) {
-    const mirror = createBathroomMirror(0.68, 0.82, []);
-    const scene = new THREE.Scene();
-    scene.add(mirror);
-    scene.updateMatrixWorld(true);
-    camera.position.set(10.1, 19, 21);
-    camera.lookAt(0, 0, 0);
-    camera.updateMatrixWorld(true);
-    const renderer = {
-      xr: { enabled: false }, shadowMap: { autoUpdate: false },
-      state: { buffers: { depth: { setMask() {} } } },
-      getRenderTarget: () => null, setRenderTarget() {},
-      render: (_scene: THREE.Scene, reflected: THREE.Camera) => {
-        const project = (z: number) => new THREE.Vector3(0, 0, z)
-          .applyMatrix4(reflected.matrixWorldInverse).applyMatrix4(reflected.projectionMatrix).z;
-        // The actual vanity backing ends just 0.5 mm behind the mirror plane.
-        assert.ok(project(-0.0005) < -1, `${camera.type}: 底板必须在反射近裁剪面之外`);
-        assert.ok(project(0.03) > -1, `${camera.type}: 镜前物体必须可见`);
-      },
-    } as unknown as THREE.WebGLRenderer;
-    const material = Array.isArray(mirror.material) ? mirror.material[0] : mirror.material;
-    try { mirror.onBeforeRender(renderer, scene, camera, mirror.geometry, material, null!); }
-    finally { mirror.dispose(); mirror.geometry.dispose(); }
-  }
-});
-
-test("正交视角使用反射相机，反射时隐藏其他镜子，结束后恢复渲染状态", () => {
-  const mirrors: ReturnType<typeof createBathroomMirror>[] = [];
-  let refresh = true;
-  const first = createBathroomMirror(0.68, 0.82, mirrors, () => refresh);
-  const second = createBathroomMirror(0.68, 0.82, mirrors);
-  mirrors.push(first, second);
+test("纯色镜面在三维和俯视相机下不触发额外渲染，也不受灯光和曝光影响", () => {
+  const mirror = createBathroomMirror(0.68, 0.82);
   const scene = new THREE.Scene();
-  scene.add(first, second);
-  scene.updateMatrixWorld(true);
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20);
-  camera.position.set(0, 0, 5);
-  camera.lookAt(0, 0, 0);
-  camera.updateMatrixWorld(true);
-  let passes = 0, target: THREE.WebGLRenderTarget | null = null;
-  const rendererStub = {
-    xr: { enabled: true }, shadowMap: { autoUpdate: true },
-    state: { buffers: { depth: { setMask() {} } } },
-    getRenderTarget: () => target,
-    setRenderTarget: (next: THREE.WebGLRenderTarget | null) => { target = next; },
-    render: (_scene: THREE.Scene, reflected: THREE.Camera) => {
-      passes++;
-      assert.equal(first.visible, false);
-      assert.equal(second.visible, false);
-      assert.ok(reflected instanceof THREE.OrthographicCamera);
-      assert.equal(reflected.position.z, -5);
-      assert.ok(reflected.projectionMatrix.elements.every(Number.isFinite));
-      assert.equal(reflected.layers.mask, camera.layers.mask, "反射应与主相机使用同一房间范围");
-    },
-  };
-  const renderer = rendererStub as unknown as THREE.WebGLRenderer;
-  const material = Array.isArray(first.material) ? first.material[0] : first.material;
-  first.onBeforeRender(renderer, scene, camera, first.geometry, material, null!);
-  assert.equal(passes, 1);
-  assert.equal(first.visible, true);
-  assert.equal(second.visible, true);
-  assert.equal(target, null);
-  assert.equal(rendererStub.xr.enabled, true);
-  assert.equal(rendererStub.shadowMap.autoUpdate, true);
-
-  refresh = false;
-  first.onBeforeRender(renderer, scene, camera, first.geometry, material, null!);
-  assert.equal(passes, 1, "复用反射贴图时不能重新渲染场景");
-  assert.equal(first.visible, true);
-  assert.equal(second.visible, true);
-  assert.equal(target, null);
-  refresh = true;
-
-  camera.layers.set(3);
-  first.onBeforeRender(renderer, scene, camera, first.geometry, material, null!);
-  assert.equal(passes, 2, "房间视角应更新已有的反射相机层");
-
-  // A back-facing mirror skips reflection, preserving previously hidden peers.
-  second.visible = false;
-  camera.position.z = -5;
-  camera.lookAt(0, 0, 0);
-  camera.updateMatrixWorld(true);
-  first.onBeforeRender(renderer, scene, camera, first.geometry, material, null!);
-  assert.equal(passes, 2);
-  assert.equal(second.visible, false);
-  let disposed = 0;
-  for (const mirror of mirrors) {
-    mirror.getRenderTarget().addEventListener("dispose", () => { disposed++; });
-    mirror.dispose();
+  scene.add(mirror);
+  const renderer = new Proxy({}, {
+    get() { assert.fail("纯色镜面不应操作渲染器或创建反射渲染目标"); },
+  }) as THREE.WebGLRenderer;
+  try {
+    for (const camera of [new THREE.PerspectiveCamera(), new THREE.OrthographicCamera()]) {
+      mirror.onBeforeRender(renderer, scene, camera, mirror.geometry, mirror.material, null!);
+      assert.equal(mirror.visible, true);
+    }
+    assert.ok(mirror.material instanceof THREE.MeshBasicMaterial);
+    assert.equal(mirror.material.toneMapped, false);
+    assert.equal(mirror.material.map, null);
+    assert.equal(mirror.material.transparent, false);
+  } finally {
     mirror.geometry.dispose();
+    mirror.material.dispose();
   }
-  assert.equal(disposed, 2);
 });

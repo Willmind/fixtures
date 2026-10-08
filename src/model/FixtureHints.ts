@@ -19,10 +19,10 @@ export class FixtureHints {
   constructor(fixtures: HomeFixtures, onFeedbackEnd: () => void = () => {}) {
     this.fixtures = fixtures;
     this.onFeedbackEnd = onFeedbackEnd;
-    const candidates = new Map<string, { target: THREE.Mesh; area: number }>();
+    const candidates = new Map<string, { target: THREE.Mesh; area: number; priority: number }>();
     fixtures.group.updateMatrixWorld(true);
     fixtures.group.traverse((object) => {
-      if (!(object instanceof THREE.Mesh) || Array.isArray(object.userData.bedDrawerIds)) return;
+      if (!(object instanceof THREE.Mesh)) return;
       // Flames and water streams are transient geometry, never the control anchor.
       for (let parent: THREE.Object3D | null = object; parent; parent = parent.parent) {
         if (!parent.visible) return;
@@ -32,7 +32,11 @@ export class FixtureHints {
       object.geometry.computeBoundingBox();
       const size = object.geometry.boundingBox!.getSize(new THREE.Vector3()).multiply(object.scale);
       const area = Math.max(size.x * size.y, size.y * size.z, size.x * size.z);
-      if (area > (candidates.get(info.key)?.area ?? -1)) candidates.set(info.key, { target: object, area });
+      const priority = object.userData.fixtureHintPriority ?? 0;
+      const previous = candidates.get(info.key);
+      if (!previous || priority > previous.priority || (priority === previous.priority && area > previous.area)) {
+        candidates.set(info.key, { target: object, area, priority });
+      }
     });
     for (const [key, { target }] of candidates) {
       const button = document.createElement("button");

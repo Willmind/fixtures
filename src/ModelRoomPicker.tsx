@@ -4,15 +4,16 @@ import { Icon } from "./icons";
 import { rooms } from "./model/plan";
 import { openDialogAtTitle } from "./dialogs/openDialog";
 
-export function ModelRoomPicker({ focusedRoom, onChoose }: {
+export function ModelRoomPicker({ focusedRoom, onChoose, onOpen }: {
   focusedRoom: string | null;
   onChoose: (room: string | null) => void;
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const room = rooms.find((item) => item.id === focusedRoom);
   return <>
     <button type="button" className="room-picker-trigger" aria-haspopup="dialog"
-      aria-expanded={open} onClick={() => setOpen(true)}>
+      aria-expanded={open} onClick={() => { onOpen?.(); setOpen(true); }}>
       <Icon name="room" size={17} />
       <span>{room?.name ?? "选择空间"}</span>
       <Icon name="chevron" size={13} />

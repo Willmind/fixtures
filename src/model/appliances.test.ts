@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createGasFlameMaterial, createGasFlames, GasBurner } from "./gasBurner.ts";
 import { WaterTap } from "./waterTap.ts";
-import { RobotRoute, robotCleaningRoute } from "./robotRoute.ts";
-import { defaults, walls } from "./plan.ts";
+import { RobotRoute, robotCleaningRoute, utilityCleaningRoute } from "./robotRoute.ts";
+import { defaults, rooms, walls } from "./plan.ts";
 import { diningFurniture, furnitureSize, livingLayouts, livingPlacement, televisionSideDecor, utilityEquipment } from "./arrangements.ts";
 
 test("炉头独立开关，反向点击保持连续，点燃后持续动画、熄灭后停止", () => {
@@ -100,6 +100,52 @@ test("到达终点同时点击不进入暂停状态；后台恢复不会瞬间�
   assert.ok(longer.position[1] <= 0.1);
 });
 
+test("生活阳台清扫全程保留机身边距，避开洗衣机并返回充电座", () => {
+  const room = rooms.find((item) => item.id === "utility")!;
+  const xs = room.polygon.map(([x]) => x), zs = room.polygon.map(([, z]) => z);
+  const radius = utilityEquipment.robot.radius + 0.02;
+  const route = new RobotRoute();
+  route.setRoomScope("utility", 0);
+  route.toggle(0);
+  for (let now = 100; now <= 10000; now += 100) {
+    route.advance(now);
+    const [x, z] = route.position;
+    assert.ok(x - radius >= Math.min(...xs) && x + radius <= Math.max(...xs));
+    assert.ok(z - radius >= Math.min(...zs) && z + radius <= Math.max(...zs));
+    const [wx, wz] = utilityEquipment.washer.center;
+    assert.ok(Math.hypot(Math.max(0, Math.abs(x - wx) - 0.31), Math.max(0, Math.abs(z - wz) - 0.30)) > radius);
+  }
+  assert.equal(route.status, "idle");
+  assert.deepEqual(route.position, utilityEquipment.robot.center);
+});
+
+test("清扫中进入阳台保持连续和暂停状态，已离开阳台则回充；总览重新运行恢复整屋路线", () => {
+  for (const paused of [false, true]) {
+    const route = new RobotRoute();
+    route.toggle(0); route.advance(100);
+    if (paused) route.pause(100);
+    const position = [...route.position];
+    route.setRoomScope("utility", 100);
+    assert.deepEqual(route.position, position);
+    assert.equal(route.status, paused ? "paused" : "running");
+    route.setRoomScope("utility", 200);
+    assert.deepEqual(route.position, position);
+    if (paused) route.toggle(200);
+    for (let now = 300; now <= 10000; now += 100) {
+      route.advance(now);
+      assert.ok(route.position[1] <= 0.88);
+    }
+    assert.equal(route.status, "idle");
+    route.setRoomScope(undefined, 10000);
+    route.toggle(10000);
+    for (let now = 10100; now <= 12000; now += 100) route.advance(now);
+    assert.ok(route.position[1] > 1.2);
+    route.setRoomScope("utility", 12000);
+    assert.equal(route.status, "idle");
+    assert.deepEqual(route.position, utilityEquipment.robot.center);
+  }
+});
+
 test("固定清扫路线为两种客厅摆法保留机器人半径，避开墙、餐桌、茶几与边柜盆栽", () => {
   const radius = utilityEquipment.robot.radius;
   const distanceToBox = (x: number, z: number, cx: number, cz: number, halfX: number, halfZ: number) =>
@@ -108,29 +154,31 @@ test("固定清扫路线为两种客厅摆法保留机器人半径，避开墙�
     tv.center[0] + Math.cos(tv.rotation) * local[0] + Math.sin(tv.rotation) * local[1],
     tv.center[1] - Math.sin(tv.rotation) * local[0] + Math.cos(tv.rotation) * local[1],
   ];
-  assert.deepEqual(robotCleaningRoute[0], utilityEquipment.robot.center);
-  assert.deepEqual(robotCleaningRoute.at(-1), utilityEquipment.robot.center);
-  for (let i = 1; i < robotCleaningRoute.length; i++) {
-    const a = robotCleaningRoute[i - 1], b = robotCleaningRoute[i];
-    for (let n = 0; n <= 50; n++) {
-      const x = a[0] + (b[0] - a[0]) * n / 50, z = a[1] + (b[1] - a[1]) * n / 50;
-      for (const wall of walls) {
-        const dx = wall.to[0] - wall.from[0], dz = wall.to[1] - wall.from[1];
-        const fraction = Math.max(0, Math.min(1, ((x - wall.from[0]) * dx + (z - wall.from[1]) * dz) / (dx * dx + dz * dz)));
-        assert.ok(Math.hypot(x - wall.from[0] - fraction * dx, z - wall.from[1] - fraction * dz)
-          >= radius + (wall.thickness ?? defaults.wallThickness) / 2, wall.id);
-      }
-      const table = diningFurniture;
-      assert.ok(distanceToBox(x, z, ...table.center, table.width / 2, 0.7) > radius);
-      for (const layout of livingLayouts) {
-        const { tv, sofa, coffeeTable } = livingPlacement(layout.id);
-        for (const [object, size] of [[tv, furnitureSize.tvCabinet], [sofa, furnitureSize.sofa],
-          [coffeeTable, furnitureSize.coffeeTable]] as const)
-          assert.ok(distanceToBox(x, z, ...object.center, size.depth / 2, size.width / 2) > radius);
-        const { cabinet, plant } = televisionSideDecor;
-        const [cx, cz] = decorWorld(tv, cabinet.center), [px, pz] = decorWorld(tv, plant.center);
-        assert.ok(distanceToBox(x, z, cx, cz, cabinet.depth / 2, cabinet.width / 2) > radius);
-        assert.ok(Math.hypot(x - px, z - pz) > radius + plant.potRadius);
+  for (const path of [robotCleaningRoute, utilityCleaningRoute]) {
+    assert.deepEqual(path[0], utilityEquipment.robot.center);
+    assert.deepEqual(path.at(-1), utilityEquipment.robot.center);
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], b = path[i];
+      for (let n = 0; n <= 50; n++) {
+        const x = a[0] + (b[0] - a[0]) * n / 50, z = a[1] + (b[1] - a[1]) * n / 50;
+        for (const wall of walls) {
+          const dx = wall.to[0] - wall.from[0], dz = wall.to[1] - wall.from[1];
+          const fraction = Math.max(0, Math.min(1, ((x - wall.from[0]) * dx + (z - wall.from[1]) * dz) / (dx * dx + dz * dz)));
+          assert.ok(Math.hypot(x - wall.from[0] - fraction * dx, z - wall.from[1] - fraction * dz)
+            >= radius + (wall.thickness ?? defaults.wallThickness) / 2, wall.id);
+        }
+        const table = diningFurniture;
+        assert.ok(distanceToBox(x, z, ...table.center, table.width / 2, 0.7) > radius);
+        for (const layout of livingLayouts) {
+          const { tv, sofa, coffeeTable } = livingPlacement(layout.id);
+          for (const [object, size] of [[tv, furnitureSize.tvCabinet], [sofa, furnitureSize.sofa],
+            [coffeeTable, furnitureSize.coffeeTable]] as const)
+            assert.ok(distanceToBox(x, z, ...object.center, size.depth / 2, size.width / 2) > radius);
+          const { cabinet, plant } = televisionSideDecor;
+          const [cx, cz] = decorWorld(tv, cabinet.center), [px, pz] = decorWorld(tv, plant.center);
+          assert.ok(distanceToBox(x, z, cx, cz, cabinet.depth / 2, cabinet.width / 2) > radius);
+          assert.ok(Math.hypot(x - px, z - pz) > radius + plant.potRadius);
+        }
       }
     }
   }

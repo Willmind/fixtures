@@ -6,17 +6,16 @@ import { Icon } from "./icons";
 type Props = {
   options: ViewOptions;
   onSelect: (id: string | null) => void;
-  onLightsChange: (on: boolean) => void;
-  onHintsChange: (on: boolean) => void;
+  onLightStateChange: (state: LightState) => void;
 };
 
-export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }: Props) {
+export function ModelViewer({ options, onSelect, onLightStateChange }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<HomeScene | null>(null);
   const initialOptions = useRef(options);
   const selectionCallback = useRef(onSelect);
   const [error, setError] = useState<string | null>(null);
-  const [lightState, setLightState] = useState<LightState>({ on: options.lightingMode === "night", mixed: false });
+  const lightStateCallback = useRef(onLightStateChange);
   const [feedback, setFeedback] = useState<{ text: string; revision: number; inline: boolean } | null>(null);
   const [hintSeen, setHintSeen] = useState(() => {
     try { return localStorage.getItem("fixtures.interaction-intro.v1") === "seen"; }
@@ -35,7 +34,8 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
 
   useEffect(() => {
     selectionCallback.current = onSelect;
-  }, [onSelect]);
+    lightStateCallback.current = onLightStateChange;
+  }, [onSelect, onLightStateChange]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -50,7 +50,7 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
           setHintSeen(true);
           try { localStorage.setItem("fixtures.interaction-intro.v1", "seen"); } catch { /* Optional preference. */ }
         },
-        (state) => setLightState((previous) => previous.on === state.on && previous.mixed === state.mixed ? previous : state),
+        (state) => lightStateCallback.current(state),
       );
     } catch (cause) {
       console.error("三维模型初始化失败", cause);
@@ -87,7 +87,7 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
           <button onClick={() => window.location.reload()}>重新载入</button>
         </div>
       ) : null}
-      <div className="camera-tools" aria-label="视角与灯光控制">
+      <div className="camera-tools" aria-label="模型缩放与恢复视角">
         <button className="camera-zoom-action"
           title="放大"
           aria-label="放大模型"
@@ -109,22 +109,6 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
           onClick={() => scene.current?.resetView()}
         >
           <Icon name="reset" />
-        </button>
-        <span />
-        <button className="hint-action tool-switch" title="显示或隐藏当前房间的交互提示"
-          role="switch" aria-label="房间交互提示" aria-checked={options.interactionHints !== false}
-          onClick={() => onHintsChange(options.interactionHints === false)}>
-          <Icon name="info" size={18} /><small>提示</small>
-          <span className="tool-switch-track" aria-hidden="true"><span /></span>
-        </button>
-        <button className={`light-action tool-switch${lightState.mixed ? " is-mixed" : ""}`} role="switch"
-          title={lightState.mixed ? "部分灯已开启，点击全部开灯" : lightState.on ? "关闭所有顶灯和床头灯" : "打开所有顶灯和床头灯"}
-          aria-label={lightState.mixed ? "全屋灯光，部分开启" : "全屋灯光"}
-          aria-checked={lightState.on} disabled={options.layout === "empty"}
-          onClick={() => onLightsChange(!lightState.on)}>
-          <Icon name={lightState.on || lightState.mixed ? "bulb" : "bulb-off"} size={18} />
-          <small>{lightState.mixed ? "部分亮" : "灯光"}</small>
-          <span className="tool-switch-track" aria-hidden="true"><span /></span>
         </button>
       </div>
     </>

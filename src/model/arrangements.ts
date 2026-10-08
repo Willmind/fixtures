@@ -126,12 +126,12 @@ export const bedroomBeds = [
 
 export const bedroomStorage = [
   { roomId: "master", bedside: { center: [10.52, 5.72] as Point, rotation: Math.PI / 2 },
-    wardrobe: { center: [13.18, 3.03] as Point, rotation: -Math.PI / 2, width: 1.7, depth: 0.58 } },
+    wardrobe: { center: [13.18, 3.03] as Point, rotation: -Math.PI / 2, width: 1.7, depth: 0.58, doors: 4 } },
   { roomId: "parents", bedside: { center: [9.88, 5.90] as Point, rotation: -Math.PI / 2 },
     // Shallow storage candidate, requiring sideways hanging rather than a full-depth rail.
-    wardrobe: { center: [7.11, 7.30] as Point, rotation: Math.PI / 2, width: 1.6, depth: 0.42 } },
+    wardrobe: { center: [7.11, 7.30] as Point, rotation: Math.PI / 2, width: 1.6, depth: 0.42, doors: 4 } },
   { roomId: "study", bedside: { center: [7.94, 2.92] as Point, rotation: Math.PI / 2 },
-    wardrobe: { center: [8.40, 3.89] as Point, rotation: Math.PI, width: 1.4, depth: 0.50 } },
+    wardrobe: { center: [8.40, 3.89] as Point, rotation: Math.PI, width: 1.4, depth: 0.50, doors: 3 } },
 ] as const;
 
 // Keep the original room ID so saved notes and photo links still point here.

@@ -64,6 +64,18 @@ export class FurnitureBuilder {
     seat.castShadow = true;
     seat.receiveShadow = true;
     group.add(seat);
+    // Pivot just in front of the cistern; the white cover rests above the seat.
+    const lid = new THREE.Group();
+    lid.name = "toilet-operable-lid";
+    lid.position.set(0, 0.505, -0.12);
+    const cover = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), this.ctx.materials.ceramic);
+    cover.scale.set(0.207, 0.013, 0.28);
+    cover.position.set(0, 0.014, 0.19);
+    cover.castShadow = true;
+    cover.receiveShadow = true;
+    lid.add(cover);
+    group.add(lid);
+    return lid;
   }
 
   buildDining(furnishings: THREE.Group) {

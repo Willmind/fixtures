@@ -65,7 +65,6 @@ export class HomeScene {
   private scopeObjects: THREE.Object3D[] = [];
   private disposed = false;
   private cameraInteracting = false;
-  private fixturesAnimating = false;
   private options: ViewOptions;
   private raycaster = new THREE.Raycaster();
   private pickIndex = new MeshPickIndex();
@@ -202,7 +201,7 @@ export class HomeScene {
     if (new URLSearchParams(window.location.search).get("debug") === "performance") {
       this.profiler = new RenderProfiler();
       window.__fixturesPerformance = this.profiler;
-      // Include shadow/mirror passes in the counters, not just the final main pass.
+      // Include shadow passes in the counters, not just the final main pass.
       this.renderer.info.autoReset = false;
     }
     this.scene.add(this.grid);
@@ -231,7 +230,6 @@ export class HomeScene {
     this.host.ownerDocument.addEventListener("visibilitychange", this.visibilityChanged);
     this.themeObserver = new MutationObserver(() => {
       this.applyCanvasTheme();
-      this.fixtures.invalidateReflections();
       this.requestRender();
     });
     this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -697,11 +695,11 @@ export class HomeScene {
   }
   private applyRoomScope(roomId = this.options.focusedRoom) {
     const room = rooms.find((item) => item.id === roomId);
+    this.fixtures.setRobotRoomScope(room?.id, performance.now());
     this.camera.layers.set(room ? roomLayer(room.id) : 0);
     this.raycaster.layers.mask = this.camera.layers.mask;
     this.renderer.clippingPlanes = room ? roomClipping(room) : [];
     this.shadows.invalidate();
-    this.fixtures.invalidateReflections();
   }
   private changeRoomView() {
     this.roomCamera.cancel();
@@ -763,8 +761,6 @@ export class HomeScene {
       this.hoverPoint = undefined;
       this.cameraInteracting = false;
       this.renderer.domElement.style.cursor = "";
-    } else {
-      this.fixtures.invalidateReflections();
     }
     this.renderLoop.setVisible(visible);
   };
@@ -787,12 +783,7 @@ export class HomeScene {
     const focusing = this.roomCamera.advance(now, this.camera, this.controls.target);
     const cameraMoved = this.controls.update();
     const fixturesMoving = animateFixtures(this.fixtures, now);
-    // A finished door/drawer must appear in its final position even if it
-    // stopped inside the reflection throttle interval.
-    if (this.fixturesAnimating && !fixturesMoving) this.fixtures.invalidateReflections();
-    this.fixturesAnimating = fixturesMoving;
     this.renderer.shadowMap.needsUpdate = this.shadows.consume(fixturesMoving);
-    this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved || focusing);
     this.renderer.render(this.scene, this.camera);
     this.fixtureHints.update(this.camera, this.renderer.clippingPlanes,
       this.host.clientWidth, this.host.clientHeight,
@@ -807,7 +798,7 @@ export class HomeScene {
         lighting: this.options.lightingMode, moving: this.cameraInteracting || cameraMoved || focusing || fixturesMoving,
       });
     }
-    if (focusing || fixturesMoving || this.fixtures.reflectionsPending) this.requestRender();
+    if (focusing || fixturesMoving) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -899,7 +890,6 @@ export class HomeScene {
       this.renderer.domElement.title = `${info.title} · ${info.action}`;
     }
     this.shadows.invalidate();
-    this.fixtures.invalidateReflections();
     this.requestRender();
   }
 
@@ -943,7 +933,6 @@ export class HomeScene {
       const info = target && this.fixtures.interactionInfo(target);
       this.onInteraction(info?.feedback ?? (label.getAttribute("aria-pressed") === "true" ? "燃气灶已开火" : "燃气灶已关火"));
       this.shadows.invalidate();
-      this.fixtures.invalidateReflections();
       this.requestRender();
     } else if (label.dataset.roomId) this.activateRoomLabel(label.dataset.roomId);
   }

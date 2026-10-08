@@ -89,53 +89,7 @@
 }
 .fixture-intro { transform: translateX(-50%); display: flex; align-items: center; gap: 8px; }
 .fixture-intro button { display: grid; place-items: center; width: 32px; height: 32px; color: var(--text-secondary); background: transparent; }
-.camera-tools button.tool-switch {
-  width: 64px;
-  height: 56px;
-  display: grid;
-  grid-template-columns: 18px auto;
-  grid-template-rows: 18px 14px;
-  justify-content: center;
-  align-content: center;
-  align-items: center;
-  justify-items: center;
-  column-gap: 4px;
-  row-gap: 4px;
-  padding: 6px;
-  line-height: 1;
-}
-.camera-tools .tool-switch > svg { display: block; grid-column: 1; grid-row: 1; }
-.camera-tools .tool-switch > small { display: block; grid-column: 2; grid-row: 1; font-size: 10px; line-height: 1; }
-.camera-tools .tool-switch[aria-checked="true"] { color: var(--tint); }
-.tool-switch-track {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  display: block;
-  position: relative;
-  width: 26px;
-  height: 14px;
-  border-radius: 8px;
-  background: var(--control-background);
-  transition: background 180ms ease;
-}
-.tool-switch-track > span {
-  display: block;
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  left: 2px;
-  top: 2px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px #00000022;
-  transition: transform 180ms ease;
-}
-.tool-switch[aria-checked="true"] .tool-switch-track { background: var(--action-fill); }
-.tool-switch[aria-checked="true"] .tool-switch-track > span { transform: translateX(12px); }
-.tool-switch.is-mixed .tool-switch-track { background: linear-gradient(90deg, var(--action-fill) 50%, var(--control-background) 50%); }
-.camera-tools .tool-switch:disabled { opacity: 0.45; cursor: default; }
 @media (max-width: 760px) {
-  .camera-tools button.tool-switch { width: 64px; height: 44px; padding: 4px; row-gap: 2px; }
   .fixture-feedback, .fixture-intro { bottom: auto; top: 130px; }
   .fixture-intro { padding: 6px 10px; font-size: 11px; }
   .viewport:has(.room-detail.is-expanded) .fixture-feedback,
@@ -143,5 +97,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .fixture-hint-dot { animation: none; }
-  .fixture-hint-tooltip, .fixture-hint-feedback, .fixture-feedback, .tool-switch-track, .tool-switch-track > span { transition: none; }
+  .fixture-hint-tooltip, .fixture-hint-feedback, .fixture-feedback { transition: none; }
 }

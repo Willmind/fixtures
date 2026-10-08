@@ -68,47 +68,7 @@
     background: #1d1d1f66;
     z-index: 11;
   }
-.viewport-controls {
-    top: 18px;
-    left: 16px;
-    right: 16px;
-  }
-.layout-preview {
-    margin-left: 0;
-    width: 320px;
-    max-width: 100%;
-    padding: 11px 12px;
-  }
 .fixture-label { font-size: 9px; padding: 3px 5px; }
-.preview-panel-toggle { min-height: 44px; }
-.layout-preview.is-collapsed { width: 145px; padding: 0 12px; }
-.layout-preview .balcony-preview-summary {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-.layout-preview .balcony-preview-note { margin-top: 8px; }
-.viewport-top .view-switch {
-    --switch-inset: 3px;
-    padding: 3px;
-    border-radius: 13px;
-  }
-.viewport-top .model-switch-indicator { border-radius: 10px; }
-.viewport-top .view-switch button {
-    min-height: 44px;
-    padding: 8px;
-    border-radius: 10px;
-    gap: 4px;
-    font-size: 11px;
-  }
-.viewport-top .lighting-switch button {
-    min-width: 48px;
-  }
 .lighting-switch svg {
     display: none;
   }
@@ -224,8 +184,7 @@
   .camera-tools > span {
     display: none;
   }
-  .camera-tools button,
-  .camera-tools button.light-action {
+  .camera-tools button {
     width: 44px;
     height: 44px;
   }

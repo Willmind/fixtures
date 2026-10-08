@@ -3,7 +3,7 @@ import type { HomeFixtures } from "../HomeFixtures.ts";
 
 type ToggleHost = Pick<HomeFixtures, "toggleRobot" | "toggleBedsideLamp" | "toggleCeilingLight"
   | "toggleExhaustFan" | "toggleWaterTap" | "toggleGasBurner" | "toggleDoor"
-  | "toggleBedDrawer" | "toggleCurtain" | "toggleDryingRack">;
+  | "toggleBedDrawer" | "toggleCurtain" | "toggleDryingRack" | "toggleScreen">;
 type AnimationHost = Pick<HomeFixtures, "animateCurtains" | "animateDoors" | "animateBedDrawers"
   | "animateGasBurners" | "animateAppliances">;
 type Action = {
@@ -16,6 +16,7 @@ const tagged = (...keys: string[]) => (object: THREE.Object3D) => keys.some((key
 
 // One registry defines both the pointer affordance and dispatch priority.
 const actions: readonly Action[] = [
+  { kind: "screenIndex", title: "屏幕", matches: tagged("screenIndex"), toggle: (host, object) => host.toggleScreen(object) },
   { kind: "dryingRack", title: "晾衣架", matches: (object) => object.userData.dryingRack === true, toggle: (host, object, now, reduce) => host.toggleDryingRack(object, now, reduce) },
   { kind: "robotVacuum", title: "扫地机器人", matches: (object) => object.userData.robotVacuum === true, toggle: (host, object, now) => host.toggleRobot(object, now) },
   { kind: "bedsideLampIndex", title: "床头灯", matches: tagged("bedsideLampIndex"), toggle: (host, object) => host.toggleBedsideLamp(object) },
@@ -50,10 +51,12 @@ export function fixtureInteractionTarget(object: THREE.Object3D) {
   let key = action.kind;
   if (action.kind === "homeDoorIndex" && typeof object.userData.glazingDoorIndex === "number") {
     key = `glazingDoorIndex:${object.userData.glazingDoorIndex}`;
-  } else if (typeof object.userData[action.kind] === "number") {
-    key += `:${object.userData[action.kind]}`;
+  } else if (action.kind === "gasBurnerIndex") {
+    key += ":all";
   } else if (Array.isArray(object.userData.bedDrawerIds)) {
     key += `:${object.userData.bedDrawerIds.join(",")}`;
+  } else if (typeof object.userData[action.kind] === "number") {
+    key += `:${object.userData[action.kind]}`;
   }
   let title = action.title;
   if (action.kind === "homeDoorIndex") {
@@ -69,5 +72,5 @@ export function fixtureInteractionTarget(object: THREE.Object3D) {
       if (name.includes("main-balcony")) { title = "阳台玻璃门"; break; }
     }
   }
-  return { key, kind: action.kind, title };
+  return { key, kind: action.kind, title: object.userData.fixtureTitle ?? title };
 }

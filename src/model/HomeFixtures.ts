@@ -40,7 +40,6 @@ import { RobotRoute } from "./robotRoute.ts";
 import { createBathroomMirror } from "./mirrors.ts";
 import { ExhaustFan } from "./exhaustFans.ts";
 import { floorElevation } from "./drainage.ts";
-import { ReflectionBudget } from "./ReflectionBudget.ts";
 
 import type { FixtureOptions } from "./options.ts";
 import { fixtureOptionsChanged, fixtureAppearanceChanged } from "./options.ts";
@@ -79,9 +78,6 @@ export class HomeFixtures {
   private televisions: { mount: TelevisionMount; group: THREE.Group }[] = [];
   private televisionBackdrops: THREE.Mesh[] = [];
   private mirrorBackdrops: THREE.Mesh[] = [];
-  private mirrors: ReturnType<typeof createBathroomMirror>[] = [];
-  private reflectionBudget = new ReflectionBudget();
-  private reflectionFrame = { now: 0, moving: false };
   private televisionLabels: CSS2DObject[] = [];
   private labels: CSS2DObject[] = [];
   private equipmentLabels: CSS2DObject[] = [];
@@ -90,15 +86,15 @@ export class HomeFixtures {
   private geometryPool = new BoxGeometryPool();
   private materials = new Set<THREE.Material>();
   private textures = new Set<THREE.Texture>();
+  private screens: { on: boolean; material: THREE.MeshBasicMaterial }[] = [];
+  private televisionScreen = this.createScreen();
+  private computerScreen = this.createScreen();
   private roofMaterial = this.material({ color: "#d1d0ca", roughness: 0.95 });
   private cabinetMaterial = this.material({ color: previewPalette.tvCabinet, roughness: 0.9 });
   private sofaMaterial = this.material({ color: previewPalette.sofa, roughness: 1 });
   private cushionMaterial = this.material({ color: previewPalette.sofaCushion, roughness: 1 });
   private whiteMaterial = this.material({ color: "#eeeae2", roughness: 0.7 });
   private darkMaterial = this.material({ color: "#38434a", roughness: 0.45 });
-  private computerScreenMaterial = this.material({
-    color: "#435e73", roughness: 0.3, emissive: "#182d40", emissiveIntensity: 0.25,
-  });
   private supportMaterial = this.material({ color: "#343331", roughness: 0.85 });
   private chairMeshMaterial = this.makeChairMeshMaterial();
   private woodMaterial = this.material({ color: previewPalette.lightWalnut, roughness: 0.85 });
@@ -109,6 +105,7 @@ export class HomeFixtures {
   private wetWallMaterial = this.makeTileMaterial(true);
   private ceramicMaterial = this.material({ color: "#f5f5f0", roughness: 0.25 });
   private steelMaterial = this.material({ color: "#7c8385", roughness: 0.35, metalness: 0.7 });
+  private sinkMaterial = this.makeSinkMaterial();
   private faucetMaterial = this.material({ color: "#b9bec0", roughness: 0.32, metalness: 0.35 });
   private mirrorMaterial = this.material({ color: "#dce8eb", roughness: 0.06, metalness: 0.15,
     emissive: "#c8d9de", emissiveIntensity: 0.12 });
@@ -210,15 +207,19 @@ export class HomeFixtures {
     let on: boolean | undefined;
     let verbs = ["打开", "关闭"];
     switch (target.kind) {
-      case "homeDoorIndex": on = this.openings.isDoorOpen(object); break;
+      case "homeDoorIndex":
+        on = this.openings.isDoorOpen(object);
+        if (target.title === "床头柜抽屉" || target.title === "书房椅子") verbs = ["拉出", "收回"];
+        break;
+      case "screenIndex": on = this.screens[data.screenIndex]?.on; verbs = ["开机", "关机"]; break;
       case "bedsideLampIndex": case "ceilingLightIndex": on = this.lighting.isLightOn(object); break;
       case "exhaustFanIndex": on = this.exhaustFans[data.exhaustFanIndex]?.motion.on; verbs = ["启动", "停止"]; break;
       case "waterTapIndex": on = this.taps[data.waterTapIndex]?.on; break;
-      case "gasBurnerIndex": on = this.gasBurners[data.gasBurnerIndex]?.on; verbs = ["开火", "关火"]; break;
+      case "gasBurnerIndex": on = this.gasBurners.every((burner) => burner.on); verbs = ["开火", "关火"]; break;
       case "dryingRack": on = this.dryingRack?.motion.open; verbs = ["下降", "升起"]; break;
       case "curtainIndex": on = !this.curtains[data.curtainIndex]?.transition.closed; verbs = ["展开", "合上"]; break;
       case "bedDrawerIndex": {
-        const ids: number[] = typeof data.bedDrawerIndex === "number" ? [data.bedDrawerIndex] : data.bedDrawerIds;
+        const ids: number[] = data.bedDrawerIds ?? (typeof data.bedDrawerIndex === "number" ? [data.bedDrawerIndex] : undefined);
         on = ids?.every((id) => this.bedDrawers[id]?.motion.open); verbs = ["拉出", "收回"]; break;
       }
       case "robotVacuum": {
@@ -238,6 +239,28 @@ export class HomeFixtures {
     return material;
   }
 
+  private createScreen() {
+    const material = new THREE.MeshBasicMaterial({ color: "#151b20", toneMapped: false });
+    this.materials.add(material);
+    return this.screens.push({ on: false, material }) - 1;
+  }
+
+  toggleScreen(object: THREE.Object3D) {
+    const screen = this.screens[object.userData.screenIndex];
+    if (!screen) return false;
+    screen.on = !screen.on;
+    screen.material.color.set(screen.on ? "#a6cbdc" : "#151b20");
+    return true;
+  }
+
+  private tagScreen(object: THREE.Object3D, index: number, title: string) {
+    object.traverse((part) => {
+      if (!(part instanceof THREE.Mesh)) return;
+      part.userData.screenIndex = index;
+      part.userData.fixtureTitle = title;
+    });
+  }
+
   private makeCurtainMaterial() {
     const material = new THREE.MeshPhysicalMaterial({
       color: curtainColors[0].color, roughness: 0.98, metalness: 0,
@@ -248,6 +271,25 @@ export class HomeFixtures {
     });
     this.materials.add(material);
     return material;
+  }
+
+  private makeSinkMaterial() {
+    // Subtle horizontal grain distinguishes brushed steel from the white countertop.
+    const pixels = new Uint8Array(64 * 64 * 4);
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 64; x++) {
+        const shade = Math.round(236 + 3 * Math.sin(y * 1.9) + 2 * Math.sin(x * 0.17 + y * 3.1));
+        pixels.set([shade, shade, shade, 255], (y * 64 + x) * 4);
+      }
+    }
+    const grain = new THREE.DataTexture(pixels, 64, 64);
+    grain.colorSpace = THREE.SRGBColorSpace;
+    grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
+    grain.magFilter = THREE.LinearFilter;
+    grain.minFilter = THREE.LinearMipmapLinearFilter;
+    grain.generateMipmaps = true; grain.needsUpdate = true;
+    this.textures.add(grain);
+    return this.material({ color: "#bdc5cb", map: grain, roughness: 0.28, metalness: 0.6 });
   }
 
   private makeChairMeshMaterial() {
@@ -338,15 +380,24 @@ export class HomeFixtures {
 
   private buildTelevision(group: THREE.Group) {
     const size = furnitureSize.tvCabinet;
-    this.box(group, [size.width, size.height, size.depth],
-      [0, size.height / 2, 0], this.cabinetMaterial, 0.025);
+    const cabinet = new THREE.Group(); cabinet.name = "living-tv-cabinet"; group.add(cabinet);
+    this.openings.buildCabinet(cabinet, { width: size.width, depth: size.depth, bottom: 0, top: size.height,
+      material: this.cabinetMaterial, title: "电视柜" });
     for (const { id: mount } of televisionMounts) {
       const television = new THREE.Group();
       television.name = `television-${mount}`;
       group.add(television);
       this.televisions.push({ mount, group: television });
       const parts = televisionParts[mount];
-      this.part(television, parts.screen, this.darkMaterial);
+      const frame = this.part(television, parts.screen, this.darkMaterial);
+      this.tagScreen(frame, this.televisionScreen, "电视");
+      const [width, height, depth] = parts.screen.size;
+      const [x, y, z] = parts.screen.position;
+      const screen = this.box(television, [width - 0.04, height - 0.04, 0.004],
+        [x, y, z + depth / 2 + 0.002], this.screens[this.televisionScreen].material, 0.008);
+      this.tagScreen(screen, this.televisionScreen, "电视");
+      screen.userData.fixtureHintPriority = 1;
+      screen.castShadow = false;
       for (const part of parts.supports) this.part(television, part, this.darkMaterial);
       if (mount === "wall") {
         this.televisionBackdrops.push(this.part(television, televisionWallBackdrop, this.backdropMaterial));
@@ -573,7 +624,12 @@ export class HomeFixtures {
         this.box(toilet, [0.36, 0.40, 0.11], [0, 1.02, -0.285], this.ceramicMaterial, 0.025);
         this.box(toilet, [0.065, 0.008, 0.035], [0, 1.224, -0.285], this.faucetMaterial, 0.005);
         this.pipe(toilet, [[0, 0.825, -0.235], [0, 0.12, -0.235], [0, 0.06, -0.28]], 0.014);
-      } else this.furniture.buildToilet(toilet);
+      } else {
+        const lid = this.furniture.buildToilet(toilet);
+        this.openings.registerGlazingDoor([lid], (value) => {
+          lid.rotation.x = -Math.PI * 0.47 * value;
+        }, false, "马桶盖");
+      }
       this.tagRoom(toilet, fitting.roomId);
       const shower = this.at(this.furnishings, fitting.shower.center, fitting.shower.rotation);
       shower.name = `${fitting.roomId}-shower`;
@@ -598,20 +654,16 @@ export class HomeFixtures {
       const cabinet = this.at(this.furnishings, bedside.center, bedside.rotation);
       cabinet.name = `${roomId}-bedside-cabinet`;
       this.box(cabinet, [0.36, 0.06, 0.34], [0, 0.03, 0], this.supportMaterial, 0.008);
-      this.box(cabinet, [0.40, 0.46, 0.38], [0, 0.29, 0], this.woodMaterial, 0.012);
-      for (const y of [0.18, 0.40]) {
-        this.box(cabinet, [0.37, 0.20, 0.018], [0, y, 0.198], this.woodMaterial, 0.005);
-        this.box(cabinet, [0.12, 0.012, 0.018], [0, y + 0.065, 0.216], this.steelMaterial, 0.004);
-      }
+      this.openings.buildBedsideDrawers(cabinet);
       this.lighting.addBedside(cabinet, roomId);
       this.tagRoom(cabinet, roomId);
 
       const closet = this.at(this.furnishings, wardrobe.center, wardrobe.rotation);
       closet.name = `${roomId}-wardrobe`;
-      const { width, depth } = wardrobe, height = 2.15;
+      const { width, depth, doors: doorCount } = wardrobe, height = 2.15;
       const panel = 0.025, bodyHeight = height - 0.08, centerY = (height + 0.08) / 2;
       this.box(closet, [width - 0.06, 0.08, depth - 0.04], [0, 0.04, 0], this.supportMaterial);
-      // Hollow carcass lets the independently hinged leaves reveal real storage space.
+      // Narrow front leaves align with the internal storage compartments.
       this.box(closet, [width, bodyHeight, panel],
         [0, centerY, -(depth - panel) / 2], this.woodMaterial);
       for (const side of [-1, 1]) {
@@ -621,32 +673,39 @@ export class HomeFixtures {
       for (const y of [0.08 + panel / 2, height - panel / 2]) {
         this.box(closet, [width - panel * 2, panel, depth], [0, y, 0], this.woodMaterial);
       }
-      this.box(closet, [panel, bodyHeight - panel * 2, depth - panel],
-        [0, centerY, panel / 2], this.woodMaterial);
-      for (const y of [0.55, 1.05, 1.55, 1.93]) {
-        this.box(closet, [width / 2 - panel * 1.5, panel, depth - panel * 2],
-          [width / 4 - panel / 4, y, 0], this.woodMaterial);
+      const innerWidth = width - panel * 2, compartmentWidth = innerWidth / doorCount;
+      for (let index = 0; index < doorCount; index++) {
+        const x = -innerWidth / 2 + (index + 0.5) * compartmentWidth;
+        if (index > 0) {
+          this.box(closet, [panel, bodyHeight - panel * 2, depth - panel],
+            [-innerWidth / 2 + index * compartmentWidth, centerY, panel / 2], this.woodMaterial);
+        }
+        const shelfWidth = compartmentWidth - panel;
+        const hanging = index < Math.ceil(doorCount / 2);
+        for (const y of hanging ? [1.93] : [0.55, 1.05, 1.55, 1.93]) {
+          this.box(closet, [shelfWidth, panel, depth - panel * 2], [x, y, 0], this.woodMaterial);
+        }
+        if (hanging) this.pipe(closet, depth < 0.55
+          ? [[x, 1.78, -depth / 2 + panel], [x, 1.78, depth / 2 - panel]]
+          : [[x - shelfWidth / 2, 1.78, 0], [x + shelfWidth / 2, 1.78, 0]], 0.012);
       }
-      this.box(closet, [width / 2 - panel * 1.5, panel, depth - panel * 2],
-        [-width / 4 + panel / 4, 1.93, 0], this.woodMaterial);
-      const hangingX = -width / 4 + panel / 4;
-      this.pipe(closet, depth < 0.55
-        ? [[hangingX, 1.78, -depth / 2 + panel], [hangingX, 1.78, depth / 2 - panel]]
-        : [[-width / 2 + panel, 1.78, 0], [-panel / 2, 1.78, 0]], 0.012);
-      const hingeX = (width - panel) / 2, doorWidth = hingeX - 0.006;
-      for (const side of [-1, 1]) {
+      const frontWidth = width - panel, pitch = frontWidth / doorCount, doorWidth = pitch - 0.006;
+      const leaves: THREE.Group[] = [];
+      for (let index = 0; index < doorCount; index++) {
         const door = new THREE.Group();
-        door.name = `${roomId}-wardrobe-${side < 0 ? "left" : "right"}-door`;
-        door.position.set(side * hingeX, 0, depth / 2 + 0.014);
+        door.name = `${roomId}-wardrobe-door-${index}`;
+        door.position.set(-frontWidth / 2 + index * pitch + 0.003, 0, depth / 2 + 0.014);
         closet.add(door);
         this.box(door, [doorWidth, height - 0.13, 0.022],
-          [-side * doorWidth / 2, centerY, 0], this.woodMaterial, 0.005);
+          [doorWidth / 2, centerY, 0], this.woodMaterial, 0.005);
         this.box(door, [0.014, 0.30, 0.020],
-          [-side * (doorWidth - 0.03), 1.05, 0.023], this.steelMaterial, 0.004);
-        this.openings.registerGlazingDoor([door], (value) => {
-          door.rotation.y = side * Math.PI / 2 * value;
-        });
+          [doorWidth - 0.03, 1.05, 0.023], this.steelMaterial, 0.004);
+        leaves.push(door);
       }
+      // Parallel hinges keep neighbouring leaves from overlapping when open.
+      this.openings.registerGlazingDoor(leaves, (value) => {
+        for (const door of leaves) door.rotation.y = -Math.PI / 2 * value;
+      });
       this.tagRoom(closet, roomId);
     }
   }
@@ -710,11 +769,15 @@ export class HomeFixtures {
       const pillow = this.box(group, [pillowWidth, 0.12, 0.38], [x, 0.60, -0.66], this.beddingMaterial, 0.055);
       pillow.userData.bedDrawerIds = drawerIds;
     }
+    // Every part of this bed shares one action, including drawer fronts and handles.
+    group.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.userData.bedDrawerIds = drawerIds;
+    });
   }
 
   toggleBedDrawer(object: THREE.Object3D, now: number, reducedMotion = false) {
     const index = object.userData.bedDrawerIndex;
-    const ids: number[] | undefined = typeof index === "number" ? [index] : object.userData.bedDrawerIds;
+    const ids: number[] | undefined = object.userData.bedDrawerIds ?? (typeof index === "number" ? [index] : undefined);
     if (!ids?.length) return false;
     const drawers = ids.map((id) => this.bedDrawers[id]).filter((drawer) => !!drawer);
     const open = !drawers.every((drawer) => drawer.motion.open);
@@ -802,11 +865,9 @@ export class HomeFixtures {
     group.add(fixture);
     // Wall-hung cabinet: keep the basin height and leave 0.30 m clear below.
     // The left cabinet side follows the basin edge; only the free right side overhangs.
-    this.box(fixture, [width - 0.02, 0.40, 0.44], [-0.01, 0.50, wallZ + 0.22], this.woodMaterial);
-    this.box(fixture, [0.006, 0.36, 0.006], [0, 0.50, 0.202], this.supportMaterial);
-    for (const x of [-0.1, 0.1]) {
-      this.box(fixture, [0.12, 0.012, 0.025], [x, 0.625, 0.21], this.steelMaterial);
-    }
+    const cabinet = new THREE.Group(); cabinet.name = "bathroom-vanity-cabinet";
+    cabinet.position.set(-0.01, 0, wallZ + 0.22); fixture.add(cabinet);
+    this.openings.buildCabinet(cabinet, { width: width - 0.02, depth: 0.44, bottom: 0.30, top: 0.70, title: "浴室柜" });
     this.box(fixture, [width, 0.04, depth], [0, 0.72, 0], this.ceramicMaterial);
     for (const side of [-1, 1]) {
       this.box(fixture, [0.04, 0.10, depth], [side * (width / 2 - 0.02), 0.79, 0],
@@ -819,14 +880,12 @@ export class HomeFixtures {
     drain.position.set(0, 0.741, 0.03);
     fixture.add(drain);
     this.buildBasinFaucet(fixture);
-    // A thin backing, with a real reflection plane just in front of the tiled wall.
+    // Keep the frameless surface just in front of its thin backing.
     this.box(fixture, [width, 0.82, 0.006], [0, 1.53, wallZ + 0.003], this.ceramicMaterial, 0.002);
-    const mirrorIndex = this.mirrors.length;
-    const mirror = createBathroomMirror(width, 0.82, this.mirrors,
-      () => this.reflectionBudget.allow(mirrorIndex, this.reflectionFrame.now, this.reflectionFrame.moving));
+    const mirror = createBathroomMirror(width, 0.82);
+    this.materials.add(mirror.material);
     mirror.position.set(0, 1.53, wallZ + 0.0065);
     fixture.add(mirror);
-    this.mirrors.push(mirror);
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
       [0.78, 2.0 - defaults.cutHeight, defaults.wallThickness],
@@ -1008,18 +1067,9 @@ export class HomeFixtures {
       [0, 0.075, 0], this.supportMaterial);
     // Hollow cabinet sides leave room for the recessed sink rather than filling
     // its bowl with a solid cabinet or countertop underneath.
-    for (const z of [-size.depth / 2 + 0.02, size.depth / 2 - 0.02]) {
-      this.box(counter, [size.width - 0.04, 0.69, 0.035], [0, 0.495, z], this.woodMaterial);
-    }
-    for (const x of [-size.width / 2 + 0.02, size.width / 2 - 0.02]) {
-      this.box(counter, [0.035, 0.69, size.depth - 0.04], [x, 0.495, 0], this.woodMaterial);
-    }
-    for (let index = 0; index < 5; index++) {
-      const x = -size.width / 2 + (index + 0.5) * size.width / 5;
-      this.box(counter, [0.22, 0.015, 0.025], [x, 0.75, size.depth / 2], this.steelMaterial);
-      if (index > 0) this.box(counter, [0.006, 0.67, 0.006],
-        [x - size.width / 10, 0.495, size.depth / 2 - 0.001], this.supportMaterial);
-    }
+    const cabinet = new THREE.Group(); cabinet.name = "kitchen-base-cabinet"; counter.add(cabinet);
+    this.openings.buildCabinet(cabinet, { width: size.width - 0.04, depth: size.depth - 0.04,
+      bottom: 0.15, top: 0.84, doors: 5, title: "厨房橱柜" });
 
     const sinkWidth = 0.6, sinkDepth = 0.4, sinkZ = 0.02;
     const leftEdge = sinkOffset - sinkWidth / 2, rightEdge = sinkOffset + sinkWidth / 2;
@@ -1034,18 +1084,19 @@ export class HomeFixtures {
     }
 
     const sink = new THREE.Group();
+    sink.name = "kitchen-stainless-steel-sink";
     sink.position.set(sinkOffset, 0, sinkZ);
     counter.add(sink);
-    this.box(sink, [sinkWidth, 0.02, sinkDepth], [0, 0.71, 0], this.steelMaterial);
+    this.box(sink, [sinkWidth, 0.02, sinkDepth], [0, 0.71, 0], this.sinkMaterial);
     for (const x of [-sinkWidth / 2 + 0.009, sinkWidth / 2 - 0.009]) {
-      this.box(sink, [0.018, 0.17, sinkDepth], [x, 0.805, 0], this.steelMaterial);
-      this.box(sink, [0.03, 0.015, sinkDepth + 0.03], [x, 0.891, 0], this.steelMaterial);
+      this.box(sink, [0.018, 0.17, sinkDepth], [x, 0.805, 0], this.sinkMaterial);
+      this.box(sink, [0.03, 0.015, sinkDepth + 0.03], [x, 0.891, 0], this.sinkMaterial);
     }
     for (const z of [-sinkDepth / 2 + 0.009, sinkDepth / 2 - 0.009]) {
-      this.box(sink, [sinkWidth, 0.17, 0.018], [0, 0.805, z], this.steelMaterial);
-      this.box(sink, [sinkWidth + 0.03, 0.015, 0.03], [0, 0.891, z], this.steelMaterial);
+      this.box(sink, [sinkWidth, 0.17, 0.018], [0, 0.805, z], this.sinkMaterial);
+      this.box(sink, [sinkWidth + 0.03, 0.015, 0.03], [0, 0.891, z], this.sinkMaterial);
     }
-    const drain = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.005, 16), this.darkMaterial);
+    const drain = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.005, 16), this.sinkMaterial);
     drain.position.set(0, 0.722, 0);
     sink.add(drain);
     const faucet = new THREE.Group();
@@ -1096,14 +1147,12 @@ export class HomeFixtures {
   toggleGasBurner(object: THREE.Object3D, now: number, reducedMotion = false) {
     const index = object.userData.gasBurnerIndex;
     if (typeof index !== "number" || !this.gasBurners[index]) return false;
-    this.gasBurners[index].toggle(now, reducedMotion);
-    this.updateGasBurnerLabel();
-    return true;
+    return this.toggleGasBurnerLabel(now, reducedMotion);
   }
 
   toggleGasBurnerLabel(now: number, reducedMotion = false) {
     if (!this.gasBurners.length) return false;
-    const turnOn = !this.gasBurners.some((burner) => burner.on);
+    const turnOn = !this.gasBurners.every((burner) => burner.on);
     for (const burner of this.gasBurners) {
       if (burner.on !== turnOn) burner.toggle(now, reducedMotion);
     }
@@ -1142,6 +1191,11 @@ export class HomeFixtures {
     const index = object.userData.waterTapIndex;
     if (typeof index !== "number" || !this.taps[index]) return false;
     this.taps[index].toggle(now, reducedMotion); return true;
+  }
+
+  setRobotRoomScope(roomId: string | undefined, now: number) {
+    this.robot?.route.setRoomScope(roomId, now);
+    this.updateRobot();
   }
 
   toggleRobot(object: THREE.Object3D, now: number) {
@@ -1186,13 +1240,7 @@ export class HomeFixtures {
     const sideCabinet = new THREE.Group(); sideCabinet.position.set(cabinet.center[0], 0, cabinet.center[1]);
     sideCabinet.name = "tv-left-storage-cabinet"; group.add(sideCabinet);
     this.box(sideCabinet, [cabinet.width - 0.05, 0.08, cabinet.depth - 0.04], [0, 0.04, 0], this.supportMaterial, 0.008);
-    this.box(sideCabinet, [cabinet.width, cabinet.height - 0.08, cabinet.depth],
-      [0, (cabinet.height + 0.08) / 2, 0], this.woodMaterial, 0.012);
-    for (const side of [-1, 1]) {
-      this.box(sideCabinet, [cabinet.width / 2 - 0.012, cabinet.height - 0.12, 0.015],
-        [side * cabinet.width / 4, (cabinet.height + 0.08) / 2, cabinet.depth / 2 + 0.002], this.woodMaterial, 0.008);
-      this.box(sideCabinet, [0.012, 0.12, 0.022], [side * 0.026, 0.68, cabinet.depth / 2 + 0.016], this.steelMaterial, 0.004);
-    }
+    this.openings.buildCabinet(sideCabinet, { ...cabinet, bottom: 0.08, top: cabinet.height, title: "客厅边柜" });
     const tree = createPottedTree(plant, {
       bark: this.material({ color: "#796049", roughness: 1 }),
       foliage: this.material({ color: "#ffffff", vertexColors: true, roughness: 0.86, side: THREE.DoubleSide }),
@@ -1333,11 +1381,15 @@ export class HomeFixtures {
     this.box(desk, [size.width - 0.16, 0.10, 0.035],
       [0, size.height - 0.105, -size.depth / 2 + 0.06], this.woodMaterial);
     // Monitor base, stem and display remain connected above the tabletop.
-    this.box(desk, [0.26, 0.02, 0.18], [-0.18, size.height + 0.01, -0.16], this.supportMaterial, 0.01);
-    this.box(desk, [0.045, 0.18, 0.045], [-0.18, size.height + 0.10, -0.19], this.supportMaterial, 0.01);
-    this.box(desk, [0.64, 0.38, 0.04], [-0.18, size.height + 0.35, -0.18], this.darkMaterial, 0.016);
-    this.box(desk, [0.605, 0.338, 0.005],
-      [-0.18, size.height + 0.356, -0.158], this.computerScreenMaterial, 0.006);
+    const monitor = new THREE.Group(); monitor.name = "study-operable-monitor"; desk.add(monitor);
+    this.box(monitor, [0.26, 0.02, 0.18], [-0.18, size.height + 0.01, -0.16], this.supportMaterial, 0.01);
+    this.box(monitor, [0.045, 0.18, 0.045], [-0.18, size.height + 0.10, -0.19], this.supportMaterial, 0.01);
+    this.box(monitor, [0.64, 0.38, 0.04], [-0.18, size.height + 0.35, -0.18], this.darkMaterial, 0.016);
+    const screen = this.box(monitor, [0.605, 0.338, 0.005],
+      [-0.18, size.height + 0.356, -0.158], this.screens[this.computerScreen].material, 0.006);
+    screen.userData.fixtureHintPriority = 1;
+    screen.castShadow = false;
+    this.tagScreen(monitor, this.computerScreen, "电脑");
     this.box(desk, [0.43, 0.025, 0.14], [-0.18, size.height + 0.0125, 0.16], this.darkMaterial, 0.009);
     for (let row = 0; row < 3; row++) {
       for (let key = 0; key < 11; key++) {
@@ -1346,7 +1398,8 @@ export class HomeFixtures {
       }
     }
     this.box(desk, [0.055, 0.035, 0.10], [0.16, size.height + 0.0175, 0.16], this.darkMaterial, 0.02);
-    this.box(desk, [0.20, 0.39, 0.37], [0.54, size.height + 0.195, -0.1], this.darkMaterial, 0.018);
+    const tower = this.box(desk, [0.20, 0.39, 0.37], [0.54, size.height + 0.195, -0.1], this.darkMaterial, 0.018);
+    this.tagScreen(tower, this.computerScreen, "电脑");
     this.box(desk, [0.012, 0.012, 0.005], [0.58, size.height + 0.35, 0.087], this.whiteMaterial);
     this.tagRoom(desk, roomId);
 
@@ -1365,6 +1418,7 @@ export class HomeFixtures {
     }
     const doorWidth = (width - 0.065) / 2;
     const doorHeight = height - 0.12, doorCentreY = (height + 0.06) / 2;
+    const leaves: THREE.Group[] = [];
     for (const side of [-1, 1]) {
       const direction = -side;
       const door = new THREE.Group();
@@ -1389,33 +1443,33 @@ export class HomeFixtures {
         door.add(hinge);
       }
       // Reuse glass-door picking, cursor feedback and reversible motion.
-      this.openings.registerGlazingDoor([door], (value) => { door.rotation.y = side * Math.PI / 2 * value; });
+      leaves.push(door);
     }
+    this.openings.registerGlazingDoor(leaves, (value) => {
+      leaves[0].rotation.y = -Math.PI / 2 * value;
+      leaves[1].rotation.y = Math.PI / 2 * value;
+    });
     this.tagRoom(display, roomId);
     const chair = this.at(this.furnishings, homeOfficeFurniture.chair.center, homeOfficeFurniture.chair.rotation);
     chair.name = "study-ergonomic-chair";
     this.furniture.buildOfficeChair(chair);
+    const tucked = chair.position.clone();
+    // Move along the desk's outward normal, keeping the passage clear.
+    const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), size.rotation);
+    tucked.addScaledVector(direction, -0.22);
+    this.openings.registerGlazingDoor([chair], (value) => {
+      chair.position.copy(tucked).addScaledVector(direction, 0.45 * value);
+    }, false, "书房椅子");
     this.tagRoom(chair, roomId);
   }
-
-  prepareReflections(now: number, moving: boolean) {
-    this.reflectionFrame.now = now;
-    this.reflectionFrame.moving = moving;
-    this.reflectionBudget.beginFrame(moving);
-  }
-
-  invalidateReflections() { this.reflectionBudget.invalidate(); }
-
-  get reflectionsPending() { return this.reflectionBudget.needsAnotherFrame; }
 
   update(options: FixtureOptions) {
     const previous = this.previousOptions;
     if (previous && !fixtureOptionsChanged(previous, options)) return;
     this.previousOptions = options;
     this.updateLabels(options);
-    // Labels have no WebGL geometry; toggling them needs no reflection pass.
+    // Label-only changes do not require updating fixture geometry or materials.
     if (previous && !fixtureAppearanceChanged(previous, options)) return;
-    this.invalidateReflections();
     this.openings.update(options);
     const curtainColor = curtainColors.find((item) => item.id === options.curtainColor) ?? curtainColors[0];
     this.curtainMaterial.color.set(curtainColor.color);
@@ -1495,7 +1549,6 @@ export class HomeFixtures {
     this.geometryPool.clear();
     // HomeScene owns geometry and CSS label disposal through its scene traversal.
     for (const material of this.materials) material.dispose();
-    for (const mirror of this.mirrors) mirror.dispose();
     this.curtainWeave.dispose();
     for (const texture of this.textures) texture.dispose();
   }
