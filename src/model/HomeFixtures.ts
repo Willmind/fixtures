@@ -614,7 +614,7 @@ export class HomeFixtures {
     for (const fitting of bathroomFittings) {
       const vanity = this.at(this.furnishings, fitting.vanity.center, fitting.vanity.rotation);
       vanity.name = `${fitting.roomId}-basin-and-mirror`;
-      this.buildVanity(vanity);
+      this.buildVanity(vanity, fitting.roomId);
       this.tagRoom(vanity, fitting.roomId);
       const toilet = this.at(this.furnishings, fitting.toilet.center, fitting.toilet.rotation);
       toilet.position.y = floorElevation(fitting.roomId, fitting.toilet.center);
@@ -855,7 +855,7 @@ export class HomeFixtures {
     return moving;
   }
 
-  private buildVanity(group: THREE.Group) {
+  private buildVanity(group: THREE.Group, roomId: string) {
     const { width, depth, sideInset, backInset } = bathroomVanitySize;
     const wallZ = -depth / 2;
     const fixture = new THREE.Group();
@@ -886,6 +886,8 @@ export class HomeFixtures {
     this.materials.add(mirror.material);
     mirror.position.set(0, 1.53, wallZ + 0.0065);
     fixture.add(mirror);
+    this.lighting.addTaskLight(fixture, { name: `${roomId}-mirror-task-light`, title: "镜前灯", roomId,
+      position: [0, 1.99, wallZ + 0.035], kind: "bar", length: width - 0.08 });
     // Keep just the supporting wall behind the mirror in cutaway mode.
     this.mirrorBackdrops.push(this.box(group,
       [0.78, 2.0 - defaults.cutHeight, defaults.wallThickness],
@@ -1063,6 +1065,8 @@ export class HomeFixtures {
     const counter = this.at(this.furnishings, size.center, size.rotation);
     counter.position.y = floorElevation("kitchen", size.center);
     counter.name = "kitchen-counter-stove-and-sink";
+    this.lighting.addTaskLight(counter, { name: "kitchen-counter-task-light", title: "厨房操作灯", roomId: "kitchen",
+      position: [-0.55, 1.45, -0.26], kind: "bar", length: 1.9 });
     this.box(counter, [size.width - 0.08, 0.15, size.depth - 0.08],
       [0, 0.075, 0], this.supportMaterial);
     // Hollow cabinet sides leave room for the recessed sink rather than filling
@@ -1380,6 +1384,8 @@ export class HomeFixtures {
     }
     this.box(desk, [size.width - 0.16, 0.10, 0.035],
       [0, size.height - 0.105, -size.depth / 2 + 0.06], this.woodMaterial);
+    this.lighting.addTaskLight(desk, { name: "study-desk-task-light", title: "书房台灯", roomId,
+      position: [-0.61, size.height, -0.12], kind: "desk" });
     // Monitor base, stem and display remain connected above the tabletop.
     const monitor = new THREE.Group(); monitor.name = "study-operable-monitor"; desk.add(monitor);
     this.box(monitor, [0.26, 0.02, 0.18], [-0.18, size.height + 0.01, -0.16], this.supportMaterial, 0.01);

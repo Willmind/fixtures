@@ -517,7 +517,7 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
   await t.test("灯光预设及手动开关在房间选择、标签和视角变化后保持", () => {
     const lights: THREE.PointLight[] = [];
     fixtures.group.traverse((object) => { if (object instanceof THREE.PointLight) lights.push(object); });
-    assert.equal(lights.length, ceilingLighting.length + bedroomStorage.length);
+    assert.equal(lights.length, ceilingLighting.length + bedroomStorage.length + 4);
     assert.ok(lights.every((light) => light.visible && !light.castShadow));
     assert.deepEqual(fixtures.lightState, { on: true, mixed: false });
     const ceiling = findMesh(fixtures.group, (mesh) => mesh.userData.ceilingLightIndex === 0);
@@ -569,6 +569,44 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     assert.equal(toggleFixture(fixtures, door, 2000, true), true);
     fixtures.group.updateMatrixWorld(true);
     assert.deepEqual(door.matrixWorld.elements, closed.elements);
+  });
+
+  await t.test("局部照明保持安装高度，可独立开关且参与全屋控制，主阳台有两盏顶灯", () => {
+    fixtures.update({ ...options, lightingMode: "day" });
+    const tasks = [
+      ["kitchen-counter-task-light", "kitchen", "厨房操作灯"],
+      ["bath-mirror-task-light", "bath", "镜前灯"],
+      ["ensuite-mirror-task-light", "ensuite", "镜前灯"],
+      ["study-desk-task-light", "guest", "书房台灯"],
+    ];
+    const groups = tasks.map(([name]) => fixtures.group.getObjectByName(name)!);
+    assert.ok(groups.every(Boolean));
+    const positions = groups.map((group) => group.position.toArray());
+    const targets = groups.map((group) => findMesh(group, (mesh) => mesh.userData.fixtureHintPriority === 1));
+    indexRoomLayers([fixtures.group]);
+    targets.forEach((target, index) => {
+      assert.equal(fixtures.interactionInfo(target)?.title, tasks[index][2]);
+      assert.ok(target.layers.isEnabled(roomLayer(tasks[index][1])));
+      assert.equal(fixtures.interactionInfo(target)?.active, false);
+      const lamps = groups[index].children.filter((object) => object instanceof THREE.PointLight);
+      assert.equal(lamps.length, 1);
+      assert.equal(lamps[0].castShadow, false);
+    });
+    toggleFixture(fixtures, targets[0], 0, true);
+    assert.deepEqual(targets.map((target) => fixtures.interactionInfo(target)?.active), [true, false, false, false]);
+    fixtures.update({ ...options, lightingMode: "day", wallHeight: 3.2, labels: false });
+    assert.deepEqual(groups.map((group) => group.position.toArray()), positions);
+    assert.equal(fixtures.interactionInfo(targets[0])?.active, true);
+    fixtures.update({ ...options, lightingMode: "day", lightCommand: { on: true, revision: 301 } });
+    assert.ok(targets.every((target) => fixtures.interactionInfo(target)?.active));
+    fixtures.update({ ...options, lightingMode: "day", lightCommand: { on: false, revision: 302 } });
+    assert.ok(targets.every((target) => !fixtures.interactionInfo(target)?.active));
+    const balcony = fixtures.group.getObjectByName("balcony-ceiling-light")!;
+    const lamps = balcony.children.filter((object) => object instanceof THREE.Group);
+    assert.equal(lamps.length, 2);
+    assert.ok(Math.abs(lamps[1].position.x - lamps[0].position.x - 2.1) < 1e-6);
+    fixtures.update(options);
+    assert.ok(targets.every((target) => fixtures.interactionInfo(target)?.active));
   });
 
   await t.test("不同视角和空家具方案正确显示或隐藏灯光，恢复后保留回路状态", () => {

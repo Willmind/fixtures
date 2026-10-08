@@ -234,7 +234,7 @@ export const ceilingLighting: readonly {
   { id: "bath", roomId: "bath", kind: "panel", fixtures: [[6.7, 2.8]], color: "#fff0d8", power: 1.6 },
   { id: "ensuite", roomId: "ensuite", kind: "panel", fixtures: [[11.1, 2.8]], color: "#fff0d8", power: 1.6 },
   { id: "utility", roomId: "utility", kind: "round", fixtures: [[3.6, 0.6]], color: "#fff0d8", power: 1.3 },
-  { id: "balcony", roomId: "balcony", kind: "round", fixtures: [[4.7, 9.25]], color: "#ffe0ae", power: 1.3 },
+  { id: "balcony", roomId: "balcony", kind: "round", fixtures: [[3.65, 9.25], [5.75, 9.25]], color: "#ffe0ae", power: 1.5 },
   { id: "dining", roomId: "living", kind: "pendant", fixtures: [[4.25, 2.65]], color: "#ffe0ae", power: 1.8 },
   { id: "entry", roomId: "living", kind: "round", fixtures: [[1.3, 4.42]], color: "#ffe0ae", power: 1.2 },
   { id: "hallway", roomId: "living", kind: "downlights", fixtures: [[8.4, 4.7]], color: "#ffe0ae", power: 1.2 },
