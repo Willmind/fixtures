@@ -7,14 +7,30 @@ type Props = {
   options: ViewOptions;
   onSelect: (id: string | null) => void;
   onLightsChange: (on: boolean) => void;
+  onHintsChange: (on: boolean) => void;
 };
 
-export function ModelViewer({ options, onSelect, onLightsChange }: Props) {
+export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<HomeScene | null>(null);
   const initialOptions = useRef(options);
   const selectionCallback = useRef(onSelect);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ text: string; revision: number } | null>(null);
+  const [hintSeen, setHintSeen] = useState(() => {
+    try { return localStorage.getItem("fixtures.interaction-intro.v1") === "seen"; }
+    catch { return false; }
+  });
+  function dismissHint() {
+    setHintSeen(true);
+    try { localStorage.setItem("fixtures.interaction-intro.v1", "seen"); } catch { /* Optional preference. */ }
+  }
+  useEffect(() => {
+    if (!feedback) return;
+    const timeout = window.setTimeout(() => setFeedback(null), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
+  useEffect(() => { setFeedback(null); }, [options.focusedRoom]);
 
   useEffect(() => {
     selectionCallback.current = onSelect;
@@ -28,6 +44,11 @@ export function ModelViewer({ options, onSelect, onLightsChange }: Props) {
         initialOptions.current,
         (id) => selectionCallback.current(id),
         setError,
+        (text) => {
+          setFeedback((previous) => ({ text, revision: (previous?.revision ?? 0) + 1 }));
+          setHintSeen(true);
+          try { localStorage.setItem("fixtures.interaction-intro.v1", "seen"); } catch { /* Optional preference. */ }
+        },
       );
     } catch (cause) {
       console.error("三维模型初始化失败", cause);
@@ -48,6 +69,15 @@ export function ModelViewer({ options, onSelect, onLightsChange }: Props) {
   return (
     <>
       <div className="model-canvas" ref={host} />
+      <div className={`fixture-feedback${feedback ? " is-visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">
+        {feedback?.text}
+      </div>
+      {options.focusedRoom && options.interactionHints !== false && !hintSeen && !feedback ? (
+        <div className="fixture-intro">
+          <span>带圆点的物品可以点击操作</span>
+          <button type="button" aria-label="知道了，关闭交互说明" onClick={dismissHint}><Icon name="close" size={14} /></button>
+        </div>
+      ) : null}
       {error ? (
         <div className="viewer-error" role="alert">
           <Icon name="info" />
@@ -79,6 +109,11 @@ export function ModelViewer({ options, onSelect, onLightsChange }: Props) {
           <Icon name="reset" />
         </button>
         <span />
+        <button className="hint-action" title="显示或隐藏当前房间的交互提示"
+          aria-label="房间交互提示" aria-pressed={options.interactionHints !== false}
+          onClick={() => onHintsChange(options.interactionHints === false)}>
+          <Icon name="info" size={18} /><small>提示</small>
+        </button>
         <button className="light-action" title="打开所有顶灯和床头灯"
           aria-label="全部开灯" disabled={options.layout === "empty"}
           onClick={() => onLightsChange(true)}>

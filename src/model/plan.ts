@@ -151,7 +151,8 @@ export const rooms: Room[] = [
     originalName: roomIdentity.utility.originalName,
     kind: "balcony",
     polygon: rect(2.6, 0, 3.2, 1.2),
-    label: [4.2, 0.6],
+    // Keep the room name on the empty side, away from the robot's charging spot.
+    label: [5.15, 0.65],
     description: "上方有顶板，顶板下方中间安装双杆晾衣架。模型按与客餐厅敞开连接的方案展示，外侧可独立对比保持原样与落地玻璃封窗。洗衣机、热水器靠厨房侧，洗衣机门可点击开合，旁边放扫地机器人和充电座；点击机器人按预设路线清扫客餐厅，再次点击暂停或继续，完成后返回充电座。与厨房之间无门；实际位置需保持干燥，并按机型预留回充空间。",
   },
 ];

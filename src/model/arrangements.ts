@@ -111,7 +111,7 @@ export const utilityEquipment = {
 
 export const utilityDryingRack = {
   center: [4.65, 0.60] as Point,
-  width: 1.65, depth: 0.50, drop: 0.50,
+  width: 1.65, depth: 0.50, drop: 0.50, loweredDrop: 1.30,
 };
 
 // Temporary furniture footprints, measured in metres. Positions follow the

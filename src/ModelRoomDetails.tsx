@@ -17,7 +17,7 @@ export function ModelRoomDetails({ room, summary, onVisit, onClose, onFocus, foc
   const [expanded, setExpanded] = useState(false);
   const descriptionId = useId();
   return (
-    <div className={`room-detail${expanded ? " is-expanded" : ""}`} aria-live="polite">
+    <div id="model-room-details" className={`room-detail${expanded ? " is-expanded" : ""}`} aria-live="polite">
       <div className="room-detail-icon"><Icon name="room" size={23} /></div>
       <div className="room-detail-main">
         <div className="room-detail-heading">
@@ -47,7 +47,7 @@ export function ModelRoomDetails({ room, summary, onVisit, onClose, onFocus, foc
         </button>
         </div>
       </div>
-      <button type="button" className="icon-button" aria-label={focused ? "返回整屋总览" : "取消房间选择"} onClick={onClose}>
+      <button type="button" className="icon-button" aria-label="关闭房间介绍" onClick={onClose}>
         <Icon name="close" size={16} />
       </button>
     </div>

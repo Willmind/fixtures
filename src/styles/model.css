@@ -432,7 +432,18 @@
   box-shadow: 0 2px 8px #00000008;
 }
 .fixture-label-sofa { color: var(--success-text); background: var(--success-glass); }
-.fixture-label-equipment { color: var(--tint); background: var(--blue-glass); }
+.fixture-label-equipment, .fixture-label-robot, .fixture-label-drying-rack, .fixture-label-gas-burner { color: var(--tint); background: var(--blue-glass); }
+.fixture-label-action {
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 32px;
+  user-select: none;
+}
+.fixture-label-action:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 3px;
+}
 .sidebar-footer {
   display: flex;
   align-items: flex-start;

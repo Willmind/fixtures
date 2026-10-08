@@ -1,0 +1,84 @@
+/* Small DOM controls, only rendered in the focused room. */
+.fixture-hint {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.fixture-hint-dot {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #007aff;
+  box-shadow: 0 0 0 5px #007aff26, 0 2px 8px #00000033;
+  animation: fixture-hint-pulse 2.8s ease-in-out 3;
+}
+.fixture-hint[aria-pressed="true"] .fixture-hint-dot { background: #16a675; box-shadow: 0 0 0 5px #16a67526, 0 2px 8px #00000033; }
+.fixture-hint:focus-visible { outline: 2px solid var(--tint); outline-offset: 0; }
+.fixture-hint-tooltip {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(3px);
+  padding: 6px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 9px;
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.fixture-hint:focus-visible .fixture-hint-tooltip { opacity: 1; transform: translateX(-50%); }
+@media (hover: hover) {
+  .fixture-hint:hover .fixture-hint-tooltip { opacity: 1; transform: translateX(-50%); }
+}
+@keyframes fixture-hint-pulse { 50% { transform: scale(1.18); } }
+.fixture-feedback, .fixture-intro {
+  position: absolute;
+  left: 50%;
+  bottom: 114px;
+  z-index: 4;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  box-shadow: var(--card-shadow);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.fixture-feedback {
+  transform: translate(-50%, 5px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease, transform 220ms var(--ease-out);
+}
+.fixture-feedback.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.fixture-intro { transform: translateX(-50%); display: flex; align-items: center; gap: 8px; }
+.fixture-intro button { display: grid; place-items: center; width: 32px; height: 32px; color: var(--text-secondary); background: transparent; }
+.camera-tools .hint-action { width: 44px; height: 48px; display: flex; flex-direction: column; gap: 3px; }
+.camera-tools .hint-action small { font-size: 10px; line-height: 1; }
+.camera-tools .hint-action[aria-pressed="true"] { color: var(--tint); background: var(--blue-glass); border-radius: 10px; }
+@media (max-width: 760px) {
+  .camera-tools .hint-action { height: 44px; }
+  .fixture-feedback, .fixture-intro { bottom: auto; top: 130px; }
+  .fixture-intro { padding: 6px 10px; font-size: 11px; }
+  .viewport:has(.room-detail.is-expanded) .fixture-feedback,
+  .viewport:has(.room-detail.is-expanded) .fixture-intro { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fixture-hint-dot { animation: none; }
+  .fixture-hint-tooltip, .fixture-feedback { transition: none; }
+}

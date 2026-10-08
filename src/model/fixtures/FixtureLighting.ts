@@ -145,6 +145,12 @@ export class FixtureLighting {
     return true;
   }
 
+  isLightOn(object: THREE.Object3D) {
+    const bedside = object.userData.bedsideLampIndex;
+    return typeof bedside === "number" ? this.bedsideLamps[bedside]?.on
+      : this.ceilingLights[object.userData.ceilingLightIndex]?.on;
+  }
+
   toggleBedsideLamp(object: THREE.Object3D) {
     const index = object.userData.bedsideLampIndex;
     if (typeof index !== "number" || !this.bedsideLamps[index]) return false;

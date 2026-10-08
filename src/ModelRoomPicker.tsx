@@ -14,7 +14,7 @@ export function ModelRoomPicker({ focusedRoom, onChoose }: {
     <button type="button" className="room-picker-trigger" aria-haspopup="dialog"
       aria-expanded={open} onClick={() => setOpen(true)}>
       <Icon name="room" size={17} />
-      <span>{room?.name ?? "整屋总览"}</span>
+      <span>{room?.name ?? "选择空间"}</span>
       <Icon name="chevron" size={13} />
     </button>
     {open ? createPortal(<RoomPickerDialog focusedRoom={focusedRoom} onClose={() => setOpen(false)}

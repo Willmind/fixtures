@@ -16,6 +16,7 @@ import type { Point } from "./plan";
 import { splitWall } from "./geometry";
 import { SelectionGesture } from "./SelectionGesture";
 import { HomeFixtures } from "./HomeFixtures";
+import { FixtureHints } from "./FixtureHints";
 import { MeshPickIndex } from "./MeshPickIndex";
 import { RenderProfiler } from "./RenderProfiler";
 import { animateFixtures, toggleFixture } from "./fixtures/interactions";
@@ -46,6 +47,7 @@ export class HomeScene {
   private dimensions = new THREE.Group();
   private drainageOverlay = new THREE.Group();
   private fixtures = new HomeFixtures();
+  private fixtureHints = new FixtureHints(this.fixtures);
   private floors: THREE.Mesh<
     THREE.BufferGeometry,
     THREE.MeshStandardMaterial
@@ -72,7 +74,7 @@ export class HomeScene {
   private hoverPoint?: { clientX: number; clientY: number };
   private selectionGesture = new SelectionGesture();
   private roomLabelGesture = new SelectionGesture(10);
-  private activeRoomLabel?: { element: HTMLButtonElement; roomId: string; pointerId: number };
+  private activeRoomLabel?: { element: HTMLButtonElement; pointerId: number };
   private labels: Map<string, HTMLElement> = new Map();
   private roomOutlines = new Map<string, THREE.LineLoop>();
   private wallMaterial: THREE.MeshStandardMaterial;
@@ -90,6 +92,7 @@ export class HomeScene {
     options: ViewOptions,
     private onSelect: (id: string | null) => void,
     private onError: (message: string) => void,
+    private onInteraction: (message: string) => void = () => {},
   ) {
     this.options = options;
     this.renderer = new THREE.WebGLRenderer({
@@ -367,6 +370,8 @@ export class HomeScene {
       const label = new CSS2DObject(element);
       label.userData.roomId = room.id;
       label.position.copy(this.position(room.label, 0.1));
+      // Extend this label into the empty right-hand space rather than back over the appliances.
+      if (room.id === "utility") label.center.set(0, 1);
       this.labelGroup.add(label);
       this.labels.set(room.id, element);
     }
@@ -593,6 +598,7 @@ export class HomeScene {
 
   private applyVisibility() {
     this.fixtures.update(this.options);
+    this.fixtures.setHintMode(!!this.options.focusedRoom && this.options.interactionHints !== false);
     const night = this.options.lightingMode === "night";
     this.skyLight.color.set(night ? "#a8bcf0" : "#eaf5ff");
     this.skyLight.groundColor.set(night ? "#504c61" : "#b6aaa0");
@@ -785,6 +791,9 @@ export class HomeScene {
     this.renderer.shadowMap.needsUpdate = this.shadows.consume(fixturesMoving);
     this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved || focusing);
     this.renderer.render(this.scene, this.camera);
+    this.fixtureHints.update(this.camera, this.renderer.clippingPlanes,
+      this.host.clientWidth, this.host.clientHeight,
+      !!this.options.focusedRoom && this.options.interactionHints !== false && !focusing);
     this.labelRenderer.render(this.scene, this.camera);
     if (this.profiler) {
       const { render, memory, programs } = this.renderer.info;
@@ -808,6 +817,8 @@ export class HomeScene {
     this.hoverFrame = 0;
     const hit = this.hoverPoint && this.pickFirst(this.hoverPoint);
     this.renderer.domElement.style.cursor = hit && this.fixtures.isOperable(hit.object) ? "pointer" : "";
+    const info = hit && this.fixtures.interactionInfo(hit.object);
+    this.renderer.domElement.title = info ? `${info.title} · ${info.action}` : "";
   };
   private pointerMove = (event: PointerEvent) => {
     if (this.host.ownerDocument.hidden) return;
@@ -870,24 +881,66 @@ export class HomeScene {
     }
     const now = performance.now();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (first && toggleFixture(this.fixtures, first.object, now, reducedMotion)) {
-      this.shadows.invalidate();
-      this.fixtures.invalidateReflections();
-      this.requestRender();
-      return;
-    }
+    if (first) this.activateFixture(first.object, now, reducedMotion);
   };
+
+  private activateFixture(object: THREE.Object3D, now: number, reducedMotion: boolean) {
+    if (!toggleFixture(this.fixtures, object, now, reducedMotion)) return;
+    this.fixtureHints.refresh();
+    const info = this.fixtures.interactionInfo(object);
+    if (info) {
+      this.onInteraction(info.feedback);
+      this.renderer.domElement.title = `${info.title} · ${info.action}`;
+    }
+    this.shadows.invalidate();
+    this.fixtures.invalidateReflections();
+    this.requestRender();
+  }
 
   private roomLabelClick = (event: MouseEvent) => {
     // Pointer activation happens on release; retain native keyboard/AT clicks
     // without letting the subsequent browser click toggle the room twice.
     if (event.detail > 0 || (event instanceof PointerEvent && event.pointerType)) return;
-    if (!this.options.labels || !(event.target instanceof Element)) return;
-    const label = event.target.closest<HTMLButtonElement>("button.room-label[data-room-id]");
-    const roomId = label?.dataset.roomId;
-    if (!label || !this.labelRenderer.domElement.contains(label) || !rooms.some(({ id }) => id === roomId)) return;
-    this.activateRoomLabel(roomId!);
+    const label = this.interactiveLabel(event.target);
+    if (label) this.activateInteractiveLabel(label);
   };
+
+  private interactiveLabel(target: EventTarget | null) {
+    if (!(target instanceof Element)) return;
+    const label = target.closest<HTMLButtonElement>("button.room-label[data-room-id], button.fixture-label[data-fixture-action], button.fixture-hint[data-fixture-hint]");
+    if (!label || !this.labelRenderer.domElement.contains(label)) return;
+    if (label.dataset.fixtureHint && this.options.focusedRoom && this.options.interactionHints !== false
+      && this.fixtureHints.targetFor(label.dataset.fixtureHint)) return label;
+    if (label.dataset.fixtureAction === "gas-burner") return label;
+    if (!this.options.labels) return;
+    if (label.dataset.roomId && this.labels.has(label.dataset.roomId)) return label;
+    if (label.dataset.fixtureAction === "robot" || label.dataset.fixtureAction === "drying-rack") return label;
+  }
+
+  private activateInteractiveLabel(label: HTMLButtonElement) {
+    if (label.dataset.fixtureHint) {
+      const target = this.fixtureHints.targetFor(label.dataset.fixtureHint);
+      if (target) this.activateFixture(target, performance.now(), window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+      return;
+    }
+    const action = label.dataset.fixtureAction;
+    if (action === "robot" || action === "drying-rack" || action === "gas-burner") {
+      const now = performance.now();
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let changed: boolean;
+      if (action === "robot") changed = this.fixtures.toggleRobotLabel(now);
+      else if (action === "drying-rack") changed = this.fixtures.toggleDryingRackLabel(now, reduce);
+      else changed = this.fixtures.toggleGasBurnerLabel(now, reduce);
+      if (!changed) return;
+      const target = action === "robot" ? this.fixtures.group.getObjectByName("robot-vacuum-action-label")
+        : action === "drying-rack" ? this.fixtures.group.getObjectByName("utility-drying-rack-action-label") : undefined;
+      const info = target && this.fixtures.interactionInfo(target);
+      this.onInteraction(info?.feedback ?? (label.getAttribute("aria-pressed") === "true" ? "燃气灶已开火" : "燃气灶已关火"));
+      this.shadows.invalidate();
+      this.fixtures.invalidateReflections();
+      this.requestRender();
+    } else if (label.dataset.roomId) this.activateRoomLabel(label.dataset.roomId);
+  }
 
   private activateRoomLabel(roomId: string) {
     const selected = this.options.selected === roomId ? null : roomId;
@@ -909,12 +962,11 @@ export class HomeScene {
       this.roomLabelPointerCancel({ pointerId: this.activeRoomLabel.pointerId } as PointerEvent);
       return;
     }
-    if (!this.options.labels || event.button !== 0 || !event.isPrimary || !(event.target instanceof Element)) return;
-    const label = event.target.closest<HTMLButtonElement>("button.room-label[data-room-id]");
-    const roomId = label?.dataset.roomId;
-    if (!label || !roomId || !this.labels.has(roomId)) return;
+    if (event.button !== 0 || !event.isPrimary) return;
+    const label = this.interactiveLabel(event.target);
+    if (!label) return;
     this.roomLabelGesture.start(event);
-    this.activeRoomLabel = { element: label, roomId, pointerId: event.pointerId };
+    this.activeRoomLabel = { element: label, pointerId: event.pointerId };
     // Follow the originally pressed button even if damping moves its screen
     // position between press and release.
     label.setPointerCapture(event.pointerId);
@@ -930,7 +982,7 @@ export class HomeScene {
     const activate = this.roomLabelGesture.end(event);
     this.activeRoomLabel = undefined;
     if (active.element.hasPointerCapture(event.pointerId)) active.element.releasePointerCapture(event.pointerId);
-    if (activate && this.options.labels) this.activateRoomLabel(active.roomId);
+    if (activate && this.interactiveLabel(active.element)) this.activateInteractiveLabel(active.element);
   };
 
   private roomLabelPointerCancel = (event: PointerEvent) => {
@@ -951,6 +1003,7 @@ export class HomeScene {
 
   dispose() {
     this.disposed = true;
+    this.fixtureHints.dispose();
     this.renderLoop.dispose();
     cancelAnimationFrame(this.hoverFrame);
     this.resizeObserver.disconnect();

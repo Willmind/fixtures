@@ -196,10 +196,21 @@
     position: absolute;
     inset: -6px 0;
   }
+  .room-label[data-room-id="utility"] {
+    min-height: 44px;
+  }
+  .room-label[data-room-id="utility"]::before {
+    display: none;
+  }
   .fixture-label,
   .orientation-marker,
   .viewport-bottom {
     display: none;
+  }
+  .fixture-label-gas-burner {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
   .camera-tools {
     top: auto;

@@ -4,5 +4,6 @@
 @import "./styles/model.css";
 @import "./styles/model-mobile.css";
 @import "./styles/model-rooms.css";
+@import "./styles/model-interactions.css";
 @import "./styles/dialogs.css";
 @import "./styles/motion.css";

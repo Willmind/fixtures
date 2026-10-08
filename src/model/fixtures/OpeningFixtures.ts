@@ -263,6 +263,12 @@ export class OpeningFixtures {
     return true;
   }
 
+  isDoorOpen(object: THREE.Object3D) {
+    const glazing = object.userData.glazingDoorIndex;
+    return typeof glazing === "number" ? this.glazingDoors[glazing]?.motion.open
+      : this.doors[object.userData.homeDoorIndex]?.motion.open;
+  }
+
   animateDoors(now: number) {
     let moving = false;
     for (const door of [...this.doors, ...this.glazingDoors]) {

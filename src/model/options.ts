@@ -24,6 +24,7 @@ export type ViewOptions = FixtureOptions & {
   selected: string | null;
   drainage: boolean;
   focusedRoom?: string | null;
+  interactionHints?: boolean;
 };
 
 const fixtureKeys = ["lightingMode", "layout", "curtainColor", "televisionMount", "balconyRoofs", "equipment", "cutaway", "view", "wallHeight", "labels"] as const;
@@ -45,5 +46,6 @@ export function viewOptionsChanged(previous: ViewOptions, next: ViewOptions): bo
   return fixtureOptionsChanged(previous, next)
     || previous.selected !== next.selected || previous.dimensions !== next.dimensions
     || previous.grid !== next.grid || previous.drainage !== next.drainage
+    || (previous.interactionHints ?? true) !== (next.interactionHints ?? true)
     || (previous.focusedRoom ?? null) !== (next.focusedRoom ?? null);
 }

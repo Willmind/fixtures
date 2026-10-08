@@ -13,7 +13,7 @@ const base: ViewOptions = {
 test("重新创建同值选项不会触发模型更新，切换房间或辅助线不刷新家具", () => {
   const equivalent = { ...base, balconyModes: { ...base.balconyModes } };
   assert.equal(viewOptionsChanged(base, equivalent), false);
-  for (const change of [{ selected: "guest" }, { focusedRoom: "guest" }, { dimensions: false }, { grid: false }, { drainage: true }]) {
+  for (const change of [{ selected: "guest" }, { focusedRoom: "guest" }, { interactionHints: false }, { dimensions: false }, { grid: false }, { drainage: true }]) {
     const next = { ...base, ...change };
     assert.equal(viewOptionsChanged(base, next), true);
     assert.equal(fixtureOptionsChanged(base, next), false);

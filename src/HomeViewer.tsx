@@ -57,8 +57,10 @@ export default function HomeViewer({
   const [lightCommand, setLightCommand] = useState<ViewOptions["lightCommand"]>();
   const [cutaway, setCutaway] = useState(true);
   const [wallHeight, setWallHeight] = useState<number>(defaults.wallHeight);
-  const [labels, setLabels] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
+  const [labels, setLabels] = useState(false);
+  const [interactionHints, setInteractionHints] = useState(true);
   const [roomView, setRoomView] = useState(false);
+  const [roomDetailsOpen, setRoomDetailsOpen] = useState(false);
   // Use the controlled selection so browser navigation cannot leave a stale room on screen.
   const focusedRoom = roomView ? selected : null;
   const [dimensions, setDimensions] = useState(true);
@@ -88,6 +90,7 @@ export default function HomeViewer({
     lightCommand,
     selected,
     focusedRoom,
+    interactionHints,
     view,
     cutaway,
     wallHeight,
@@ -101,7 +104,7 @@ export default function HomeViewer({
     balconyRoofs,
     balconyModes,
     equipment,
-  }), [lightingMode, lightCommand, selected, focusedRoom, view, cutaway, wallHeight, labels,
+  }), [lightingMode, lightCommand, selected, focusedRoom, interactionHints, view, cutaway, wallHeight, labels,
     dimensions, grid, drainage, layout, curtainColor, televisionMount,
     balconyRoofs, balconyModes, equipment]);
 
@@ -217,6 +220,8 @@ export default function HomeViewer({
               onChange={setCutaway}
             />
             <Toggle label="房间名称" checked={labels} onChange={setLabels} />
+            <Toggle label="房间内交互提示" checked={interactionHints} onChange={setInteractionHints} />
+            <p className="setting-note">进入单个空间后，圆点标出可操作的物品；点击圆点或物品都能操作。</p>
             {focusedRoom ? <p className="setting-note">房间视角暂时隐藏名称标签与整屋轴线，返回整屋后恢复显示设置。</p> : null}
             <Toggle
               label="图纸轴线尺寸"
@@ -298,7 +303,7 @@ export default function HomeViewer({
             </div>
           </div>
           <div className="room-view-toolbar">
-            <div className="mobile-room-picker"><ModelRoomPicker focusedRoom={focusedRoom} onChoose={chooseRoom} /></div>
+            <div className="model-room-picker"><ModelRoomPicker focusedRoom={focusedRoom} onChoose={chooseRoom} /></div>
             {focusedRoom ? <button type="button" className="room-overview-button" onClick={() => chooseRoom(null)}>
               <Icon name="cube" size={16} /> 返回整屋
             </button> : null}
@@ -407,6 +412,7 @@ export default function HomeViewer({
           </section>
           </div>
           <ModelViewer options={options} onSelect={setSelected}
+            onHintsChange={setInteractionHints}
             onLightsChange={(on) => setLightCommand((previous) => ({
               on, revision: (previous?.revision ?? 0) + 1,
             }))} />
@@ -417,14 +423,20 @@ export default function HomeViewer({
             <i />
             <small>模型坐标</small>
           </div>
-          {room ? (
+          {room ? roomDetailsOpen ? (
             <ModelRoomDetails key={room.id} room={room} onVisit={onVisit} focused={!!focusedRoom}
-              onFocus={() => chooseRoom(room.id)} onClose={() => focusedRoom ? chooseRoom(null) : setSelected(null)}
+              onFocus={() => chooseRoom(room.id)} onClose={() => setRoomDetailsOpen(false)}
               summary={selectedBalcony ? balconyModeLabels[balconyModes[selectedBalcony.id]] : undefined} />
+          ) : (
+            <button type="button" className="room-details-trigger" aria-expanded={false}
+              aria-controls="model-room-details" aria-label={`打开${room.name}房间介绍`}
+              onClick={() => setRoomDetailsOpen(true)}>
+              <Icon name="info" size={17} /> {room.name} · 房间介绍
+            </button>
           ) : (
             <div className="view-invitation">
               <span className="hint-line" />
-              {labels ? "点房间名称查看介绍" : "从空间列表选择房间"}，手形物品可点击操作
+              {labels ? "点房间名称查看介绍" : "选择空间，查看房间内部"} · 进入房间后，点击圆点操作物品
             </div>
           )}
           <div className="viewport-bottom">

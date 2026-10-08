@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { isFixtureOperable } from "./fixtures/interactions.ts";
+import { isFixtureOperable, fixtureInteractionTarget } from "./fixtures/interactions.ts";
 import { BoxGeometryPool } from "./fixtures/BoxGeometryPool.ts";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { defaults, modelCenter, walls } from "./plan.ts";
@@ -60,11 +60,13 @@ export class HomeFixtures {
   private bedDrawers: { group: THREE.Group; closedX: number; side: number;
     travel: number; motion: OpenCloseMotion }[] = [];
   private gasBurners: GasBurner[] = [];
+  private gasBurnerLabel?: CSS2DObject;
   private taps: WaterTap[] = [];
   private robot?: { group: THREE.Group; route: RobotRoute; label: CSS2DObject };
   private hoodChimney?: THREE.Mesh;
   private exhaustFans: { group: THREE.Group; backdrop: THREE.Mesh; windowTop: number; motion: ExhaustFan }[] = [];
-  private dryingRack?: THREE.Group;
+  private dryingRack?: { group: THREE.Group; frame: THREE.Group; wires: THREE.Mesh[];
+    motion: OpenCloseMotion; label: CSS2DObject };
   private curtains: {
     group: THREE.Group;
     panels: THREE.Mesh[];
@@ -200,6 +202,35 @@ export class HomeFixtures {
 
   isOperable(object: THREE.Object3D) { return isFixtureOperable(object); }
 
+  interactionInfo(object: THREE.Object3D) {
+    const target = fixtureInteractionTarget(object);
+    if (!target) return;
+    const data = object.userData;
+    let on: boolean | undefined;
+    let verbs = ["打开", "关闭"];
+    switch (target.kind) {
+      case "homeDoorIndex": on = this.openings.isDoorOpen(object); break;
+      case "bedsideLampIndex": case "ceilingLightIndex": on = this.lighting.isLightOn(object); break;
+      case "exhaustFanIndex": on = this.exhaustFans[data.exhaustFanIndex]?.motion.on; verbs = ["启动", "停止"]; break;
+      case "waterTapIndex": on = this.taps[data.waterTapIndex]?.on; break;
+      case "gasBurnerIndex": on = this.gasBurners[data.gasBurnerIndex]?.on; verbs = ["开火", "关火"]; break;
+      case "dryingRack": on = this.dryingRack?.motion.open; verbs = ["下降", "升起"]; break;
+      case "curtainIndex": on = !this.curtains[data.curtainIndex]?.transition.closed; verbs = ["展开", "合上"]; break;
+      case "bedDrawerIndex": {
+        const ids: number[] = typeof data.bedDrawerIndex === "number" ? [data.bedDrawerIndex] : data.bedDrawerIds;
+        on = ids?.every((id) => this.bedDrawers[id]?.motion.open); verbs = ["拉出", "收回"]; break;
+      }
+      case "robotVacuum": {
+        const status = this.robot?.route.status;
+        return { ...target, active: status === "running",
+          action: status === "running" ? "暂停清扫" : status === "paused" ? "继续清扫" : "开始清扫",
+          feedback: status === "running" ? "扫地机器人已开始清扫" : status === "paused" ? "扫地机器人已暂停" : "扫地机器人已回到充电座" };
+      }
+    }
+    if (typeof on !== "boolean") return;
+    return { ...target, active: on, action: verbs[Number(on)], feedback: `${target.title}已${verbs[Number(!on)]}` };
+  }
+
   private material(options: THREE.MeshStandardMaterialParameters) {
     const material = new THREE.MeshStandardMaterial(options);
     this.materials.add(material);
@@ -270,8 +301,9 @@ export class HomeFixtures {
   }
 
   private label(parent: THREE.Group, text: string, y: number, kind: string) {
-    const element = document.createElement("span");
-    element.className = `fixture-label fixture-label-${kind}`;
+    const actionable = kind === "robot" || kind === "drying-rack" || kind === "gas-burner";
+    const element = document.createElement(actionable ? "button" : "span");
+    element.className = `fixture-label fixture-label-${kind}${actionable ? " fixture-label-action" : ""}`;
     element.textContent = text;
     const label = new CSS2DObject(element);
     label.position.y = y;
@@ -430,48 +462,92 @@ export class HomeFixtures {
     this.box(dock, [0.3, 0.12, 0.1], [0, 0.06, -0.23], this.whiteMaterial, 0.02);
     this.box(dock, [0.22, 0.052, 0.008], [0, 0.055, -0.178], this.darkMaterial, 0.012);
     robot.traverse((object) => { if (object instanceof THREE.Mesh) object.userData.robotVacuum = true; });
-    const label = this.label(robot, "扫地机器人 · 点击运行", 0.29, "equipment");
+    const label = this.label(robot, "扫地机器人 · 点击运行", 0.29, "robot");
+    label.name = "robot-vacuum-action-label";
+    label.userData.robotVacuum = true;
+    label.element.dataset.fixtureAction = "robot";
+    label.element.setAttribute("type", "button");
+    label.element.setAttribute("aria-pressed", "false");
     this.equipmentLabels.push(label);
     this.robot = { group: robot, route: new RobotRoute(), label };
   }
 
   private buildUtilityDryingRack() {
-    const { center, width, depth, drop } = utilityDryingRack;
+    const { center, width, depth } = utilityDryingRack;
     const rack = this.at(this.furnishings, center);
     rack.name = "utility-ceiling-drying-rack";
-    this.dryingRack = rack;
     // Local y=0 touches the underside of the balcony roof.
     this.box(rack, [1.28, 0.08, 0.20], [0, -0.04, 0], this.whiteMaterial, 0.02);
     this.box(rack, [0.64, 0.006, 0.07], [0, -0.083, 0], this.stoneMaterial, 0.003);
-    const wireLength = drop - 0.14;
-    const wireGeometry = new THREE.CylinderGeometry(0.0025, 0.0025, wireLength, 8);
+    const wires: THREE.Mesh[] = [];
+    const wireGeometry = new THREE.CylinderGeometry(0.0025, 0.0025, 1, 8);
     for (const x of [-0.55, 0.55]) {
       this.box(rack, [0.12, 0.06, depth + 0.06], [x, -0.11, 0], this.whiteMaterial, 0.015);
       for (const z of [-depth / 2, depth / 2]) {
         const wire = new THREE.Mesh(wireGeometry, this.steelMaterial);
-        wire.position.set(x, -(0.14 + drop) / 2, z);
+        wire.position.set(x, 0, z);
         rack.add(wire);
+        wires.push(wire);
       }
     }
+    const frame = new THREE.Group();
+    frame.name = "utility-drying-rack-moving-frame";
+    rack.add(frame);
     const railGeometry = new THREE.CylinderGeometry(0.011, 0.011, width, 12);
     const loopGeometry = new THREE.TorusGeometry(0.013, 0.002, 6, 12);
     for (const z of [-depth / 2, depth / 2]) {
       const rail = new THREE.Mesh(railGeometry, this.steelMaterial);
       rail.rotation.z = Math.PI / 2;
-      rail.position.set(0, -drop, z);
+      rail.position.set(0, 0, z);
       rail.castShadow = true;
-      rack.add(rail);
+      frame.add(rail);
       for (let i = 0; i < 9; i++) {
         const loop = new THREE.Mesh(loopGeometry, this.steelMaterial);
-        loop.position.set((i - 4) * 0.16, -drop - 0.018, z);
-        rack.add(loop);
+        loop.position.set((i - 4) * 0.16, -0.018, z);
+        frame.add(loop);
       }
     }
     for (const x of [-width / 2 + 0.035, width / 2 - 0.035]) {
-      this.box(rack, [0.06, 0.045, depth + 0.055], [x, -drop, 0], this.whiteMaterial, 0.012);
+      this.box(frame, [0.06, 0.045, depth + 0.055], [x, 0, 0], this.whiteMaterial, 0.012);
     }
-    this.label(rack, "晾衣架", -drop - 0.16, "equipment");
+    rack.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.userData.dryingRack = true;
+    });
+    const label = this.label(frame, "晾衣架 · 点击下降", -0.16, "drying-rack");
+    label.name = "utility-drying-rack-action-label";
+    label.userData.dryingRack = true;
+    label.element.dataset.fixtureAction = "drying-rack";
+    label.element.setAttribute("type", "button");
+    this.dryingRack = { group: rack, frame, wires, motion: new OpenCloseMotion(false), label };
+    this.updateDryingRack();
     this.tagRoom(rack, utilityEquipment.roomId);
+  }
+
+  toggleDryingRack(object: THREE.Object3D, now: number, reducedMotion = false) {
+    if (!object.userData.dryingRack || !this.dryingRack) return false;
+    this.dryingRack.motion.toggle(now, reducedMotion);
+    this.updateDryingRack();
+    return true;
+  }
+
+  toggleDryingRackLabel(now: number, reducedMotion = false) {
+    return this.dryingRack
+      ? this.toggleDryingRack(this.dryingRack.label, now, reducedMotion)
+      : false;
+  }
+
+  private updateDryingRack() {
+    if (!this.dryingRack) return;
+    const { frame, wires, motion, label } = this.dryingRack;
+    const { drop, loweredDrop } = utilityDryingRack;
+    const distance = drop + (loweredDrop - drop) * motion.value;
+    frame.position.y = -distance;
+    for (const wire of wires) {
+      wire.scale.y = distance - 0.14;
+      wire.position.y = -(0.14 + distance) / 2;
+    }
+    label.element.textContent = motion.open ? "晾衣架 · 点击升起" : "晾衣架 · 点击下降";
+    label.element.setAttribute("aria-pressed", String(motion.open));
   }
 
   private buildRoomFurnishings() {
@@ -532,13 +608,43 @@ export class HomeFixtures {
       const closet = this.at(this.furnishings, wardrobe.center, wardrobe.rotation);
       closet.name = `${roomId}-wardrobe`;
       const { width, depth } = wardrobe, height = 2.15;
+      const panel = 0.025, bodyHeight = height - 0.08, centerY = (height + 0.08) / 2;
       this.box(closet, [width - 0.06, 0.08, depth - 0.04], [0, 0.04, 0], this.supportMaterial);
-      this.box(closet, [width, height - 0.08, depth], [0, (height + 0.08) / 2, 0], this.woodMaterial, 0.012);
+      // Hollow carcass lets the independently hinged leaves reveal real storage space.
+      this.box(closet, [width, bodyHeight, panel],
+        [0, centerY, -(depth - panel) / 2], this.woodMaterial);
       for (const side of [-1, 1]) {
-        this.box(closet, [width / 2 - 0.016, height - 0.13, 0.018],
-          [side * width / 4, (height + 0.08) / 2, depth / 2 + 0.012], this.woodMaterial, 0.005);
-        this.box(closet, [0.014, 0.30, 0.020],
-          [side * 0.04, 1.05, depth / 2 + 0.033], this.steelMaterial, 0.004);
+        this.box(closet, [panel, bodyHeight, depth],
+          [side * (width - panel) / 2, centerY, 0], this.woodMaterial);
+      }
+      for (const y of [0.08 + panel / 2, height - panel / 2]) {
+        this.box(closet, [width - panel * 2, panel, depth], [0, y, 0], this.woodMaterial);
+      }
+      this.box(closet, [panel, bodyHeight - panel * 2, depth - panel],
+        [0, centerY, panel / 2], this.woodMaterial);
+      for (const y of [0.55, 1.05, 1.55, 1.93]) {
+        this.box(closet, [width / 2 - panel * 1.5, panel, depth - panel * 2],
+          [width / 4 - panel / 4, y, 0], this.woodMaterial);
+      }
+      this.box(closet, [width / 2 - panel * 1.5, panel, depth - panel * 2],
+        [-width / 4 + panel / 4, 1.93, 0], this.woodMaterial);
+      const hangingX = -width / 4 + panel / 4;
+      this.pipe(closet, depth < 0.55
+        ? [[hangingX, 1.78, -depth / 2 + panel], [hangingX, 1.78, depth / 2 - panel]]
+        : [[-width / 2 + panel, 1.78, 0], [-panel / 2, 1.78, 0]], 0.012);
+      const hingeX = (width - panel) / 2, doorWidth = hingeX - 0.006;
+      for (const side of [-1, 1]) {
+        const door = new THREE.Group();
+        door.name = `${roomId}-wardrobe-${side < 0 ? "left" : "right"}-door`;
+        door.position.set(side * hingeX, 0, depth / 2 + 0.014);
+        closet.add(door);
+        this.box(door, [doorWidth, height - 0.13, 0.022],
+          [-side * doorWidth / 2, centerY, 0], this.woodMaterial, 0.005);
+        this.box(door, [0.014, 0.30, 0.020],
+          [-side * (doorWidth - 0.03), 1.05, 0.023], this.steelMaterial, 0.004);
+        this.openings.registerGlazingDoor([door], (value) => {
+          door.rotation.y = side * Math.PI / 2 * value;
+        });
       }
       this.tagRoom(closet, roomId);
     }
@@ -974,6 +1080,14 @@ export class HomeFixtures {
       });
       this.gasBurners.push(new GasBurner(flames, knob));
     }
+    const label = this.label(counter, "燃气灶 · 点击开火", 1.15, "gas-burner");
+    label.name = "kitchen-gas-burner-action-label";
+    label.position.x = cooktopOffset;
+    label.position.z = 0.20;
+    label.element.dataset.fixtureAction = "gas-burner";
+    label.element.setAttribute("type", "button");
+    this.gasBurnerLabel = label;
+    this.updateGasBurnerLabel();
     this.tagRoom(counter, "kitchen");
     this.buildFridge();
   }
@@ -982,7 +1096,25 @@ export class HomeFixtures {
     const index = object.userData.gasBurnerIndex;
     if (typeof index !== "number" || !this.gasBurners[index]) return false;
     this.gasBurners[index].toggle(now, reducedMotion);
+    this.updateGasBurnerLabel();
     return true;
+  }
+
+  toggleGasBurnerLabel(now: number, reducedMotion = false) {
+    if (!this.gasBurners.length) return false;
+    const turnOn = !this.gasBurners.some((burner) => burner.on);
+    for (const burner of this.gasBurners) {
+      if (burner.on !== turnOn) burner.toggle(now, reducedMotion);
+    }
+    this.updateGasBurnerLabel();
+    return true;
+  }
+
+  private updateGasBurnerLabel() {
+    if (!this.gasBurnerLabel) return;
+    const on = this.gasBurners.some((burner) => burner.on);
+    this.gasBurnerLabel.element.textContent = on ? "燃气灶 · 点击关火" : "燃气灶 · 点击开火";
+    this.gasBurnerLabel.element.setAttribute("aria-pressed", String(on));
   }
 
   animateGasBurners(now: number) {
@@ -1016,6 +1148,10 @@ export class HomeFixtures {
     this.robot.route.toggle(now); this.updateRobot(); return true;
   }
 
+  toggleRobotLabel(now: number) {
+    return this.robot ? this.toggleRobot(this.robot.label, now) : false;
+  }
+
   private updateRobot() {
     if (!this.robot) return;
     const { group, route, label } = this.robot;
@@ -1023,10 +1159,15 @@ export class HomeFixtures {
     group.rotation.y = route.heading;
     label.element.textContent = route.status === "running" ? "清扫中 · 点击暂停"
       : route.status === "paused" ? "已暂停 · 点击继续" : "扫地机器人 · 点击运行";
+    label.element.setAttribute("aria-pressed", String(route.status === "running"));
   }
 
   animateAppliances(now: number) {
     let moving = false;
+    if (this.dryingRack) {
+      moving = this.dryingRack.motion.advance(now) || moving;
+      this.updateDryingRack();
+    }
     if (this.furnishings.visible) {
       for (const fan of this.exhaustFans) moving = fan.motion.advance(now) || moving;
     }
@@ -1295,7 +1436,7 @@ export class HomeFixtures {
     for (const [layout, group] of this.layouts) group.visible = layout === options.layout;
     this.furnishings.visible = options.layout !== "empty";
     this.lighting.update(options);
-    if (this.dryingRack) this.dryingRack.position.y = options.wallHeight;
+    if (this.dryingRack) this.dryingRack.group.position.y = options.wallHeight;
     for (const { group } of this.curtains) group.scale.y = options.wallHeight - 0.12;
     for (const { unit, backdrop } of this.airConditioners) {
       unit.position.y = options.wallHeight - 0.35;
@@ -1342,6 +1483,11 @@ export class HomeFixtures {
     if (this.equipmentPlanLabel) {
       this.equipmentPlanLabel.visible = options.labels && options.view === "plan";
     }
+  }
+
+  setHintMode(enabled: boolean) {
+    if (enabled) for (const label of this.labels) label.visible = false;
+    else if (this.previousOptions) this.updateLabels(this.previousOptions);
   }
 
   dispose() {
