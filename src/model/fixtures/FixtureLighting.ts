@@ -13,7 +13,8 @@ type BuilderContext = Pick<FixtureBuilderContext, "at" | "box" | "material" | "t
 export class FixtureLighting {
   private lightingMode?: LightingMode;
   private lightCommandRevision?: number;
-  private bedsideLamps: { light: THREE.PointLight; shade: THREE.MeshStandardMaterial;
+  private lightsVisible = true;
+  private bedsideLamps: { group: THREE.Group; light: THREE.PointLight; shade: THREE.MeshStandardMaterial;
     bulb: THREE.MeshStandardMaterial; on: boolean }[] = [];
   private fixedLights: { group: THREE.Group; light: THREE.PointLight;
     surface: THREE.MeshStandardMaterial; power: number; on: boolean; ceiling: boolean }[] = [];
@@ -25,6 +26,7 @@ export class FixtureLighting {
     this.buildCeilingLights();
   }
   update(options: FixtureOptions) {
+    this.lightsVisible = options.lightsVisible ?? true;
     // Only a mode change applies the preset. Room selection and other settings
     // must preserve any lights the user has manually switched off.
     if (this.lightingMode !== options.lightingMode) {
@@ -42,8 +44,9 @@ export class FixtureLighting {
     for (const lamp of this.fixedLights) {
       if (lamp.ceiling) lamp.group.position.y = options.wallHeight;
       // Keep the top-down floor plan clear; light state survives view changes.
-      lamp.group.visible = options.view !== "plan";
+      lamp.group.visible = this.lightsVisible && options.view !== "plan";
     }
+    for (const lamp of this.bedsideLamps) lamp.group.visible = this.lightsVisible;
     this.syncLighting();
   }
 
@@ -175,7 +178,7 @@ export class FixtureLighting {
     lamp.traverse((object) => {
       if (object instanceof THREE.Mesh) object.userData.bedsideLampIndex = index;
     });
-    this.bedsideLamps.push({ light, shade: shadeMaterial, bulb: bulbMaterial, on: false });
+    this.bedsideLamps.push({ group: lamp, light, shade: shadeMaterial, bulb: bulbMaterial, on: false });
   }
 
   toggleCeilingLight(object: THREE.Object3D) {
@@ -211,15 +214,15 @@ export class FixtureLighting {
   private syncLighting() {
     const night = this.lightingMode === "night";
     for (const lamp of this.bedsideLamps) {
-      lamp.light.visible = lamp.on && this.parent.visible;
+      lamp.light.visible = lamp.on && lamp.group.visible && this.parent.visible;
       lamp.light.intensity = lamp.light.visible ? (night ? 5 : 2.5) : 0;
-      lamp.shade.emissiveIntensity = lamp.on ? 0.45 : 0;
-      lamp.bulb.emissiveIntensity = lamp.on ? 2 : 0;
+      lamp.shade.emissiveIntensity = lamp.on && this.lightsVisible ? 0.45 : 0;
+      lamp.bulb.emissiveIntensity = lamp.on && this.lightsVisible ? 2 : 0;
     }
     for (const lamp of this.fixedLights) {
       lamp.light.visible = lamp.on && lamp.group.visible && this.parent.visible;
       lamp.light.intensity = lamp.light.visible ? lamp.power * (night ? 5 : 1) : 0;
-      lamp.surface.emissiveIntensity = lamp.on ? 1.1 : 0;
+      lamp.surface.emissiveIntensity = lamp.on && this.lightsVisible ? 1.1 : 0;
     }
   }
 }

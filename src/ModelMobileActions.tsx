@@ -18,7 +18,13 @@ export function ModelMobileActions({ onCad, onSource, onSettings }: Props) {
   return (
     <div className="model-mobile-actions">
       <button type="button" className="icon-button" popoverTarget={id}
-        aria-label="更多模型操作" title="更多操作">
+        aria-label="更多模型操作" title="更多操作"
+        onClick={(event) => {
+          if (!menu.current) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          menu.current.style.top = `${rect.bottom + 8}px`;
+          menu.current.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
+        }}>
         <Icon name="more" size={21} />
       </button>
       <div ref={menu} id={id} popover="auto" className="model-actions-menu"

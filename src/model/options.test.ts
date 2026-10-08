@@ -20,6 +20,9 @@ test("重新创建同值选项不会触发模型更新，切换房间或辅助�
   }
   assert.equal(fixtureOptionsChanged(base, { ...base, labels: false }), true);
   assert.equal(fixtureAppearanceChanged(base, { ...base, labels: false }), false);
+  assert.equal(viewOptionsChanged(base, { ...base, lightsVisible: true }), false);
+  assert.equal(fixtureAppearanceChanged(base, { ...base, lightsVisible: false }), true);
+  assert.equal(viewOptionsChanged({ ...base, lightsVisible: false }, base), true);
 });
 
 test("材质、门窗高度、阳台方案和重复灯光命令仍能触发真正的更新", () => {

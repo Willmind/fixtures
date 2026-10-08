@@ -63,6 +63,7 @@ export default function HomeViewer({
   const [view, setView] = useState<ViewOptions["view"]>("perspective");
   const [lightingMode, setLightingMode] = useState<ViewOptions["lightingMode"]>("day");
   const [lightCommand, setLightCommand] = useState<ViewOptions["lightCommand"]>();
+  const [lightsVisible, setLightsVisible] = useState(true);
   const [cutaway, setCutaway] = useState(true);
   const [wallHeight, setWallHeight] = useState<number>(defaults.wallHeight);
   const [labels, setLabels] = useState(false);
@@ -90,7 +91,10 @@ export default function HomeViewer({
   const handleLightState = useCallback((state: LightState) => {
     setLightState((previous) => previous.on === state.on && previous.mixed === state.mixed ? previous : state);
   }, []);
-  const commandLights = (on: boolean) => setLightCommand((previous) => ({ on, revision: (previous?.revision ?? 0) + 1 }));
+  const commandLights = (on: boolean) => {
+    setLightsVisible(true);
+    setLightCommand((previous) => ({ on, revision: (previous?.revision ?? 0) + 1 }));
+  };
   const [equipment, setEquipment] = useState(true);
   const [showSource, setShowSource] = useState(false);
   const room = rooms.find((item) => item.id === (focusedRoom ?? selected));
@@ -104,6 +108,7 @@ export default function HomeViewer({
   const options = useMemo<ViewOptions>(() => ({
     lightingMode,
     lightCommand,
+    lightsVisible,
     selected,
     focusedRoom,
     interactionHints,
@@ -120,7 +125,7 @@ export default function HomeViewer({
     balconyRoofs,
     balconyModes,
     equipment,
-  }), [lightingMode, lightCommand, selected, focusedRoom, interactionHints, view, cutaway, wallHeight, labels,
+  }), [lightingMode, lightCommand, lightsVisible, selected, focusedRoom, interactionHints, view, cutaway, wallHeight, labels,
     dimensions, grid, drainage, layout, curtainColor, televisionMount,
     balconyRoofs, balconyModes, equipment]);
 
@@ -262,15 +267,17 @@ export default function HomeViewer({
               </button>
             </div>
             <div className="view-switch lighting-switch toolbar-lights" role="group" aria-label="全屋灯光"
-              title={lightState.mixed ? "部分灯光已开启" : "全屋灯光"}
-              data-selection={lightState.mixed ? "mixed" : lightState.on ? 0 : 1}>
+              title={!lightsVisible ? "已隐藏灯具和灯光" : lightState.mixed ? "部分灯光已开启" : "全屋灯光"}
+              data-selection={!lightsVisible ? 2 : lightState.mixed ? "mixed" : lightState.on ? 0 : 1}>
               <span className="model-switch-indicator" aria-hidden="true" />
-              <button type="button" aria-pressed={lightState.on} disabled={layout === "empty"}
+              <button type="button" aria-pressed={lightsVisible && lightState.on} disabled={layout === "empty"}
                 onClick={() => commandLights(true)}>开灯</button>
-              <button type="button" aria-pressed={!lightState.on && !lightState.mixed} disabled={layout === "empty"}
+              <button type="button" aria-pressed={lightsVisible && !lightState.on && !lightState.mixed} disabled={layout === "empty"}
                 onClick={() => commandLights(false)}>关灯</button>
+              <button type="button" aria-pressed={!lightsVisible} disabled={layout === "empty"}
+                onClick={() => setLightsVisible(false)}>不显示灯</button>
             </div>
-            <button type="button" className="model-hints-toggle" aria-pressed={interactionHints}
+            <button type="button" className="model-hints-toggle" aria-label="交互提示" aria-pressed={interactionHints}
               onClick={() => setInteractionHints((current) => !current)}>
               <Icon name="info" size={18} /><span>交互提示</span>
             </button>

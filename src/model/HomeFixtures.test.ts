@@ -10,6 +10,7 @@ import type { FixtureOptions } from "./options.ts";
 import { indexRoomLayers, roomLayer } from "./roomView.ts";
 import { bayWindows } from "./bayWindows.ts";
 import { FixtureHints } from "./FixtureHints.ts";
+import { MeshPickIndex } from "./MeshPickIndex.ts";
 
 const options: FixtureOptions = {
   lightingMode: "night", layout: "tv-guest", curtainColor: "cream", televisionMount: "cabinet",
@@ -541,6 +542,47 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     assert.deepEqual(fixtures.lightState, { on: false, mixed: false });
     fixtures.update(options);
     assert.deepEqual(fixtures.lightState, { on: true, mixed: false });
+  });
+
+  await t.test("不显示灯隐藏全部灯具、光源和命中目标，切换设置后保持并可恢复开关", () => {
+    fixtures.update(options);
+    const lights: THREE.PointLight[] = [];
+    fixtures.group.traverse((object) => { if (object instanceof THREE.PointLight) lights.push(object); });
+    const groups = lights.map((light) => light.parent!);
+    const bedside = findMesh(fixtures.group, (mesh) => mesh.userData.bedsideLampIndex === 0);
+    toggleFixture(fixtures, bedside, 0, true);
+    const state = fixtures.lightState;
+    const index = new MeshPickIndex();
+    const isLamp = (mesh: THREE.Mesh) => typeof mesh.userData.bedsideLampIndex === "number"
+      || typeof mesh.userData.ceilingLightIndex === "number";
+    assert.ok(index.visibleMeshes([fixtures.group]).some(isLamp));
+    fixtures.update({ ...options, lightsVisible: false });
+    assert.ok(groups.every((group) => !group.visible));
+    assert.ok(lights.every((light) => !light.visible && light.intensity === 0));
+    assert.equal(index.visibleMeshes([fixtures.group]).some(isLamp), false);
+    assert.ok(index.visibleMeshes([fixtures.group]).length > 0);
+    assert.equal(bedside.parent!.parent!.visible, true);
+    assert.deepEqual(fixtures.lightState, state);
+    fixtures.update({ ...options, lightsVisible: false, view: "plan", wallHeight: 3.1 });
+    fixtures.update({ ...options, lightsVisible: false, layout: "empty" });
+    fixtures.update({ ...options, lightsVisible: false });
+    assert.ok(groups.every((group) => !group.visible));
+    fixtures.update({ ...options, lightsVisible: true });
+    assert.ok(groups.every((group) => group.visible));
+    assert.deepEqual(fixtures.lightState, state);
+    assert.equal(lights.filter((light) => light.visible).length, lights.length - 1);
+    for (const lightingMode of ["day", "night"] as const) {
+      fixtures.update({ ...options, lightsVisible: false, lightingMode });
+      assert.ok(groups.every((group) => !group.visible));
+      assert.ok(lights.every((light) => !light.visible && light.intensity === 0));
+    }
+    fixtures.update({ ...options, lightsVisible: true, lightCommand: { on: false, revision: 401 } });
+    assert.ok(groups.every((group) => group.visible));
+    assert.ok(lights.every((light) => !light.visible));
+    fixtures.update({ ...options, lightsVisible: false });
+    fixtures.update({ ...options, lightsVisible: true, lightCommand: { on: true, revision: 402 } });
+    assert.ok(lights.every((light) => light.visible));
+    fixtures.update(options);
   });
 
   await t.test("同值选项和纯标签变化保留家具位置，改变墙高才更新顶部设备", () => {

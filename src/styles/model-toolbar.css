@@ -28,6 +28,14 @@
   font-size: 13px;
 }
 .model-toolbar .model-switch-indicator { border-radius: 16px; }
+.model-toolbar .view-switch .model-switch-indicator {
+  background: var(--action-fill);
+  box-shadow: 0 2px 8px #0071e326;
+}
+.model-toolbar .view-switch button[aria-pressed="true"] {
+  color: #fff;
+  font-weight: 600;
+}
 .model-toolbar .toolbar-daylight { grid-column: 2; }
 .model-toolbar .room-picker-trigger {
   grid-column: 1;
@@ -119,7 +127,14 @@
 .model-control-panel .preview-tabs button { min-height: 44px; font-size: 12px; padding-inline: 6px; }
 .model-control-panel .model-scheme-settings p { font-size: 12px; line-height: 1.7; color: var(--text-secondary); margin: 12px 0 0; }
 .model-control-panel .layout-switch button { min-height: 44px; }
-.model-toolbar .toolbar-lights { grid-column: 1; grid-row: 3; }
+.model-toolbar .toolbar-lights {
+  grid-column: 1; grid-row: 3;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  --switch-count: 3; --switch-index: 0;
+}
+.model-toolbar .toolbar-lights[data-selection="1"] { --switch-index: 1; }
+.model-toolbar .toolbar-lights[data-selection="2"] { --switch-index: 2; }
+.model-toolbar .toolbar-lights button { min-width: 0; padding-inline: 6px; }
 .toolbar-lights[data-selection="mixed"] .model-switch-indicator { opacity: 0; }
 .model-toolbar .model-hints-toggle {
   grid-column: 2;
@@ -188,6 +203,9 @@
   .model-toolbar .room-picker-trigger > svg { flex-shrink: 0; }
   .model-toolbar-actions { border-radius: 16px; }
   .model-toolbar .model-hints-toggle { min-height: 46px; border-radius: 16px; font-size: 12px; }
+  .model-toolbar .toolbar-lights { grid-column: 1 / -1; margin-right: 56px; }
+  .model-toolbar .model-hints-toggle { justify-self: end; width: 48px; padding: 0; }
+  .model-toolbar .model-hints-toggle span { display: none; }
   .model-toolbar-action { min-height: 38px; padding: 6px; gap: 5px; font-size: 12px; }
   .model-control-panel {
     inset: auto 0 0;

@@ -7,6 +7,7 @@ export type LightState = { on: boolean; mixed: boolean };
 export type FixtureOptions = {
   lightingMode: LightingMode;
   lightCommand?: { on: boolean; revision: number };
+  lightsVisible?: boolean;
   layout: LayoutPreview;
   curtainColor: CurtainColor;
   televisionMount: TelevisionMount;
@@ -34,6 +35,7 @@ export function fixtureAppearanceChanged(previous: FixtureOptions, next: Fixture
   return fixtureKeys.some((key) => key !== "labels" && previous[key] !== next[key])
     || previous.balconyModes.balcony !== next.balconyModes.balcony
     || previous.balconyModes.utility !== next.balconyModes.utility
+    || (previous.lightsVisible ?? true) !== (next.lightsVisible ?? true)
     || previous.lightCommand?.revision !== next.lightCommand?.revision
     || previous.lightCommand?.on !== next.lightCommand?.on;
 }
