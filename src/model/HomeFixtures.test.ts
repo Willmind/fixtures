@@ -5,6 +5,8 @@ import { HomeFixtures } from "./HomeFixtures.ts";
 import { ceilingLighting, bedroomStorage } from "./arrangements.ts";
 import { toggleFixture, animateFixtures } from "./fixtures/interactions.ts";
 import type { FixtureOptions } from "./options.ts";
+import { indexRoomLayers, roomLayer } from "./roomView.ts";
+import { bayWindows } from "./bayWindows.ts";
 
 const options: FixtureOptions = {
   lightingMode: "night", layout: "tv-guest", curtainColor: "cream", televisionMount: "cabinet",
@@ -35,6 +37,26 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     else Reflect.deleteProperty(globalThis, "document");
   });
   fixtures.update(options);
+
+  await t.test("飘窗外侧的活动窗扇和房门随所在房间展示，切换范围不重建家具", () => {
+    indexRoomLayers([fixtures.group]);
+    for (const bay of bayWindows) {
+      const window = fixtures.group.getObjectByName(`${bay.wallId}-operable-windows`)!;
+      assert.ok(window);
+      window.traverse((object) => {
+        if (object instanceof THREE.Mesh) assert.ok(object.layers.isEnabled(roomLayer(bay.roomId)));
+      });
+    }
+    const door = fixtures.group.getObjectByName("bedroom-a-north-operable-door")!;
+    const sharedRooms = door.userData.roomIds;
+    assert.deepEqual(new Set(sharedRooms), new Set(["living", "parents"]));
+    const leaves: THREE.Mesh[] = [];
+    door.traverse((object) => { if (object instanceof THREE.Mesh) leaves.push(object); });
+    for (const leaf of leaves) {
+      assert.ok(leaf.layers.isEnabled(roomLayer("parents")));
+      assert.ok(leaf.layers.isEnabled(roomLayer("living")));
+    }
+  });
 
   await t.test("灯光预设及手动开关在房间选择、标签和视角变化后保持", () => {
     const lights: THREE.PointLight[] = [];

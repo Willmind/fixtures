@@ -6,6 +6,7 @@ import { PageErrorBoundary } from "./PageErrorBoundary";
 import { PagePosition, useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import {
   passwordGateEnabled,
+  canAccessPage,
   readAccessSession,
   saveAccessSession,
 } from "./access/passcode";
@@ -15,10 +16,12 @@ const CadWorkspace = lazy(() => import("./cad/CadWorkspace"));
 const HomeGuide = lazy(() => import("./guide/HomeGuide"));
 
 export default function App() {
-  return passwordGateEnabled ? <ProtectedWorkspace /> : <Workspace />;
+  return <Workspace />;
 }
 
-function ProtectedWorkspace() {
+function Workspace() {
+  const { route, position, revision, navigate, returnToGuide } =
+    useWorkspaceNavigation();
   const [allowed, setAllowed] = useState(readAccessSession);
   function unlock() {
     saveAccessSession(true);
@@ -28,22 +31,17 @@ function ProtectedWorkspace() {
     saveAccessSession(false);
     setAllowed(false);
   }
-  return allowed ? (
-    <Workspace onLock={lock} />
-  ) : (
-    <AccessGate onUnlock={unlock} />
-  );
-}
-
-function Workspace({ onLock }: { onLock?: () => void }) {
-  const { route, position, revision, navigate, returnToGuide } =
-    useWorkspaceNavigation();
   // Remember gallery position across routes without rerendering the whole workspace.
   const photoIndices = useRef<Record<string, number>>({});
   const rememberPhoto = useCallback((room: string, index: number) => {
     photoIndices.current[room] = index;
   }, []);
   const { view } = route;
+  const onLock = passwordGateEnabled && allowed ? lock : undefined;
+  if (!canAccessPage(view, allowed)) {
+    return <AccessGate onUnlock={unlock}
+      onBack={() => navigate({ view: "model" }, { anchor: "top" })} />;
+  }
   return (
     <NotebookProvider>
       <PageErrorBoundary key={view}>

@@ -281,6 +281,7 @@ export class HomeFixtures {
   }
 
   private tagRoom(group: THREE.Group, roomId: string) {
+    group.userData.roomId = roomId;
     group.traverse((object) => {
       if (object instanceof THREE.Mesh) object.userData.roomId = roomId;
     });

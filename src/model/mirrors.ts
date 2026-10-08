@@ -15,6 +15,8 @@ export function createBathroomMirror(width: number, height: number, mirrors: rea
   const reflect = mirror.onBeforeRender.bind(mirror);
   mirror.onBeforeRender = (...args) => {
     if (!shouldRefresh()) return;
+    // A room view must reflect the same room layers as its main camera.
+    mirror.getReflectionCamera(args[2]).layers.mask = args[2].layers.mask;
     // Keep the two bathrooms from recursively rendering one another's mirrors.
     const others = mirrors.filter((other) => other !== mirror);
     const visibility = others.map((other) => other.visible);

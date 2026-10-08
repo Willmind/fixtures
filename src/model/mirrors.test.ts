@@ -59,6 +59,7 @@ test("正交视角使用反射相机，反射时隐藏其他镜子，结束后�
       assert.ok(reflected instanceof THREE.OrthographicCamera);
       assert.equal(reflected.position.z, -5);
       assert.ok(reflected.projectionMatrix.elements.every(Number.isFinite));
+      assert.equal(reflected.layers.mask, camera.layers.mask, "反射应与主相机使用同一房间范围");
     },
   };
   const renderer = rendererStub as unknown as THREE.WebGLRenderer;
@@ -79,13 +80,17 @@ test("正交视角使用反射相机，反射时隐藏其他镜子，结束后�
   assert.equal(target, null);
   refresh = true;
 
+  camera.layers.set(3);
+  first.onBeforeRender(renderer, scene, camera, first.geometry, material, null!);
+  assert.equal(passes, 2, "房间视角应更新已有的反射相机层");
+
   // A back-facing mirror skips reflection, preserving previously hidden peers.
   second.visible = false;
   camera.position.z = -5;
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld(true);
   first.onBeforeRender(renderer, scene, camera, first.geometry, material, null!);
-  assert.equal(passes, 1);
+  assert.equal(passes, 2);
   assert.equal(second.visible, false);
   let disposed = 0;
   for (const mirror of mirrors) {

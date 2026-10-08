@@ -28,6 +28,7 @@ export function createBayWindow(wall: Wall, bay: BayWindow, height: number, mate
 }) {
   const group = new THREE.Group();
   group.name = `${bay.roomId}-bay-window`;
+  group.userData.roomId = bay.roomId;
   const opening = wall.openings!.find(({ kind }) => kind === "window")!;
   const width = bay.end - bay.start, center = (bay.start + bay.end) / 2;
   const depth = bay.projection + bay.inward;

@@ -124,6 +124,18 @@
 .access-submit:disabled {
   opacity: 0.65;
 }
+.access-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  color: var(--tint);
+  background: transparent;
+  border-radius: 12px;
+  font-size: 13px;
+}
 .access-hint {
   margin: 24px 0 0;
   color: var(--text-tertiary);

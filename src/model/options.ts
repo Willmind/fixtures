@@ -23,6 +23,7 @@ export type ViewOptions = FixtureOptions & {
   grid: boolean;
   selected: string | null;
   drainage: boolean;
+  focusedRoom?: string | null;
 };
 
 const fixtureKeys = ["lightingMode", "layout", "curtainColor", "televisionMount", "balconyRoofs", "equipment", "cutaway", "view", "wallHeight", "labels"] as const;
@@ -43,5 +44,6 @@ export function fixtureOptionsChanged(previous: FixtureOptions, next: FixtureOpt
 export function viewOptionsChanged(previous: ViewOptions, next: ViewOptions): boolean {
   return fixtureOptionsChanged(previous, next)
     || previous.selected !== next.selected || previous.dimensions !== next.dimensions
-    || previous.grid !== next.grid || previous.drainage !== next.drainage;
+    || previous.grid !== next.grid || previous.drainage !== next.drainage
+    || (previous.focusedRoom ?? null) !== (next.focusedRoom ?? null);
 }

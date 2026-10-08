@@ -5,6 +5,7 @@ import { balconyEntryDoor } from "../arrangements.ts";
 import { OpenCloseMotion } from "../OpenCloseMotion.ts";
 import { createSlidingWindow } from "../windows.ts";
 import { bayWindowFor } from "../bayWindows.ts";
+import { openingRooms } from "../roomView.ts";
 import type { FixtureOptions } from "../options.ts";
 import type { FixtureBuilderContext } from "./context.ts";
 
@@ -57,6 +58,7 @@ export class OpeningFixtures {
       const { wall, opening, frame, gap, kind } = placement;
       const body = this.ctx.at(this.entrances, wall.from, placement.rotation);
       body.name = `${wall.id}-operable-door`;
+      body.userData.roomIds = openingRooms(wall, opening);
       const width = opening.end - opening.start, height = opening.top;
       const thickness = wall.thickness ?? defaults.wallThickness;
       const material = kind === "entry" ? this.ctx.materials.cabinet
@@ -140,6 +142,7 @@ export class OpeningFixtures {
           frame: this.ctx.materials.windowFrame, glass: this.ctx.materials.windowGlass, handle: this.ctx.materials.steel,
         }, bay?.panes ?? 2);
         if (bay) window.group.position.z = bay.outside * bay.projection;
+        window.group.userData.roomIds = openingRooms(wall, opening);
         wallGroup.add(window.group);
         this.windows.push(window);
         this.registerGlazingDoor([window.group], window.apply);
@@ -206,6 +209,7 @@ export class OpeningFixtures {
     const { center, width, height } = balconyEntryDoor;
     const group = this.ctx.at(this.entrances, center);
     group.name = "main-balcony-sliding-glass-door";
+    group.userData.roomIds = ["living", "balcony"];
     for (const x of [-width / 2, width / 2]) {
       this.ctx.box(group, [0.035, height, 0.1], [x, height / 2, 0], this.ctx.materials.windowFrame);
     }

@@ -22,6 +22,8 @@ import { animateFixtures, toggleFixture } from "./fixtures/interactions";
 import { fixtureAppearanceChanged, viewOptionsChanged } from "./options";
 import { OnDemandFrames } from "./OnDemandFrames";
 import { ShadowUpdates } from "./ShadowUpdates";
+import { indexRoomLayers, roomLayer, roomClipping, roomPose, RoomCameraMotion } from "./roomView";
+import type { CameraPose } from "./roomView";
 import type { ViewOptions } from "./options";
 export type { ViewOptions } from "./options";
 import type { BalconyId } from "./arrangements";
@@ -56,6 +58,9 @@ export class HomeScene {
   private themeObserver: MutationObserver;
   private renderLoop: OnDemandFrames;
   private shadows = new ShadowUpdates();
+  private roomCamera = new RoomCameraMotion();
+  private overviewPose?: CameraPose & { view: ViewOptions["view"] };
+  private scopeObjects: THREE.Object3D[] = [];
   private disposed = false;
   private cameraInteracting = false;
   private fixturesAnimating = false;
@@ -161,6 +166,7 @@ export class HomeScene {
     this.materials.add(this.edgeMaterial);
 
     this.scene.add(this.skyLight);
+    this.skyLight.layers.enableAll();
     const sun = this.sun;
     sun.position.set(-7, 16, 9);
     sun.castShadow = true;
@@ -174,6 +180,7 @@ export class HomeScene {
     sun.shadow.normalBias = 0.03;
     sun.shadow.bias = -0.0001;
     this.scene.add(sun);
+    sun.layers.enableAll();
 
     this.groundMaterial = this.material({ color: "#e6ecec", roughness: 1 });
     const ground = new THREE.Mesh(
@@ -183,9 +190,11 @@ export class HomeScene {
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.19;
     ground.receiveShadow = true;
+    ground.layers.enableAll();
     this.scene.add(ground);
     this.grid = new THREE.GridHelper(100, 100, 0xc5cfce, 0xd4dcdb);
     this.grid.position.y = -0.18;
+    this.grid.layers.enableAll();
     if (new URLSearchParams(window.location.search).get("debug") === "performance") {
       this.profiler = new RenderProfiler();
       window.__fixturesPerformance = this.profiler;
@@ -199,6 +208,7 @@ export class HomeScene {
     this.buildDimensions();
     this.buildWalls();
     this.applyVisibility();
+    this.refreshRoomLayers();
     this.resetView();
 
     this.renderer.domElement.addEventListener("pointerdown", this.pointerDown);
@@ -344,6 +354,7 @@ export class HomeScene {
       const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(vertices), outlineMaterial);
       outline.name = `${room.id}-selection-outline`;
       outline.visible = false;
+      outline.userData.roomId = room.id;
       this.scene.add(outline);
       this.roomOutlines.set(room.id, outline);
       const element = document.createElement("button");
@@ -354,6 +365,7 @@ export class HomeScene {
       element.setAttribute("aria-label", `选择${room.name}`);
       element.setAttribute("aria-pressed", "false");
       const label = new CSS2DObject(element);
+      label.userData.roomId = room.id;
       label.position.copy(this.position(room.label, 0.1));
       this.labelGroup.add(label);
       this.labels.set(room.id, element);
@@ -369,6 +381,8 @@ export class HomeScene {
       drain.name = `${zone.id}-floor-drain${zone.candidate ? "-candidate" : ""}`;
       drain.position.copy(this.position(zone.drain, drainageElevation(zone, zone.drain)));
       this.scene.add(drain);
+      drain.userData.roomId = zone.roomId;
+      this.scopeObjects.push(drain);
       const size = floorDrainSize;
       this.box(drain, size - 0.016, 0.004, size - 0.016, 0, -0.008, 0, recess);
       for (const side of [-1, 1]) {
@@ -594,8 +608,8 @@ export class HomeScene {
     for (const { roomId, group } of this.balconyRailings) {
       group.visible = this.options.balconyModes[roomId] === "original";
     }
-    this.labelGroup.visible = this.options.labels;
-    this.dimensions.visible = this.options.dimensions;
+    this.labelGroup.visible = this.options.labels && !this.options.focusedRoom;
+    this.dimensions.visible = this.options.dimensions && !this.options.focusedRoom;
     this.grid.visible = this.options.grid;
     this.drainageOverlay.visible = this.options.drainage;
     for (const object of this.drainageOverlay.children) {
@@ -617,6 +631,11 @@ export class HomeScene {
     this.profiler?.noteUpdate(wallsChanged);
     if (wallsChanged) this.buildWalls();
     this.applyVisibility();
+    const scopeChanged = (previous.focusedRoom ?? null) !== (options.focusedRoom ?? null);
+    if (wallsChanged) this.refreshRoomLayers();
+    if (scopeChanged) {
+      this.changeRoomView();
+    }
     if (fixtureAppearanceChanged(previous, options)) this.shadows.invalidate();
     if (previous.view !== options.view) this.resetView();
     this.host.dataset.view = options.view;
@@ -627,6 +646,7 @@ export class HomeScene {
   }
 
   resetView = () => {
+    this.roomCamera.cancel();
     // Drain OrbitControls damping before replacing the camera/target, otherwise
     // switching views during a drag's inertia continues moving the new view.
     this.controls.enableDamping = false;
@@ -649,10 +669,54 @@ export class HomeScene {
     this.camera.lookAt(-0.9, 0, 0);
     this.camera.updateProjectionMatrix();
     this.controls.update();
+    const focused = rooms.find((room) => room.id === this.options.focusedRoom);
+    if (focused) {
+      const pose = roomPose(focused, this.camera, plan, this.options.wallHeight);
+      this.camera.position.copy(pose.position); this.controls.target.copy(pose.target);
+      this.camera.zoom = pose.zoom; this.camera.updateProjectionMatrix(); this.controls.update();
+    }
     this.requestRender();
   };
 
+  private capturePose(): CameraPose {
+    return { position: this.camera.position.clone(), target: this.controls.target.clone(), zoom: this.camera.zoom };
+  }
+  private refreshRoomLayers() {
+    indexRoomLayers([...this.floors, this.architecture, this.fixtures.group, this.labelGroup,
+      this.drainageOverlay, ...this.scopeObjects, ...this.roomOutlines.values()]);
+    this.applyRoomScope();
+  }
+  private applyRoomScope(roomId = this.options.focusedRoom) {
+    const room = rooms.find((item) => item.id === roomId);
+    this.camera.layers.set(room ? roomLayer(room.id) : 0);
+    this.raycaster.layers.mask = this.camera.layers.mask;
+    this.renderer.clippingPlanes = room ? roomClipping(room) : [];
+    this.shadows.invalidate();
+    this.fixtures.invalidateReflections();
+  }
+  private changeRoomView() {
+    this.roomCamera.cancel();
+    this.controls.enableDamping = false; this.controls.update(); this.controls.enableDamping = true;
+    const room = rooms.find((item) => item.id === this.options.focusedRoom);
+    const from = this.capturePose();
+    let to: CameraPose;
+    if (room) {
+      this.overviewPose ??= { ...from, view: this.options.view };
+      to = roomPose(room, this.camera, this.options.view === "plan", this.options.wallHeight);
+    } else {
+      if (!this.overviewPose || this.overviewPose.view !== this.options.view) {
+        this.overviewPose = undefined; this.applyRoomScope(); this.resetView(); return;
+      }
+      to = this.overviewPose; this.overviewPose = undefined;
+    }
+    const targetRoom = this.options.focusedRoom ?? null;
+    this.roomCamera.start(from, to, performance.now(), window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      () => this.applyRoomScope(targetRoom));
+    this.requestRender();
+  }
+
   zoom = (factor: number) => {
+    this.roomCamera.cancel();
     this.camera.zoom = THREE.MathUtils.clamp(
       this.camera.zoom * factor,
       0.45,
@@ -697,6 +761,7 @@ export class HomeScene {
   };
 
   private cameraInteractionStart = () => {
+    this.roomCamera.cancel();
     this.cameraInteracting = true;
     this.requestRender();
   };
@@ -710,6 +775,7 @@ export class HomeScene {
     const started = this.profiler ? performance.now() : 0;
     const renderFrame = this.renderer.info.render.frame;
     if (this.profiler) this.renderer.info.reset();
+    const focusing = this.roomCamera.advance(now, this.camera, this.controls.target);
     const cameraMoved = this.controls.update();
     const fixturesMoving = animateFixtures(this.fixtures, now);
     // A finished door/drawer must appear in its final position even if it
@@ -717,7 +783,7 @@ export class HomeScene {
     if (this.fixturesAnimating && !fixturesMoving) this.fixtures.invalidateReflections();
     this.fixturesAnimating = fixturesMoving;
     this.renderer.shadowMap.needsUpdate = this.shadows.consume(fixturesMoving);
-    this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved);
+    this.fixtures.prepareReflections(now, this.cameraInteracting || cameraMoved || focusing);
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
     if (this.profiler) {
@@ -726,10 +792,10 @@ export class HomeScene {
         frameWorkMs: performance.now() - started, drawCalls: render.calls,
         triangles: render.triangles, renderPasses: render.frame - renderFrame,
         geometries: memory.geometries, textures: memory.textures, programs: programs?.length ?? 0,
-        lighting: this.options.lightingMode, moving: this.cameraInteracting || cameraMoved || fixturesMoving,
+        lighting: this.options.lightingMode, moving: this.cameraInteracting || cameraMoved || focusing || fixturesMoving,
       });
     }
-    if (fixturesMoving || this.fixtures.reflectionsPending) this.requestRender();
+    if (focusing || fixturesMoving || this.fixtures.reflectionsPending) this.requestRender();
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -786,7 +852,8 @@ export class HomeScene {
     );
     // Operable glass is a hit target; fixed translucent glazing lets taps through
     // to curtains. Solid walls and furniture continue to block objects behind.
-    return hits.find(({ object }) => {
+    return hits.find(({ object, point }) => {
+      if (this.renderer.clippingPlanes.some((plane) => plane.distanceToPoint(point) < 0)) return false;
       if (!(object instanceof THREE.Mesh)) return false;
       if (this.fixtures.isOperable(object)) return true;
       const materials = Array.isArray(object.material) ? object.material : [object.material];

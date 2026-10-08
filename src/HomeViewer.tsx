@@ -8,6 +8,7 @@ import { defaults, rooms } from "./model/plan";
 import type { ViewOptions } from "./model/options";
 import { ModelRoomDetails } from "./ModelRoomDetails";
 import { ModelMobileActions } from "./ModelMobileActions";
+import { ModelRoomPicker } from "./ModelRoomPicker";
 import { balconyChoices, balconyModeLabels, curtainColors, livingLayouts } from "./model/arrangements";
 import type { BalconyModes, CurtainColor, LayoutPreview } from "./model/arrangements";
 import { televisionMounts } from "./model/furniture";
@@ -56,7 +57,10 @@ export default function HomeViewer({
   const [lightCommand, setLightCommand] = useState<ViewOptions["lightCommand"]>();
   const [cutaway, setCutaway] = useState(true);
   const [wallHeight, setWallHeight] = useState<number>(defaults.wallHeight);
-  const [labels, setLabels] = useState(true);
+  const [labels, setLabels] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
+  const [roomView, setRoomView] = useState(false);
+  // Use the controlled selection so browser navigation cannot leave a stale room on screen.
+  const focusedRoom = roomView ? selected : null;
   const [dimensions, setDimensions] = useState(true);
   const [grid, setGrid] = useState(true);
   const [drainage, setDrainage] = useState(false);
@@ -70,13 +74,20 @@ export default function HomeViewer({
   const [equipment, setEquipment] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [showSource, setShowSource] = useState(false);
-  const room = rooms.find((item) => item.id === selected);
+  const room = rooms.find((item) => item.id === (focusedRoom ?? selected));
   const currentLayout = livingLayouts.find((item) => item.id === layout);
-  const selectedBalcony = balconyChoices.find((item) => item.id === selected);
+  const selectedBalcony = balconyChoices.find((item) => item.id === room?.id);
+  function chooseRoom(id: string | null) {
+    setRoomView(id !== null);
+    setSelected(id);
+    setMobilePanel(false);
+    setPreviewOpen(false);
+  }
   const options = useMemo<ViewOptions>(() => ({
     lightingMode,
     lightCommand,
     selected,
+    focusedRoom,
     view,
     cutaway,
     wallHeight,
@@ -90,7 +101,7 @@ export default function HomeViewer({
     balconyRoofs,
     balconyModes,
     equipment,
-  }), [lightingMode, lightCommand, selected, view, cutaway, wallHeight, labels,
+  }), [lightingMode, lightCommand, selected, focusedRoom, view, cutaway, wallHeight, labels,
     dimensions, grid, drainage, layout, curtainColor, televisionMount,
     balconyRoofs, balconyModes, equipment]);
 
@@ -174,15 +185,17 @@ export default function HomeViewer({
               <span>点击查看</span>
             </div>
             <div className="room-list">
+              <button type="button" className={`room-button ${!focusedRoom ? "is-active" : ""}`}
+                aria-pressed={!focusedRoom} onClick={() => chooseRoom(null)}>
+                <span className="room-index"><Icon name="cube" size={16} /></span>
+                <span>整屋总览</span><Icon name="chevron" size={14} />
+              </button>
               {rooms.map((item, index) => (
                 <button
                   key={item.id}
-                  className={`room-button ${selected === item.id ? "is-active" : ""}`}
-                  aria-pressed={selected === item.id}
-                  onClick={() => {
-                    setSelected(selected === item.id ? null : item.id);
-                    setMobilePanel(false);
-                  }}
+                  className={`room-button ${focusedRoom === item.id ? "is-active" : ""}`}
+                  aria-pressed={focusedRoom === item.id}
+                  onClick={() => chooseRoom(item.id)}
                 >
                   <span className="room-index">
                     {String(index + 1).padStart(2, "0")}
@@ -204,6 +217,7 @@ export default function HomeViewer({
               onChange={setCutaway}
             />
             <Toggle label="房间名称" checked={labels} onChange={setLabels} />
+            {focusedRoom ? <p className="setting-note">房间视角暂时隐藏名称标签与整屋轴线，返回整屋后恢复显示设置。</p> : null}
             <Toggle
               label="图纸轴线尺寸"
               checked={dimensions}
@@ -247,7 +261,7 @@ export default function HomeViewer({
             </span>
           </div>
         </aside>
-        <section className="viewport" data-lighting={lightingMode} aria-label="交互式户型查看器">
+        <section className="viewport" data-lighting={lightingMode} data-room-view={focusedRoom ? "room" : "overview"} aria-label="交互式户型查看器">
           <div className="viewport-controls">
           <div className="viewport-top">
             <div className="view-switch" role="group" aria-label="切换视角" data-selection={view === "perspective" ? 0 : 1}>
@@ -282,6 +296,12 @@ export default function HomeViewer({
                 <Icon name="moon" size={17} /> 黑夜
               </button>
             </div>
+          </div>
+          <div className="room-view-toolbar">
+            <div className="mobile-room-picker"><ModelRoomPicker focusedRoom={focusedRoom} onChoose={chooseRoom} /></div>
+            {focusedRoom ? <button type="button" className="room-overview-button" onClick={() => chooseRoom(null)}>
+              <Icon name="cube" size={16} /> 返回整屋
+            </button> : null}
           </div>
           <section className={`layout-preview${previewOpen ? "" : " is-collapsed"}`} aria-label="空间方案对比">
             <button className="preview-panel-toggle" aria-expanded={previewOpen} aria-controls="model-preview-controls"
@@ -398,7 +418,8 @@ export default function HomeViewer({
             <small>模型坐标</small>
           </div>
           {room ? (
-            <ModelRoomDetails key={room.id} room={room} onVisit={onVisit} onClose={() => setSelected(null)}
+            <ModelRoomDetails key={room.id} room={room} onVisit={onVisit} focused={!!focusedRoom}
+              onFocus={() => chooseRoom(room.id)} onClose={() => focusedRoom ? chooseRoom(null) : setSelected(null)}
               summary={selectedBalcony ? balconyModeLabels[balconyModes[selectedBalcony.id]] : undefined} />
           ) : (
             <div className="view-invitation">

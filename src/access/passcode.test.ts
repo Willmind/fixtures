@@ -4,7 +4,27 @@ import {
   matchesPasscode,
   readAccessSession,
   saveAccessSession,
+  canAccessPage,
 } from "./passcode.ts";
+import { readRoute } from "../navigation.ts";
+
+test("三维首页免密码，资料与电气图包括旧实拍和图纸直链均需解锁", () => {
+  for (const search of ["", "?view=model", "?view=model&room=master"]) {
+    const { view } = readRoute(search);
+    assert.equal(canAccessPage(view, false), true, search);
+  }
+  for (const search of ["?view=cad", "?view=guide", "?tab=visit&room=master", "?tab=reading", "?tab=sources", "?tab=rooms"]) {
+    const { view } = readRoute(search);
+    assert.equal(canAccessPage(view, false), false, search);
+    assert.equal(canAccessPage(view, true), true, search);
+  }
+  assert.equal(canAccessPage("model", false), true, "锁定资料后仍能浏览三维");
+});
+
+test("当前资料密码为 123456，旧密码和额外空格不能解锁", async () => {
+  assert.equal(await matchesPasscode("123456"), true);
+  for (const value of ["937899", "", "123456 ", " 123456"]) assert.equal(await matchesPasscode(value), false);
+});
 
 test("密码必须精确匹配，不接受错误密码、空值或额外空格", async () => {
   const fixtureDigest =
