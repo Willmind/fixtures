@@ -94,9 +94,11 @@
   }
 .layout-preview .balcony-preview-note { margin-top: 8px; }
 .viewport-top .view-switch {
+    --switch-inset: 3px;
     padding: 3px;
     border-radius: 13px;
   }
+.viewport-top .model-switch-indicator { border-radius: 10px; }
 .viewport-top .view-switch button {
     min-height: 44px;
     padding: 8px;

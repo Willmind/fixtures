@@ -250,7 +250,8 @@ export default function HomeViewer({
         <section className="viewport" data-lighting={lightingMode} aria-label="交互式户型查看器">
           <div className="viewport-controls">
           <div className="viewport-top">
-            <div className="view-switch" role="group" aria-label="切换视角">
+            <div className="view-switch" role="group" aria-label="切换视角" data-selection={view === "perspective" ? 0 : 1}>
+              <span className="model-switch-indicator" aria-hidden="true" />
               <button
                 aria-pressed={view === "perspective"}
                 className={view === "perspective" ? "active" : ""}
@@ -268,7 +269,8 @@ export default function HomeViewer({
                 俯视平面
               </button>
             </div>
-            <div className="view-switch lighting-switch" role="group" aria-label="切换白天或黑夜">
+            <div className="view-switch lighting-switch" role="group" aria-label="切换白天或黑夜" data-selection={lightingMode === "day" ? 0 : 1}>
+              <span className="model-switch-indicator" aria-hidden="true" />
               <button aria-pressed={lightingMode === "day"}
                 className={lightingMode === "day" ? "active" : ""}
                 onClick={() => setLightingMode("day")}>
@@ -289,9 +291,11 @@ export default function HomeViewer({
               <span>{previewOpen ? "收起方案" : "展开方案"}</span>
               <Icon name="chevron" size={14} />
             </button>
-            <div id="model-preview-controls" hidden={!previewOpen}>
+            <div id="model-preview-controls" className="preview-panel-body" inert={!previewOpen} aria-hidden={!previewOpen}>
+            <div className="preview-panel-content">
             <div className="layout-preview-heading">
-              <div className="preview-tabs" role="group" aria-label="选择对比内容">
+              <div className="preview-tabs" role="group" aria-label="选择对比内容" data-selection={previewTab === "living" ? 0 : previewTab === "balconies" ? 1 : 2}>
+                <span className="model-switch-indicator" aria-hidden="true" />
                 <button aria-pressed={previewTab === "living"} onClick={() => setPreviewTab("living")}>
                   客厅摆放
                 </button>
@@ -304,6 +308,7 @@ export default function HomeViewer({
               </div>
               <small>效果预览</small>
             </div>
+            <div className="preview-tab-content" key={previewTab}>
             {previewTab === "living" ? <>
               <div className="layout-switch" role="group" aria-label="切换客厅摆放">
                 <button aria-pressed={layout === "empty"} onClick={() => setLayout("empty")}>
@@ -376,6 +381,8 @@ export default function HomeViewer({
               </p>
               <p className="balcony-preview-note">整面通高玻璃，预览中不显示原栏杆；窗框与开启方式待定。</p>
             </>}
+            </div>
+            </div>
             </div>
           </section>
           </div>
