@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HomeScene } from "./model/HomeScene";
-import type { ViewOptions } from "./model/options";
+import type { ViewOptions, LightState } from "./model/options";
 import { Icon } from "./icons";
 
 type Props = {
@@ -16,7 +16,8 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
   const initialOptions = useRef(options);
   const selectionCallback = useRef(onSelect);
   const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ text: string; revision: number } | null>(null);
+  const [lightState, setLightState] = useState<LightState>({ on: options.lightingMode === "night", mixed: false });
+  const [feedback, setFeedback] = useState<{ text: string; revision: number; inline: boolean } | null>(null);
   const [hintSeen, setHintSeen] = useState(() => {
     try { return localStorage.getItem("fixtures.interaction-intro.v1") === "seen"; }
     catch { return false; }
@@ -44,11 +45,12 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
         initialOptions.current,
         (id) => selectionCallback.current(id),
         setError,
-        (text) => {
-          setFeedback((previous) => ({ text, revision: (previous?.revision ?? 0) + 1 }));
+        (text, inline = false) => {
+          setFeedback((previous) => ({ text, inline, revision: (previous?.revision ?? 0) + 1 }));
           setHintSeen(true);
           try { localStorage.setItem("fixtures.interaction-intro.v1", "seen"); } catch { /* Optional preference. */ }
         },
+        (state) => setLightState((previous) => previous.on === state.on && previous.mixed === state.mixed ? previous : state),
       );
     } catch (cause) {
       console.error("三维模型初始化失败", cause);
@@ -69,7 +71,7 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
   return (
     <>
       <div className="model-canvas" ref={host} />
-      <div className={`fixture-feedback${feedback ? " is-visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">
+      <div className={`fixture-feedback${feedback?.inline ? " is-inline" : feedback ? " is-visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">
         {feedback?.text}
       </div>
       {options.focusedRoom && options.interactionHints !== false && !hintSeen && !feedback ? (
@@ -109,22 +111,20 @@ export function ModelViewer({ options, onSelect, onLightsChange, onHintsChange }
           <Icon name="reset" />
         </button>
         <span />
-        <button className="hint-action" title="显示或隐藏当前房间的交互提示"
-          aria-label="房间交互提示" aria-pressed={options.interactionHints !== false}
+        <button className="hint-action tool-switch" title="显示或隐藏当前房间的交互提示"
+          role="switch" aria-label="房间交互提示" aria-checked={options.interactionHints !== false}
           onClick={() => onHintsChange(options.interactionHints === false)}>
           <Icon name="info" size={18} /><small>提示</small>
+          <span className="tool-switch-track" aria-hidden="true"><span /></span>
         </button>
-        <button className="light-action" title="打开所有顶灯和床头灯"
-          aria-label="全部开灯" disabled={options.layout === "empty"}
-          onClick={() => onLightsChange(true)}>
-          <Icon name="bulb" size={18} />
-          <small>开灯</small>
-        </button>
-        <button className="light-action" title="关闭所有顶灯和床头灯"
-          aria-label="全部关灯" disabled={options.layout === "empty"}
-          onClick={() => onLightsChange(false)}>
-          <Icon name="bulb-off" size={18} />
-          <small>关灯</small>
+        <button className={`light-action tool-switch${lightState.mixed ? " is-mixed" : ""}`} role="switch"
+          title={lightState.mixed ? "部分灯已开启，点击全部开灯" : lightState.on ? "关闭所有顶灯和床头灯" : "打开所有顶灯和床头灯"}
+          aria-label={lightState.mixed ? "全屋灯光，部分开启" : "全屋灯光"}
+          aria-checked={lightState.on} disabled={options.layout === "empty"}
+          onClick={() => onLightsChange(!lightState.on)}>
+          <Icon name={lightState.on || lightState.mixed ? "bulb" : "bulb-off"} size={18} />
+          <small>{lightState.mixed ? "部分亮" : "灯光"}</small>
+          <span className="tool-switch-track" aria-hidden="true"><span /></span>
         </button>
       </div>
     </>

@@ -29,8 +29,10 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
   globalThis.document = {
     createElement: (tag: string) => {
       const attributes = new Map<string, string>();
+      const children: unknown[] = [];
       return { tagName: tag.toUpperCase(), style: {}, dataset: {}, textContent: "",
-        append: () => {},
+        children,
+        append: (...nodes: unknown[]) => { children.push(...nodes); },
         remove: () => {},
         ownerDocument: { defaultView: { Element: Object } },
         setAttribute: (name: string, value: string) => attributes.set(name, String(value)),
@@ -79,10 +81,15 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     indexRoomLayers([fixtures.group]);
     assert.ok(label.layers.isEnabled(roomLayer("kitchen")));
     fixtures.update(options);
+    for (const name of ["kitchen-gas-burner-action-label", "utility-drying-rack-action-label", "robot-vacuum-action-label"]) {
+      assert.equal(fixtures.group.getObjectByName(name)?.visible, false);
+    }
   });
 
-  await t.test("交互圆点复用原物品目标，按房间和显示状态过滤并在操作后更新动作", () => {
-    const hints = new FixtureHints(fixtures);
+  await t.test("交互圆点复用原物品目标，按房间和显示状态过滤并在操作后更新动作", (sub) => {
+    sub.mock.timers.enable({ apis: ["setTimeout"] });
+    let expiries = 0;
+    const hints = new FixtureHints(fixtures, () => { expiries++; });
     const labels: CSS2DObject[] = [];
     fixtures.group.traverse((object) => {
       if (object.name.startsWith("fixture-hint-") && object instanceof CSS2DObject) labels.push(object);
@@ -119,8 +126,27 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     assert.equal(fixtures.interactionInfo(target)?.feedback, "衣柜门已打开");
     assert.equal(wardrobe.element.getAttribute("aria-label"), "衣柜门 · 关闭");
     assert.equal(wardrobe.element.getAttribute("aria-pressed"), "true");
+    hints.update(camera, [], 10000, 10000, true);
+    assert.equal(hints.showFeedback(target), true);
+    assert.equal(wardrobe.element.dataset.feedback, "true");
+    assert.equal(wardrobe.element.children[2].textContent, "衣柜门已打开");
+    hints.update(camera, [], 44, 44, true);
+    assert.equal(wardrobe.visible, true);
+    sub.mock.timers.tick(1500);
+    hints.showFeedback(target);
+    sub.mock.timers.tick(1000);
+    assert.equal(wardrobe.element.dataset.feedback, "true");
+    assert.equal(expiries, 0);
+    sub.mock.timers.tick(1200);
+    assert.equal(wardrobe.element.dataset.feedback, undefined);
+    assert.equal(expiries, 1);
+    hints.showFeedback(target);
     hints.update(camera, [], 10000, 10000, false);
     assert.ok(labels.every((label) => !label.visible));
+    assert.equal(wardrobe.element.dataset.feedback, undefined);
+    assert.equal(hints.showFeedback(target), false);
+    sub.mock.timers.tick(2200);
+    assert.equal(expiries, 1);
     assert.equal(fixtures.interactionInfo(target)?.action, "关闭");
     hints.update(camera, [new THREE.Plane(new THREE.Vector3(1, 0, 0), -100)], 10000, 10000, true);
     assert.ok(labels.every((label) => !label.visible));
@@ -132,7 +158,11 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     }));
     fixtures.update(options);
     toggleFixture(fixtures, target, 1, true);
+    hints.update(camera, [], 10000, 10000, true);
+    hints.showFeedback(target);
     hints.dispose();
+    sub.mock.timers.tick(2200);
+    assert.equal(expiries, 1);
     assert.ok(labels.every((label) => !label.parent));
   });
 
@@ -266,15 +296,28 @@ test("拆分后的家具、灯光和开合控制共同工作，界面更新不�
     fixtures.group.traverse((object) => { if (object instanceof THREE.PointLight) lights.push(object); });
     assert.equal(lights.length, ceilingLighting.length + bedroomStorage.length);
     assert.ok(lights.every((light) => light.visible && !light.castShadow));
+    assert.deepEqual(fixtures.lightState, { on: true, mixed: false });
     const ceiling = findMesh(fixtures.group, (mesh) => mesh.userData.ceilingLightIndex === 0);
     assert.equal(toggleFixture(fixtures, ceiling, 0, true), true);
     assert.equal(lights.filter((light) => light.visible).length, lights.length - 1);
+    assert.deepEqual(fixtures.lightState, { on: false, mixed: true });
     fixtures.update({ ...options, labels: false });
     fixtures.update({ ...options, view: "plan" });
     fixtures.update({ ...options, view: "perspective" });
     assert.equal(lights.filter((light) => light.visible).length, lights.length - 1);
+    assert.deepEqual(fixtures.lightState, { on: false, mixed: true });
     fixtures.update({ ...options, lightCommand: { on: true, revision: 1 } });
     assert.ok(lights.every((light) => light.visible));
+    assert.deepEqual(fixtures.lightState, { on: true, mixed: false });
+    fixtures.update({ ...options, lightCommand: { on: false, revision: 2 } });
+    assert.deepEqual(fixtures.lightState, { on: false, mixed: false });
+    const bedside = findMesh(fixtures.group, (mesh) => mesh.userData.bedsideLampIndex === 0);
+    toggleFixture(fixtures, bedside, 100, true);
+    assert.deepEqual(fixtures.lightState, { on: false, mixed: true });
+    fixtures.update({ ...options, lightingMode: "day" });
+    assert.deepEqual(fixtures.lightState, { on: false, mixed: false });
+    fixtures.update(options);
+    assert.deepEqual(fixtures.lightState, { on: true, mixed: false });
   });
 
   await t.test("同值选项和纯标签变化不刷新镜面，也不触发家具高度更新", () => {

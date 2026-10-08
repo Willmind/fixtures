@@ -2,16 +2,23 @@ import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { HomeFixtures } from "./HomeFixtures.ts";
 
+type Hint = { key: string; target: THREE.Mesh; label: CSS2DObject;
+  button: HTMLButtonElement; text: HTMLElement; feedback: HTMLElement };
+
 /** DOM hints share the original fixture targets; no extra meshes or animation loop. */
 export class FixtureHints {
-  private hints: { target: THREE.Mesh; label: CSS2DObject; button: HTMLButtonElement; text: HTMLElement }[] = [];
+  private hints: Hint[] = [];
   private targets = new Map<string, THREE.Mesh>();
   private point = new THREE.Vector3();
   private screenPoint = new THREE.Vector3();
   private fixtures: HomeFixtures;
+  private feedbackHint?: Hint;
+  private feedbackTimeout?: ReturnType<typeof setTimeout>;
+  private onFeedbackEnd: () => void;
 
-  constructor(fixtures: HomeFixtures) {
+  constructor(fixtures: HomeFixtures, onFeedbackEnd: () => void = () => {}) {
     this.fixtures = fixtures;
+    this.onFeedbackEnd = onFeedbackEnd;
     const candidates = new Map<string, { target: THREE.Mesh; area: number }>();
     fixtures.group.updateMatrixWorld(true);
     fixtures.group.traverse((object) => {
@@ -37,19 +44,45 @@ export class FixtureHints {
       dot.setAttribute("aria-hidden", "true");
       const text = document.createElement("span");
       text.className = "fixture-hint-tooltip";
-      button.append(dot, text);
+      const feedback = document.createElement("span");
+      feedback.className = "fixture-hint-feedback";
+      feedback.setAttribute("aria-hidden", "true");
+      button.append(dot, text, feedback);
       const label = new CSS2DObject(button);
       label.name = `fixture-hint-${key}`;
       target.geometry.boundingBox!.getCenter(label.position);
       label.visible = false;
       target.add(label);
       this.targets.set(key, target);
-      this.hints.push({ target, label, button, text });
+      this.hints.push({ key, target, label, button, text, feedback });
     }
     this.refresh();
   }
 
   targetFor(key: string) { return this.targets.get(key); }
+
+  showFeedback(object: THREE.Object3D) {
+    this.clearFeedback();
+    const info = this.fixtures.interactionInfo(object);
+    const hint = info && this.hints.find((item) => item.key === info.key);
+    if (!hint?.label.visible || !info) return false;
+    hint.feedback.textContent = info.feedback;
+    hint.button.dataset.feedback = "true";
+    this.feedbackHint = hint;
+    // One expiry invalidation; a static result does not keep WebGL rendering.
+    this.feedbackTimeout = setTimeout(() => {
+      this.clearFeedback();
+      this.onFeedbackEnd();
+    }, 2200);
+    return true;
+  }
+
+  clearFeedback() {
+    if (this.feedbackTimeout !== undefined) clearTimeout(this.feedbackTimeout);
+    this.feedbackTimeout = undefined;
+    if (this.feedbackHint) delete this.feedbackHint.button.dataset.feedback;
+    this.feedbackHint = undefined;
+  }
 
   refresh() {
     for (const hint of this.hints) {
@@ -65,8 +98,11 @@ export class FixtureHints {
   }
 
   update(camera: THREE.Camera, clipping: readonly THREE.Plane[], width: number, height: number, enabled: boolean) {
+    if (!enabled) this.clearFeedback();
     const occupied: { x: number; y: number }[] = [];
-    for (const hint of this.hints) {
+    // Prioritize the object just operated so another nearby dot cannot hide its result.
+    const ordered = this.feedbackHint ? [this.feedbackHint, ...this.hints.filter((hint) => hint !== this.feedbackHint)] : this.hints;
+    for (const hint of ordered) {
       let visible = enabled && hint.target.layers.test(camera.layers);
       for (let parent: THREE.Object3D | null = hint.target; visible && parent; parent = parent.parent) {
         if (!parent.visible) visible = false;
@@ -79,6 +115,13 @@ export class FixtureHints {
           && Math.abs(this.screenPoint.z) <= 1 && clipping.every((plane) => plane.distanceToPoint(this.point) >= 0)
           && !occupied.some((other) => Math.hypot(other.x - x, other.y - y) < 44);
         if (visible) occupied.push({ x, y });
+        if (visible && hint === this.feedbackHint) {
+          const bubbleWidth = Math.min(220, Math.max(0, width - 24));
+          const offset = THREE.MathUtils.clamp(0, -width / 2 + bubbleWidth / 2 + 12 - x,
+            width / 2 - bubbleWidth / 2 - 12 - x);
+          hint.feedback.style.left = `calc(50% + ${offset}px)`;
+          hint.button.dataset.feedbackPlacement = height / 2 - y < 70 ? "below" : "above";
+        }
       }
       hint.label.visible = visible;
     }
@@ -86,6 +129,7 @@ export class FixtureHints {
   }
 
   dispose() {
+    this.clearFeedback();
     for (const hint of this.hints) hint.label.removeFromParent();
     this.hints = [];
     this.targets.clear();

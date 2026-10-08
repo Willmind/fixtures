@@ -15,15 +15,14 @@
 .fixture-hint-dot {
   width: 11px;
   height: 11px;
-  border: 2px solid #fff;
+  border: 1px solid #56606f40;
   border-radius: 50%;
-  background: #007aff;
-  box-shadow: 0 0 0 5px #007aff26, 0 2px 8px #00000033;
+  background: #fff;
+  box-shadow: 0 0 0 5px #ffffff30, 0 2px 8px #00000030;
   animation: fixture-hint-pulse 2.8s ease-in-out 3;
 }
-.fixture-hint[aria-pressed="true"] .fixture-hint-dot { background: #16a675; box-shadow: 0 0 0 5px #16a67526, 0 2px 8px #00000033; }
 .fixture-hint:focus-visible { outline: 2px solid var(--tint); outline-offset: 0; }
-.fixture-hint-tooltip {
+.fixture-hint-tooltip, .fixture-hint-feedback {
   position: absolute;
   bottom: calc(100% - 4px);
   left: 50%;
@@ -39,6 +38,19 @@
   opacity: 0;
   transition: opacity 160ms ease, transform 160ms ease;
 }
+.fixture-hint-feedback {
+  width: max-content;
+  max-width: min(220px, calc(100vw - 24px));
+  white-space: normal;
+  line-height: 1.5;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--card-shadow);
+}
+.fixture-hint[data-feedback="true"] .fixture-hint-feedback { opacity: 1; transform: translateX(-50%); }
+.fixture-hint[data-feedback="true"] { z-index: 1000 !important; }
+.fixture-hint[data-feedback="true"] .fixture-hint-tooltip { opacity: 0; }
+.fixture-hint[data-feedback-placement="below"] .fixture-hint-feedback { bottom: auto; top: calc(100% - 4px); }
 .fixture-hint:focus-visible .fixture-hint-tooltip { opacity: 1; transform: translateX(-50%); }
 @media (hover: hover) {
   .fixture-hint:hover .fixture-hint-tooltip { opacity: 1; transform: translateX(-50%); }
@@ -66,13 +78,64 @@
   transition: opacity 180ms ease, transform 220ms var(--ease-out);
 }
 .fixture-feedback.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.fixture-feedback.is-inline {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .fixture-intro { transform: translateX(-50%); display: flex; align-items: center; gap: 8px; }
 .fixture-intro button { display: grid; place-items: center; width: 32px; height: 32px; color: var(--text-secondary); background: transparent; }
-.camera-tools .hint-action { width: 44px; height: 48px; display: flex; flex-direction: column; gap: 3px; }
-.camera-tools .hint-action small { font-size: 10px; line-height: 1; }
-.camera-tools .hint-action[aria-pressed="true"] { color: var(--tint); background: var(--blue-glass); border-radius: 10px; }
+.camera-tools button.tool-switch {
+  width: 64px;
+  height: 56px;
+  display: grid;
+  grid-template-columns: 18px auto;
+  grid-template-rows: 18px 14px;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  justify-items: center;
+  column-gap: 4px;
+  row-gap: 4px;
+  padding: 6px;
+  line-height: 1;
+}
+.camera-tools .tool-switch > svg { display: block; grid-column: 1; grid-row: 1; }
+.camera-tools .tool-switch > small { display: block; grid-column: 2; grid-row: 1; font-size: 10px; line-height: 1; }
+.camera-tools .tool-switch[aria-checked="true"] { color: var(--tint); }
+.tool-switch-track {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: block;
+  position: relative;
+  width: 26px;
+  height: 14px;
+  border-radius: 8px;
+  background: var(--control-background);
+  transition: background 180ms ease;
+}
+.tool-switch-track > span {
+  display: block;
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  left: 2px;
+  top: 2px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px #00000022;
+  transition: transform 180ms ease;
+}
+.tool-switch[aria-checked="true"] .tool-switch-track { background: var(--action-fill); }
+.tool-switch[aria-checked="true"] .tool-switch-track > span { transform: translateX(12px); }
+.tool-switch.is-mixed .tool-switch-track { background: linear-gradient(90deg, var(--action-fill) 50%, var(--control-background) 50%); }
+.camera-tools .tool-switch:disabled { opacity: 0.45; cursor: default; }
 @media (max-width: 760px) {
-  .camera-tools .hint-action { height: 44px; }
+  .camera-tools button.tool-switch { width: 64px; height: 44px; padding: 4px; row-gap: 2px; }
   .fixture-feedback, .fixture-intro { bottom: auto; top: 130px; }
   .fixture-intro { padding: 6px 10px; font-size: 11px; }
   .viewport:has(.room-detail.is-expanded) .fixture-feedback,
@@ -80,5 +143,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .fixture-hint-dot { animation: none; }
-  .fixture-hint-tooltip, .fixture-feedback { transition: none; }
+  .fixture-hint-tooltip, .fixture-hint-feedback, .fixture-feedback, .tool-switch-track, .tool-switch-track > span { transition: none; }
 }

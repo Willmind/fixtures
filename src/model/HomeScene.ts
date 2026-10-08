@@ -25,7 +25,7 @@ import { OnDemandFrames } from "./OnDemandFrames";
 import { ShadowUpdates } from "./ShadowUpdates";
 import { indexRoomLayers, roomLayer, roomClipping, roomPose, RoomCameraMotion } from "./roomView";
 import type { CameraPose } from "./roomView";
-import type { ViewOptions } from "./options";
+import type { ViewOptions, LightState } from "./options";
 export type { ViewOptions } from "./options";
 import type { BalconyId } from "./arrangements";
 import { bathroomFittings, previewPalette } from "./arrangements";
@@ -47,7 +47,7 @@ export class HomeScene {
   private dimensions = new THREE.Group();
   private drainageOverlay = new THREE.Group();
   private fixtures = new HomeFixtures();
-  private fixtureHints = new FixtureHints(this.fixtures);
+  private fixtureHints = new FixtureHints(this.fixtures, () => this.requestRender());
   private floors: THREE.Mesh<
     THREE.BufferGeometry,
     THREE.MeshStandardMaterial
@@ -92,7 +92,8 @@ export class HomeScene {
     options: ViewOptions,
     private onSelect: (id: string | null) => void,
     private onError: (message: string) => void,
-    private onInteraction: (message: string) => void = () => {},
+    private onInteraction: (message: string, inline?: boolean) => void = () => {},
+    private onLightState: (state: LightState) => void = () => {},
   ) {
     this.options = options;
     this.renderer = new THREE.WebGLRenderer({
@@ -598,6 +599,7 @@ export class HomeScene {
 
   private applyVisibility() {
     this.fixtures.update(this.options);
+    this.onLightState(this.fixtures.lightState);
     this.fixtures.setHintMode(!!this.options.focusedRoom && this.options.interactionHints !== false);
     const night = this.options.lightingMode === "night";
     this.skyLight.color.set(night ? "#a8bcf0" : "#eaf5ff");
@@ -638,6 +640,7 @@ export class HomeScene {
     if (wallsChanged) this.buildWalls();
     this.applyVisibility();
     const scopeChanged = (previous.focusedRoom ?? null) !== (options.focusedRoom ?? null);
+    if (scopeChanged || options.interactionHints === false) this.fixtureHints.clearFeedback();
     if (wallsChanged) this.refreshRoomLayers();
     if (scopeChanged) {
       this.changeRoomView();
@@ -889,7 +892,10 @@ export class HomeScene {
     this.fixtureHints.refresh();
     const info = this.fixtures.interactionInfo(object);
     if (info) {
-      this.onInteraction(info.feedback);
+      if (info.kind === "ceilingLightIndex" || info.kind === "bedsideLampIndex") this.onLightState(this.fixtures.lightState);
+      const inline = !!this.options.focusedRoom && this.options.interactionHints !== false
+        && this.fixtureHints.showFeedback(object);
+      this.onInteraction(info.feedback, inline);
       this.renderer.domElement.title = `${info.title} · ${info.action}`;
     }
     this.shadows.invalidate();

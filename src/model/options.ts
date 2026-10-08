@@ -2,6 +2,7 @@ import type { BalconyModes, CurtainColor, LayoutPreview } from "./arrangements";
 import type { TelevisionMount } from "./furniture";
 
 export type LightingMode = "day" | "night";
+export type LightState = { on: boolean; mixed: boolean };
 
 export type FixtureOptions = {
   lightingMode: LightingMode;

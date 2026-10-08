@@ -199,6 +199,7 @@ export class HomeFixtures {
 
   toggleCeilingLight(object: THREE.Object3D) { return this.lighting.toggleCeilingLight(object); }
   toggleBedsideLamp(object: THREE.Object3D) { return this.lighting.toggleBedsideLamp(object); }
+  get lightState() { return this.lighting.state; }
 
   isOperable(object: THREE.Object3D) { return isFixtureOperable(object); }
 
@@ -1476,9 +1477,9 @@ export class HomeFixtures {
   }
 
   private updateLabels(options: FixtureOptions) {
-    for (const label of this.labels) label.visible = options.labels;
+    for (const label of this.labels) label.visible = options.labels && !label.element.dataset.fixtureAction;
     for (const label of this.equipmentLabels) {
-      label.visible = options.labels && options.view !== "plan";
+      label.visible = options.labels && options.view !== "plan" && !label.element.dataset.fixtureAction;
     }
     if (this.equipmentPlanLabel) {
       this.equipmentPlanLabel.visible = options.labels && options.view === "plan";

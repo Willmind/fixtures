@@ -151,6 +151,12 @@ export class FixtureLighting {
       : this.ceilingLights[object.userData.ceilingLightIndex]?.on;
   }
 
+  get state() {
+    const lamps = [...this.bedsideLamps, ...this.ceilingLights];
+    const count = lamps.filter((lamp) => lamp.on).length;
+    return { on: lamps.length > 0 && count === lamps.length, mixed: count > 0 && count < lamps.length };
+  }
+
   toggleBedsideLamp(object: THREE.Object3D) {
     const index = object.userData.bedsideLampIndex;
     if (typeof index !== "number" || !this.bedsideLamps[index]) return false;
